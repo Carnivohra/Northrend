@@ -6,6 +6,8 @@ target_sources(Northrend
     App/app.cpp
     Backend/session.cpp
     Backend/session.hpp
+    Backend/SDL3/context.cpp
+    Backend/SDL3/context.hpp
     Backend/SDL3/sdl3.cpp
     Engine/engine.cpp
   PUBLIC
