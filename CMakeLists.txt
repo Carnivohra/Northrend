@@ -17,6 +17,17 @@ else()
   message(FATAL_ERROR "Unsupported compiler: ${CMAKE_CXX_COMPILER_ID}")
 endif()
 
+include(CheckIPOSupported)
+
+check_ipo_supported(
+  RESULT IPO_SUPPORTED
+  OUTPUT IPO_ERROR
+  LANGUAGES CXX)
+
+if(NOT IPO_SUPPORTED)
+  message(WARNING "Interprocedural optimization is not supported: ${IPO_ERROR}")
+endif()
+
 # Build dependencies and sources
 
 add_subdirectory(dep)

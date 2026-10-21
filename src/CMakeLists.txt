@@ -18,7 +18,12 @@ target_sources(Northrend
 
 target_compile_features(Northrend
   PUBLIC
-    cxx_std_17)
+    cxx_std_20)
+
+if(IPO_SUPPORTED)
+  set_target_properties(Northrend PROPERTIES
+    INTERPROCEDURAL_OPTIMIZATION_RELEASE TRUE)
+endif()
 
 target_link_libraries(Northrend
   PRIVATE
