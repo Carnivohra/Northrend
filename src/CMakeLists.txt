@@ -80,6 +80,28 @@ if(NORTHREND_RENDERER STREQUAL "Vulkan")
       FILES
         Render/Vulkan/vulkan.hpp)
 
+  if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    target_sources(Northrend
+      PRIVATE
+        Render/Vulkan/Platform/surface.cpp
+        Render/Vulkan/Platform/surface.hpp
+        Render/Vulkan/Platform/wayland.cpp
+        Render/Vulkan/Platform/wayland.hpp
+        Render/Vulkan/Platform/x11.cpp
+        Render/Vulkan/Platform/x11.hpp)
+
+    target_compile_definitions(Northrend
+      PRIVATE
+        VK_USE_PLATFORM_WAYLAND_KHR
+        VK_USE_PLATFORM_XLIB_KHR)
+  else()
+    message(FATAL_ERROR "Vulkan is not implemented for ${CMAKE_SYSTEM_NAME}")
+  endif()
+
+  target_compile_definitions(Northrend
+    PRIVATE
+      $<$<CONFIG:Debug>:NORTHREND_VULKAN_VALIDATION>)
+
   target_link_libraries(Northrend
     PRIVATE
       volk::volk)
