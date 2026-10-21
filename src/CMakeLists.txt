@@ -17,8 +17,44 @@ target_sources(Northrend
       App/app.hpp
       Backend/application.hpp
       Backend/backend.hpp
+      Backend/Window/handle.hpp
+      Backend/Window/size.hpp
+      Backend/Window/window.hpp
       Backend/SDL3/sdl3.hpp
       Engine/engine.hpp)
+
+if(WIN32)
+  target_sources(Northrend
+    PUBLIC
+      FILE_SET HEADERS
+      BASE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}
+      FILES
+        Backend/Window/Handle/win32.hpp)
+elseif(CMAKE_SYSTEM_NAME STREQUAL "iOS")
+  target_sources(Northrend
+    PUBLIC
+      FILE_SET HEADERS
+      BASE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}
+      FILES
+        Backend/Window/Handle/uikit.hpp)
+elseif(APPLE)
+  target_sources(Northrend
+    PUBLIC
+      FILE_SET HEADERS
+      BASE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}
+      FILES
+        Backend/Window/Handle/cocoa.hpp)
+elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+  target_sources(Northrend
+    PUBLIC
+      FILE_SET HEADERS
+      BASE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}
+      FILES
+        Backend/Window/Handle/wayland.hpp
+        Backend/Window/Handle/x11.hpp)
+else()
+  message(FATAL_ERROR "Unsupported window platform: ${CMAKE_SYSTEM_NAME}")
+endif()
 
 target_compile_features(Northrend
   PUBLIC

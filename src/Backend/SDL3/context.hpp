@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Backend/Window/window.hpp"
+
 #include <cstdint>
 #include <string>
 
@@ -9,7 +11,7 @@ namespace Northrend {
 
 class BackendSession;
 
-class SDL3Context final {
+class SDL3Context final : public Window {
 public:
     SDL3Context(const std::string& title, int width, int height);
     ~SDL3Context();
@@ -19,6 +21,9 @@ public:
 
     bool process_events(BackendSession& session);
     void delay(std::uint32_t milliseconds) const noexcept;
+
+    NativeWindowHandle native_handle() const override;
+    WindowSize size() const override;
 
 private:
     SDL_Window* window;

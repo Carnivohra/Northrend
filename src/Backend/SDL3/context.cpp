@@ -61,4 +61,64 @@ void SDL3Context::delay(std::uint32_t milliseconds) const noexcept {
     SDL_Delay(milliseconds);
 }
 
+NativeWindowHandle SDL3Context::native_handle() const {
+#if defined(__linux__)
+    const SDL_PropertiesID properties = SDL_GetWindowProperties(this->window);
+
+    if (properties == 0) {
+        throw std::runtime_error(std::string("Failed to get SDL3 window properties: ") + SDL_GetError());
+    }
+
+    void* waylandDisplay = SDL_GetPointerProperty(
+        properties,
+        SDL_PROP_WINDOW_WAYLAND_DISPLAY_POINTER,
+        nullptr);
+    void* waylandSurface = SDL_GetPointerProperty(
+        properties,
+        SDL_PROP_WINDOW_WAYLAND_SURFACE_POINTER,
+        nullptr);
+
+    if (waylandDisplay && waylandSurface) {
+        return WaylandWindowHandle{
+            .display = waylandDisplay,
+            .surface = waylandSurface
+        };
+    }
+
+    void* x11Display = SDL_GetPointerProperty(
+        properties,
+        SDL_PROP_WINDOW_X11_DISPLAY_POINTER,
+        nullptr);
+    const Sint64 x11Window = SDL_GetNumberProperty(
+        properties,
+        SDL_PROP_WINDOW_X11_WINDOW_NUMBER,
+        0);
+
+    if (x11Display && x11Window != 0) {
+        return X11WindowHandle{
+            .display = x11Display,
+            .window = static_cast<std::uint64_t>(x11Window)
+        };
+    }
+
+    throw std::runtime_error("SDL3 did not provide a Wayland or X11 window handle");
+#else
+    throw std::runtime_error("Native SDL3 window handles are not implemented for this platform");
+#endif
+}
+
+WindowSize SDL3Context::size() const {
+    int width = 0;
+    int height = 0;
+
+    if (!SDL_GetWindowSizeInPixels(this->window, &width, &height)) {
+        throw std::runtime_error(std::string("Failed to get SDL3 window size: ") + SDL_GetError());
+    }
+
+    return WindowSize{
+        .width = static_cast<std::uint32_t>(width),
+        .height = static_cast<std::uint32_t>(height)
+    };
+}
+
 }
