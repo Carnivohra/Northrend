@@ -1,8 +1,9 @@
 #include "Backend/SDL3/sdl3.hpp"
 
+#include "Backend/session.hpp"
+
 #include <SDL3/SDL.h>
 
-#include <exception>
 #include <memory>
 #include <stdexcept>
 #include <string>
@@ -35,20 +36,42 @@ struct SDLWindowDeleter final {
 
 using SDLWindow = std::unique_ptr<SDL_Window, SDLWindowDeleter>;
 
-void stop_after_failure(BackendApplication& application, bool started, bool resumed) noexcept {
-    if (resumed) {
-        try {
-            application.suspended();
-        } catch (...) {
+SDLWindow create_window(const std::string& title, int width, int height) {
+    SDLWindow window(SDL_CreateWindow(
+        title.c_str(),
+        width,
+        height,
+        SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY));
+
+    if (!window) {
+        throw std::runtime_error(std::string("Failed to create SDL3 window: ") + SDL_GetError());
+    }
+
+    return window;
+}
+
+bool process_events(BackendSession& session) {
+    bool running = true;
+    SDL_Event event;
+
+    while (SDL_PollEvent(&event)) {
+        switch (event.type) {
+            case SDL_EVENT_QUIT:
+            case SDL_EVENT_WINDOW_CLOSE_REQUESTED:
+                running = false;
+                break;
+            case SDL_EVENT_WINDOW_MINIMIZED:
+                session.suspend();
+                break;
+            case SDL_EVENT_WINDOW_RESTORED:
+                session.resume();
+                break;
+            default:
+                break;
         }
     }
 
-    if (started) {
-        try {
-            application.stopped();
-        } catch (...) {
-        }
-    }
+    return running;
 }
 }
 
@@ -65,72 +88,25 @@ SDL3Backend::SDL3Backend(std::string title, int width, int height)
 
 void SDL3Backend::run(BackendApplication& application) {
     SDLRuntime runtime;
-    SDLWindow window(SDL_CreateWindow(
-        this->title.c_str(),
-        this->width,
-        this->height,
-        SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY));
+    SDLWindow window = create_window(this->title, this->width, this->height);
+    BackendSession session(application);
 
-    if (!window) {
-        throw std::runtime_error(std::string("Failed to create SDL3 window: ") + SDL_GetError());
-    }
+    session.start();
 
     bool running = true;
-    bool started = false;
-    bool resumed = false;
 
-    try {
-        application.started();
-        started = true;
+    while (running) {
+        running = process_events(session);
 
-        application.resumed();
-        resumed = true;
-
-        while (running) {
-            SDL_Event event;
-
-            while (SDL_PollEvent(&event)) {
-                switch (event.type) {
-                    case SDL_EVENT_QUIT:
-                    case SDL_EVENT_WINDOW_CLOSE_REQUESTED:
-                        running = false;
-                        break;
-                    case SDL_EVENT_WINDOW_MINIMIZED:
-                        if (resumed) {
-                            resumed = false;
-                            application.suspended();
-                        }
-                        break;
-                    case SDL_EVENT_WINDOW_RESTORED:
-                        if (!resumed) {
-                            application.resumed();
-                            resumed = true;
-                        }
-                        break;
-                    default:
-                        break;
-                }
-            }
-
-            if (running && resumed) {
-                application.update();
-                SDL_Delay(1);
-            } else if (running) {
-                SDL_Delay(10);
-            }
+        if (running && session.active()) {
+            application.update();
+            SDL_Delay(1);
+        } else if (running) {
+            SDL_Delay(10);
         }
-
-        if (resumed) {
-            resumed = false;
-            application.suspended();
-        }
-
-        started = false;
-        application.stopped();
-    } catch (...) {
-        stop_after_failure(application, started, resumed);
-        throw;
     }
+
+    session.stop();
 }
 
 }

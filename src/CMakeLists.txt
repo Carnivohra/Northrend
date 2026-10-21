@@ -4,6 +4,8 @@ add_library(Northrend::Northrend ALIAS Northrend)
 target_sources(Northrend
   PRIVATE
     App/app.cpp
+    Backend/session.cpp
+    Backend/session.hpp
     Backend/SDL3/sdl3.cpp
     Engine/engine.cpp
   PUBLIC
