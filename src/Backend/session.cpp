@@ -11,8 +11,8 @@ BackendSession::~BackendSession() {
     this->stop_after_failure();
 }
 
-void BackendSession::start() {
-    this->application.started();
+void BackendSession::start(const Window& window) {
+    this->application.started(window);
     this->started = true;
 
     this->application.resumed();

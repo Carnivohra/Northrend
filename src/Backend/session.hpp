@@ -3,6 +3,7 @@
 namespace Northrend {
 
 class BackendApplication;
+class Window;
 
 class BackendSession final {
 public:
@@ -12,7 +13,7 @@ public:
     BackendSession(const BackendSession&) = delete;
     BackendSession& operator=(const BackendSession&) = delete;
 
-    void start();
+    void start(const Window& window);
     void resume();
     void suspend();
     void stop();

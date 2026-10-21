@@ -24,7 +24,7 @@ void SDL3Backend::run(BackendApplication& application) {
     SDL3Context context(this->title, this->width, this->height);
     BackendSession session(application);
 
-    session.start();
+    session.start(context);
 
     bool running = true;
 
@@ -32,7 +32,7 @@ void SDL3Backend::run(BackendApplication& application) {
         running = context.process_events(session);
 
         if (running && session.active()) {
-            application.update();
+            application.tick();
             context.delay(1);
         } else if (running) {
             context.delay(10);

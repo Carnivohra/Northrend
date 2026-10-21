@@ -6,7 +6,6 @@ target_sources(Northrend
     App/app.cpp
     Backend/session.cpp
     Backend/session.hpp
-    Engine/engine.cpp
   PUBLIC
     FILE_SET HEADERS
     BASE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}

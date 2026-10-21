@@ -12,7 +12,7 @@ class Renderer {
 public:
     virtual ~Renderer() = default;
 
-    virtual RendererStatus update() = 0;
+    virtual RendererStatus frame() = 0;
     virtual void suspend() = 0;
 };
 
