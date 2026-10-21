@@ -2,6 +2,22 @@ cmake_minimum_required(VERSION 3.24)
 
 project(Northrend VERSION 0.0.1 LANGUAGES C CXX)
 
+# Select platform integrations
+
+set(NORTHREND_BACKEND "" CACHE STRING "Window and platform backend")
+set_property(CACHE NORTHREND_BACKEND PROPERTY STRINGS "" SDL3)
+
+set(NORTHREND_RENDERER "" CACHE STRING "Graphics renderer")
+set_property(CACHE NORTHREND_RENDERER PROPERTY STRINGS "" Vulkan)
+
+if(NORTHREND_BACKEND AND NOT NORTHREND_BACKEND STREQUAL "SDL3")
+  message(FATAL_ERROR "Unsupported Northrend backend: ${NORTHREND_BACKEND}")
+endif()
+
+if(NORTHREND_RENDERER AND NOT NORTHREND_RENDERER STREQUAL "Vulkan")
+  message(FATAL_ERROR "Unsupported Northrend renderer: ${NORTHREND_RENDERER}")
+endif()
+
 # Configure compiler options
 
 add_library(northrend-compile-options INTERFACE)

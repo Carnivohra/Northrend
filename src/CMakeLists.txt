@@ -6,9 +6,6 @@ target_sources(Northrend
     App/app.cpp
     Backend/session.cpp
     Backend/session.hpp
-    Backend/SDL3/context.cpp
-    Backend/SDL3/context.hpp
-    Backend/SDL3/sdl3.cpp
     Engine/engine.cpp
   PUBLIC
     FILE_SET HEADERS
@@ -20,8 +17,9 @@ target_sources(Northrend
       Backend/Window/handle.hpp
       Backend/Window/size.hpp
       Backend/Window/window.hpp
-      Backend/SDL3/sdl3.hpp
-      Engine/engine.hpp)
+      Engine/engine.hpp
+      Render/renderer.hpp
+      Render/surface.hpp)
 
 if(WIN32)
   target_sources(Northrend
@@ -56,6 +54,38 @@ else()
   message(FATAL_ERROR "Unsupported window platform: ${CMAKE_SYSTEM_NAME}")
 endif()
 
+if(NORTHREND_BACKEND STREQUAL "SDL3")
+  target_sources(Northrend
+    PRIVATE
+      Backend/SDL3/context.cpp
+      Backend/SDL3/context.hpp
+      Backend/SDL3/sdl3.cpp
+    PUBLIC
+      FILE_SET HEADERS
+      BASE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}
+      FILES
+        Backend/SDL3/sdl3.hpp)
+
+  target_link_libraries(Northrend
+    PRIVATE
+      SDL3::SDL3)
+endif()
+
+if(NORTHREND_RENDERER STREQUAL "Vulkan")
+  target_sources(Northrend
+    PRIVATE
+      Render/Vulkan/vulkan.cpp
+    PUBLIC
+      FILE_SET HEADERS
+      BASE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}
+      FILES
+        Render/Vulkan/vulkan.hpp)
+
+  target_link_libraries(Northrend
+    PRIVATE
+      volk::volk)
+endif()
+
 target_compile_features(Northrend
   PUBLIC
     cxx_std_20)
@@ -67,5 +97,4 @@ endif()
 
 target_link_libraries(Northrend
   PRIVATE
-    Northrend::CompileOptions
-    SDL3::SDL3)
+    Northrend::CompileOptions)
