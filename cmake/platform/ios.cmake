@@ -1,3 +1,5 @@
+# SDL3 is available; Metal can become the default once implemented.
+
 set(NORTHREND_DEFAULT_BACKEND SDL3)
 set(NORTHREND_DEFAULT_RENDERER "")
 

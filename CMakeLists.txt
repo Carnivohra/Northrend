@@ -4,6 +4,8 @@ project(Northrend VERSION 0.0.1 LANGUAGES C CXX)
 
 # Select platform integrations
 
+# Platform profiles establish defaults before optional dependencies are loaded.
+
 string(TOLOWER "${CMAKE_SYSTEM_NAME}" NORTHREND_SYSTEM_NAME)
 set(NORTHREND_PLATFORM_FILE
   "${CMAKE_CURRENT_SOURCE_DIR}/cmake/platform/${NORTHREND_SYSTEM_NAME}.cmake")
@@ -21,6 +23,8 @@ set(NORTHREND_VULKAN_PLATFORM_SOURCES "")
 set(NORTHREND_VULKAN_PLATFORM_DEFINITIONS "")
 
 include("${NORTHREND_PLATFORM_FILE}")
+
+# Consumers may override these defaults with another supported component.
 
 set(NORTHREND_BACKEND
   "${NORTHREND_DEFAULT_BACKEND}"
@@ -52,6 +56,8 @@ endif()
 
 # Configure compiler options
 
+# Engine and game targets share one compiler policy through this interface.
+
 add_library(northrend-compile-options INTERFACE)
 add_library(Northrend::CompileOptions ALIAS northrend-compile-options)
 
@@ -67,16 +73,27 @@ endif()
 
 include(CheckIPOSupported)
 
+# Cache the result so game targets created from a parent project can reuse it.
+
 check_ipo_supported(
-  RESULT IPO_SUPPORTED
-  OUTPUT IPO_ERROR
+  RESULT NORTHREND_IPO_SUPPORTED
+  OUTPUT NORTHREND_IPO_ERROR
   LANGUAGES CXX)
 
-if(NOT IPO_SUPPORTED)
-  message(WARNING "Interprocedural optimization is not supported: ${IPO_ERROR}")
+set(NORTHREND_IPO_SUPPORTED
+  "${NORTHREND_IPO_SUPPORTED}"
+  CACHE INTERNAL
+  "Whether Northrend targets support interprocedural optimization"
+  FORCE)
+
+if(NOT NORTHREND_IPO_SUPPORTED)
+  message(WARNING
+    "Interprocedural optimization is not supported: ${NORTHREND_IPO_ERROR}")
 endif()
 
 # Build dependencies and sources
+
+# Consumer projects receive the same target factory through FetchContent.
 
 include(cmake/functions/AddGame.cmake)
 

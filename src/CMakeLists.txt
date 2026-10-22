@@ -26,6 +26,8 @@ target_sources(Northrend
       Render/surface.hpp
       ${NORTHREND_PLATFORM_HEADERS})
 
+# Component modules own their sources, dependencies, and compile definitions.
+
 if(NORTHREND_BACKEND)
   string(TOLOWER "${NORTHREND_BACKEND}" backend_name)
   include("${CMAKE_CURRENT_LIST_DIR}/../cmake/backend/${backend_name}.cmake")
@@ -40,7 +42,7 @@ target_compile_features(Northrend
   PUBLIC
     cxx_std_20)
 
-if(IPO_SUPPORTED)
+if(NORTHREND_IPO_SUPPORTED)
   set_target_properties(Northrend PROPERTIES
     INTERPROCEDURAL_OPTIMIZATION_RELEASE TRUE)
 endif()

@@ -4,7 +4,7 @@ endif()
 
 include(FetchContent)
 
-# Build SDL as a static dependency
+# Build SDL as a static dependency.
 
 set(SDL_SHARED OFF)
 set(SDL_STATIC ON)

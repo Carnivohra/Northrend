@@ -1,3 +1,5 @@
+# Android currently uses SDL3 with Vulkan rendering.
+
 set(NORTHREND_DEFAULT_BACKEND SDL3)
 set(NORTHREND_DEFAULT_RENDERER Vulkan)
 

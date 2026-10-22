@@ -1,3 +1,5 @@
+# Register SDL3 only when selected by the active platform profile.
+
 target_sources(Northrend
   PRIVATE
     Backend/SDL3/context.cpp

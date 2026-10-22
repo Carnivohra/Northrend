@@ -1,3 +1,5 @@
+# Build only the dependencies selected by the active platform profile.
+
 foreach(dependency
     "${NORTHREND_BACKEND}"
     "${NORTHREND_RENDERER}")

@@ -1,3 +1,5 @@
+# Combine the Vulkan core with the surface implementation from the platform profile.
+
 if(NOT NORTHREND_VULKAN_PLATFORM_SOURCES)
   message(FATAL_ERROR "Vulkan is not implemented for ${CMAKE_SYSTEM_NAME}")
 endif()

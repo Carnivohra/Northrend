@@ -1,5 +1,7 @@
 include_guard(GLOBAL)
 
+# Create a game target whose concrete application type is known at compile time.
+
 function(northrend_add_game)
   set(options)
   set(one_value_arguments
@@ -35,6 +37,8 @@ function(northrend_add_game)
     message(FATAL_ERROR "northrend_add_game requires SOURCES")
   endif()
 
+  # Generate the minimal native entry point for the selected application type.
+
   set(NORTHREND_GAME_APPLICATION "${GAME_APPLICATION}")
   set(NORTHREND_GAME_HEADER "${GAME_HEADER}")
   set(game_launcher
@@ -60,11 +64,14 @@ function(northrend_add_game)
     PRIVATE
       cxx_std_20)
 
+  # Apply Northrend's compiler policy to every generated game target.
+
   target_link_libraries(${GAME_TARGET}
     PRIVATE
+      Northrend::CompileOptions
       Northrend::Northrend)
 
-  if(IPO_SUPPORTED)
+  if(NORTHREND_IPO_SUPPORTED)
     set_target_properties(${GAME_TARGET} PROPERTIES
       INTERPROCEDURAL_OPTIMIZATION_RELEASE TRUE)
   endif()
