@@ -48,7 +48,12 @@ function(northrend_add_game)
     message(FATAL_ERROR "northrend_add_game requires SOURCES")
   endif()
 
-  if(GAME_ANDROID_PACKAGE AND NOT NORTHREND_ANDROID_PACKAGE_BUILD)
+  if(NORTHREND_ANDROID_BOOTSTRAP)
+    if(NOT GAME_ANDROID_PACKAGE)
+      message(FATAL_ERROR
+        "Android builds require ANDROID_PACKAGE for ${GAME_TARGET}")
+    endif()
+
     northrend_configure_android_game(
       TARGET "${GAME_TARGET}"
       APP_NAME "${GAME_ANDROID_APP_NAME}"
@@ -60,6 +65,8 @@ function(northrend_add_game)
       MIN_SDK "${GAME_ANDROID_MIN_SDK}"
       NDK_VERSION "${GAME_ANDROID_NDK_VERSION}"
       TARGET_SDK "${GAME_ANDROID_TARGET_SDK}")
+
+    return()
   endif()
 
   # Generate the minimal native entry point for the selected application type.
@@ -80,6 +87,8 @@ function(northrend_add_game)
       OUTPUT_NAME main)
   else()
     add_executable(${GAME_TARGET})
+    set_target_properties(${GAME_TARGET} PROPERTIES
+      RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}")
   endif()
 
   target_sources(${GAME_TARGET}

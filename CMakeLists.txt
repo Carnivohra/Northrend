@@ -6,9 +6,46 @@ project(Northrend VERSION 0.0.1 LANGUAGES C CXX)
 
 # Platform profiles establish defaults before optional dependencies are loaded.
 
+set(NORTHREND_PLATFORM
+  "${CMAKE_SYSTEM_NAME}"
+  CACHE STRING
+  "Target platform built by Northrend")
+
+set_property(CACHE NORTHREND_PLATFORM PROPERTY
+  STRINGS Android Darwin iOS Linux Windows)
+
+string(TOLOWER "${NORTHREND_PLATFORM}" NORTHREND_PLATFORM_NAME)
 string(TOLOWER "${CMAKE_SYSTEM_NAME}" NORTHREND_SYSTEM_NAME)
+
+# A host configure creates the Android package. Gradle starts the real Android
+# configure afterwards with the NDK toolchain.
+
+set(android_bootstrap FALSE)
+
+if(NORTHREND_PLATFORM_NAME STREQUAL "android" AND
+   NOT NORTHREND_SYSTEM_NAME STREQUAL "android")
+  set(android_bootstrap TRUE)
+endif()
+
+set(NORTHREND_ANDROID_BOOTSTRAP
+  ${android_bootstrap}
+  CACHE INTERNAL
+  "Whether CMake is generating an Android package"
+  FORCE)
+
+if(NORTHREND_ANDROID_BOOTSTRAP)
+  include(cmake/functions/AddGame.cmake)
+  return()
+endif()
+
+if(NOT NORTHREND_PLATFORM_NAME STREQUAL NORTHREND_SYSTEM_NAME)
+  message(FATAL_ERROR
+    "Northrend platform ${NORTHREND_PLATFORM} requires a "
+    "${NORTHREND_PLATFORM} toolchain")
+endif()
+
 set(NORTHREND_PLATFORM_FILE
-  "${CMAKE_CURRENT_SOURCE_DIR}/cmake/platform/${NORTHREND_SYSTEM_NAME}.cmake")
+  "${CMAKE_CURRENT_SOURCE_DIR}/cmake/platform/${NORTHREND_PLATFORM_NAME}.cmake")
 
 if(NOT EXISTS "${NORTHREND_PLATFORM_FILE}")
   message(FATAL_ERROR "Unsupported Northrend platform: ${CMAKE_SYSTEM_NAME}")

@@ -19,7 +19,7 @@ android {
                 arguments(
                     "-DANDROID_STL=c++_static",
                     "-DFETCHCONTENT_SOURCE_DIR_NORTHREND=@NORTHREND_ANDROID_ENGINE_SOURCE_DIR@",
-                    "-DNORTHREND_ANDROID_PACKAGE_BUILD=ON")
+                    "-DNORTHREND_PLATFORM=Android")
                 abiFilters("arm64-v8a")
             }
         }
@@ -31,6 +31,13 @@ android {
         }
         release {
             minifyEnabled = false
+
+            externalNativeBuild {
+                cmake {
+                    arguments("-DCMAKE_BUILD_TYPE=Release")
+                }
+            }
+
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro")

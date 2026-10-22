@@ -118,6 +118,33 @@ function(northrend_configure_android_game)
     "${output_dir}/app/src/main/res/values/strings.xml"
     @ONLY)
 
+  if(CMAKE_BUILD_TYPE STREQUAL "Release")
+    set(gradle_task assembleRelease)
+    set(apk_variant release)
+    set(apk_name app-release-unsigned.apk)
+  else()
+    set(gradle_task assembleDebug)
+    set(apk_variant debug)
+    set(apk_name app-debug.apk)
+  endif()
+
+  if(CMAKE_HOST_WIN32)
+    set(gradle "${output_dir}/gradlew.bat")
+  else()
+    set(gradle "${output_dir}/gradlew")
+  endif()
+
+  set(apk
+    "${output_dir}/app/build/outputs/apk/${apk_variant}/${apk_name}")
+  set(result "${CMAKE_BINARY_DIR}/${ANDROID_GAME_TARGET}.apk")
+
+  add_custom_target(${ANDROID_GAME_TARGET}
+    COMMAND "${gradle}" --project-dir "${output_dir}" "${gradle_task}"
+    COMMAND "${CMAKE_COMMAND}" -E copy_if_different "${apk}" "${result}"
+    COMMENT "Building ${ANDROID_GAME_TARGET}.apk"
+    USES_TERMINAL
+    VERBATIM)
+
   message(STATUS
-    "Generated ${ANDROID_GAME_TARGET} Android project: ${output_dir}")
+    "Android package output: ${result}")
 endfunction()
