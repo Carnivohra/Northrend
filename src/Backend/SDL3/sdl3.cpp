@@ -33,7 +33,6 @@ void SDL3Backend::run(BackendApplication& application) {
 
         if (running && session.active()) {
             application.tick();
-            context.delay(1);
         } else if (running) {
             context.delay(10);
         }

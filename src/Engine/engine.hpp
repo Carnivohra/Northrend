@@ -1,9 +1,12 @@
 #pragma once
 
 #include "Backend/application.hpp"
+#include "Engine/fps.hpp"
 #include "Render/renderer.hpp"
 
 #include <concepts>
+#include <cstdint>
+#include <iostream>
 #include <optional>
 
 namespace Northrend {
@@ -24,7 +27,9 @@ public:
         this->renderer.emplace(window);
     }
 
-    void resumed() override {}
+    void resumed() override {
+        this->fps.reset();
+    }
 
     void suspended() override {
         if (this->renderer) {
@@ -34,6 +39,13 @@ public:
 
     void tick() override {
         this->renderer->frame();
+
+        if (const auto currentFps = this->fps.record_frame()) {
+            std::cout
+                << "FPS: "
+                << static_cast<std::uint32_t>(*currentFps + 0.5)
+                << '\n';
+        }
     }
 
     void stopped() override {
@@ -42,6 +54,7 @@ public:
 
 private:
     std::optional<RendererType> renderer;
+    Fps fps;
 };
 
 }

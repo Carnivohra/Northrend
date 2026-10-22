@@ -17,6 +17,7 @@ target_sources(Northrend
       Backend/Window/size.hpp
       Backend/Window/window.hpp
       Engine/engine.hpp
+      Engine/fps.hpp
       Render/renderer.hpp
       Render/surface.hpp)
 
@@ -73,6 +74,12 @@ endif()
 if(NORTHREND_RENDERER STREQUAL "Vulkan")
   target_sources(Northrend
     PRIVATE
+      Render/Vulkan/device.cpp
+      Render/Vulkan/device.hpp
+      Render/Vulkan/frame.cpp
+      Render/Vulkan/frame.hpp
+      Render/Vulkan/swapchain.cpp
+      Render/Vulkan/swapchain.hpp
       Render/Vulkan/vulkan.cpp
     PUBLIC
       FILE_SET HEADERS

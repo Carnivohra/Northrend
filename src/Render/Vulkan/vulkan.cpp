@@ -2,6 +2,8 @@
 
 #include "Backend/Window/window.hpp"
 #include "Render/Vulkan/Platform/surface.hpp"
+#include "Render/Vulkan/device.hpp"
+#include "Render/Vulkan/swapchain.hpp"
 
 #include <volk.h>
 
@@ -174,6 +176,12 @@ public:
             }
 
             this->surface = VulkanPlatform::create_surface(this->instance, nativeHandle);
+            this->device = std::make_unique<VulkanDevice>(this->instance, this->surface);
+            this->swapchain = std::make_unique<VulkanSwapchain>(
+                *this->device,
+                this->surface,
+                window,
+                ClearColor);
             this->status = RendererStatus::Ready;
         } catch (...) {
             this->destroy();
@@ -185,14 +193,30 @@ public:
         this->destroy();
     }
 
-    RendererStatus frame() const noexcept {
+    RendererStatus frame() {
+        this->swapchain->render();
         return this->status;
     }
 
-    void suspend() noexcept {}
+    void suspend() noexcept {
+        if (this->swapchain) {
+            this->swapchain->suspend();
+        }
+    }
 
 private:
+    static constexpr VkClearColorValue ClearColor{
+        .float32 = { 0.015F, 0.035F, 0.080F, 1.000F }
+    };
+
     void destroy() noexcept {
+        if (this->device) {
+            this->device->wait_idle();
+        }
+
+        this->swapchain.reset();
+        this->device.reset();
+
         if (this->surface != VK_NULL_HANDLE) {
             vkDestroySurfaceKHR(this->instance, this->surface, nullptr);
             this->surface = VK_NULL_HANDLE;
@@ -215,6 +239,8 @@ private:
     VkInstance instance = VK_NULL_HANDLE;
     VkDebugUtilsMessengerEXT debugMessenger = VK_NULL_HANDLE;
     VkSurfaceKHR surface = VK_NULL_HANDLE;
+    std::unique_ptr<VulkanDevice> device;
+    std::unique_ptr<VulkanSwapchain> swapchain;
     bool validationEnabled = false;
 };
 
