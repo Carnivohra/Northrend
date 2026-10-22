@@ -1,0 +1,7 @@
+#include "@NORTHREND_GAME_HEADER@"
+
+#include "App/launch.hpp"
+
+int main() {
+    return Northrend::launch<@NORTHREND_GAME_APPLICATION@>();
+}

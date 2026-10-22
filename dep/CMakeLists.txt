@@ -1,9 +1,15 @@
-if(NORTHREND_BACKEND STREQUAL "SDL3")
-  add_subdirectory(SDL3)
-endif()
+foreach(dependency
+    "${NORTHREND_BACKEND}"
+    "${NORTHREND_RENDERER}")
+  if(NOT dependency)
+    continue()
+  endif()
 
-if(NORTHREND_RENDERER STREQUAL "Vulkan")
-  add_subdirectory(Vulkan)
-endif()
+  if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/${dependency}/CMakeLists.txt")
+    message(FATAL_ERROR "Missing dependency module for ${dependency}")
+  endif()
+
+  add_subdirectory("${dependency}")
+endforeach()
 
 add_subdirectory(Flecs)

@@ -62,13 +62,26 @@ void SDL3Context::delay(std::uint32_t milliseconds) const noexcept {
 }
 
 NativeWindowHandle SDL3Context::native_handle() const {
-#if defined(__linux__)
+#if defined(__ANDROID__) || defined(__linux__)
     const SDL_PropertiesID properties = SDL_GetWindowProperties(this->window);
 
     if (properties == 0) {
         throw std::runtime_error(std::string("Failed to get SDL3 window properties: ") + SDL_GetError());
     }
+#endif
 
+#if defined(__ANDROID__)
+    void* nativeWindow = SDL_GetPointerProperty(
+        properties,
+        SDL_PROP_WINDOW_ANDROID_WINDOW_POINTER,
+        nullptr);
+
+    if (nativeWindow) {
+        return AndroidWindowHandle{ .window = nativeWindow };
+    }
+
+    throw std::runtime_error("SDL3 did not provide an Android native window");
+#elif defined(__linux__)
     void* waylandDisplay = SDL_GetPointerProperty(
         properties,
         SDL_PROP_WINDOW_WAYLAND_DISPLAY_POINTER,

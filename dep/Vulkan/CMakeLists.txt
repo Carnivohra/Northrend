@@ -31,10 +31,3 @@ FetchContent_MakeAvailable(volk)
 target_link_libraries(volk
   PUBLIC
     Vulkan::Headers)
-
-if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
-  target_compile_definitions(volk
-    PRIVATE
-      VK_USE_PLATFORM_WAYLAND_KHR
-      VK_USE_PLATFORM_XLIB_KHR)
-endif()

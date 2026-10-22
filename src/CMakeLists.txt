@@ -12,6 +12,7 @@ target_sources(Northrend
     BASE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}
     FILES
       App/app.hpp
+      App/launch.hpp
       Backend/application.hpp
       Backend/backend.hpp
       Backend/Window/handle.hpp
@@ -22,99 +23,17 @@ target_sources(Northrend
       Engine/engine.hpp
       Engine/fps.hpp
       Render/renderer.hpp
-      Render/surface.hpp)
+      Render/surface.hpp
+      ${NORTHREND_PLATFORM_HEADERS})
 
-if(WIN32)
-  target_sources(Northrend
-    PUBLIC
-      FILE_SET HEADERS
-      BASE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}
-      FILES
-        Backend/Window/Handle/win32.hpp)
-elseif(CMAKE_SYSTEM_NAME STREQUAL "iOS")
-  target_sources(Northrend
-    PUBLIC
-      FILE_SET HEADERS
-      BASE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}
-      FILES
-        Backend/Window/Handle/uikit.hpp)
-elseif(APPLE)
-  target_sources(Northrend
-    PUBLIC
-      FILE_SET HEADERS
-      BASE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}
-      FILES
-        Backend/Window/Handle/cocoa.hpp)
-elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
-  target_sources(Northrend
-    PUBLIC
-      FILE_SET HEADERS
-      BASE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}
-      FILES
-        Backend/Window/Handle/wayland.hpp
-        Backend/Window/Handle/x11.hpp)
-else()
-  message(FATAL_ERROR "Unsupported window platform: ${CMAKE_SYSTEM_NAME}")
+if(NORTHREND_BACKEND)
+  string(TOLOWER "${NORTHREND_BACKEND}" backend_name)
+  include("${CMAKE_CURRENT_LIST_DIR}/../cmake/backend/${backend_name}.cmake")
 endif()
 
-if(NORTHREND_BACKEND STREQUAL "SDL3")
-  target_sources(Northrend
-    PRIVATE
-      Backend/SDL3/context.cpp
-      Backend/SDL3/context.hpp
-      Backend/SDL3/sdl3.cpp
-    PUBLIC
-      FILE_SET HEADERS
-      BASE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}
-      FILES
-        Backend/SDL3/sdl3.hpp)
-
-  target_link_libraries(Northrend
-    PRIVATE
-      SDL3::SDL3)
-endif()
-
-if(NORTHREND_RENDERER STREQUAL "Vulkan")
-  target_sources(Northrend
-    PRIVATE
-      Render/Vulkan/device.cpp
-      Render/Vulkan/device.hpp
-      Render/Vulkan/frame.cpp
-      Render/Vulkan/frame.hpp
-      Render/Vulkan/swapchain.cpp
-      Render/Vulkan/swapchain.hpp
-      Render/Vulkan/vulkan.cpp
-    PUBLIC
-      FILE_SET HEADERS
-      BASE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}
-      FILES
-        Render/Vulkan/vulkan.hpp)
-
-  if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
-    target_sources(Northrend
-      PRIVATE
-        Render/Vulkan/Platform/surface.cpp
-        Render/Vulkan/Platform/surface.hpp
-        Render/Vulkan/Platform/wayland.cpp
-        Render/Vulkan/Platform/wayland.hpp
-        Render/Vulkan/Platform/x11.cpp
-        Render/Vulkan/Platform/x11.hpp)
-
-    target_compile_definitions(Northrend
-      PRIVATE
-        VK_USE_PLATFORM_WAYLAND_KHR
-        VK_USE_PLATFORM_XLIB_KHR)
-  else()
-    message(FATAL_ERROR "Vulkan is not implemented for ${CMAKE_SYSTEM_NAME}")
-  endif()
-
-  target_compile_definitions(Northrend
-    PRIVATE
-      $<$<CONFIG:Debug>:NORTHREND_VULKAN_VALIDATION>)
-
-  target_link_libraries(Northrend
-    PRIVATE
-      volk::volk)
+if(NORTHREND_RENDERER)
+  string(TOLOWER "${NORTHREND_RENDERER}" renderer_name)
+  include("${CMAKE_CURRENT_LIST_DIR}/../cmake/renderer/${renderer_name}.cmake")
 endif()
 
 target_compile_features(Northrend

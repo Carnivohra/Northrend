@@ -1,6 +1,16 @@
 #pragma once
 
-#if defined(_WIN32)
+#if defined(__ANDROID__)
+
+#include "Backend/Window/Handle/android.hpp"
+
+namespace Northrend {
+
+using NativeWindowHandle = AndroidWindowHandle;
+
+}
+
+#elif defined(_WIN32)
 
 #include "Backend/Window/Handle/win32.hpp"
 
