@@ -1,11 +1,15 @@
 include_guard(GLOBAL)
 
+include(${CMAKE_CURRENT_LIST_DIR}/ResolveAndroidSdk.cmake)
+include(${CMAKE_CURRENT_LIST_DIR}/ResolveJava.cmake)
+
 # Generate the reusable Android package around a concrete game target.
 
 function(northrend_configure_android_game)
   set(options)
   set(one_value_arguments
     APP_NAME
+    BUILD_TOOLS
     COMPILE_SDK
     ICON
     MIN_SDK
@@ -45,6 +49,10 @@ function(northrend_configure_android_game)
     set(ANDROID_GAME_COMPILE_SDK 35)
   endif()
 
+  if(NOT ANDROID_GAME_BUILD_TOOLS)
+    set(ANDROID_GAME_BUILD_TOOLS "35.0.1")
+  endif()
+
   if(NOT ANDROID_GAME_MIN_SDK)
     set(ANDROID_GAME_MIN_SDK 24)
   endif()
@@ -64,12 +72,22 @@ function(northrend_configure_android_game)
   set(template_dir "${engine_source}/platform/android")
   set(output_dir "${CMAKE_BINARY_DIR}/android")
 
+  northrend_resolve_java(java_home)
+  northrend_resolve_android_sdk(
+    android_sdk
+    sdkmanager
+    sdk_package_file
+    BUILD_TOOLS "${ANDROID_GAME_BUILD_TOOLS}"
+    COMPILE_SDK "${ANDROID_GAME_COMPILE_SDK}"
+    NDK_VERSION "${ANDROID_GAME_NDK_VERSION}")
+
   file(MAKE_DIRECTORY "${output_dir}")
   file(COPY "${template_dir}/"
     DESTINATION "${output_dir}"
     PATTERN "*.in" EXCLUDE)
 
   set(NORTHREND_ANDROID_APP_NAME "${ANDROID_GAME_APP_NAME}")
+  set(NORTHREND_ANDROID_BUILD_TOOLS "${ANDROID_GAME_BUILD_TOOLS}")
   set(NORTHREND_ANDROID_CMAKE_VERSION "${CMAKE_VERSION}")
   set(NORTHREND_ANDROID_COMPILE_SDK "${ANDROID_GAME_COMPILE_SDK}")
   set(NORTHREND_ANDROID_ENGINE_SOURCE_DIR "${engine_source}")
@@ -105,6 +123,11 @@ function(northrend_configure_android_game)
     "${template_dir}/settings.gradle.in"
     "${output_dir}/settings.gradle"
     @ONLY)
+
+  file(TO_CMAKE_PATH "${android_sdk}" android_sdk_property)
+  string(REPLACE ":" "\\:" android_sdk_property "${android_sdk_property}")
+  file(WRITE "${output_dir}/local.properties"
+    "sdk.dir=${android_sdk_property}\n")
   configure_file(
     "${template_dir}/app/build.gradle.in"
     "${output_dir}/app/build.gradle"
@@ -129,7 +152,10 @@ function(northrend_configure_android_game)
   endif()
 
   if(CMAKE_HOST_WIN32)
-    set(gradle "${output_dir}/gradlew.bat")
+    set(gradle
+      cmd
+      /c
+      "${output_dir}/gradlew.bat")
   else()
     set(gradle "${output_dir}/gradlew")
   endif()
@@ -138,8 +164,25 @@ function(northrend_configure_android_game)
     "${output_dir}/app/build/outputs/apk/${apk_variant}/${apk_name}")
   set(result "${CMAKE_BINARY_DIR}/${ANDROID_GAME_TARGET}.apk")
 
+  set(install_sdk)
+  if(sdk_package_file)
+    set(install_sdk
+      COMMAND
+        "${CMAKE_COMMAND}" -E env
+        "JAVA_HOME=${java_home}"
+        ${sdkmanager}
+        "--sdk_root=${android_sdk}"
+        "--package_file=${sdk_package_file}")
+  endif()
+
   add_custom_target(${ANDROID_GAME_TARGET}
-    COMMAND "${gradle}" --project-dir "${output_dir}" "${gradle_task}"
+    ${install_sdk}
+    COMMAND
+      "${CMAKE_COMMAND}" -E env
+      "JAVA_HOME=${java_home}"
+      "ANDROID_HOME=${android_sdk}"
+      "ANDROID_SDK_ROOT=${android_sdk}"
+      ${gradle} --project-dir "${output_dir}" "${gradle_task}"
     COMMAND "${CMAKE_COMMAND}" -E copy_if_different "${apk}" "${result}"
     COMMENT "Building ${ANDROID_GAME_TARGET}.apk"
     USES_TERMINAL

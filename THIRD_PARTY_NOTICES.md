@@ -58,6 +58,33 @@ The complete Apache-2.0 and MIT license texts are also available in
 The Gradle Wrapper is build tooling and is not linked into Northrend or a
 generated game binary.
 
+## Eclipse Temurin
+
+Android builds use a Java Development Kit to run Gradle. When no suitable
+local JDK is available, Northrend downloads Eclipse Temurin 17 into the
+consumer's build directory.
+
+- Version: 17.0.20.1+1
+- Source: <https://github.com/adoptium/temurin17-binaries>
+- License information: included in the downloaded JDK archive
+
+The downloaded JDK is build tooling and is not linked into Northrend or a
+generated game binary.
+
+## Android SDK Command-Line Tools
+
+When no suitable Android SDK is available, Android builds download Google's
+command-line tools and use them to install the pinned SDK packages in the
+consumer's build directory.
+
+- Revision: 15859902
+- Source: <https://developer.android.com/studio#command-line-tools-only>
+- License information: included in the downloaded SDK components
+
+The Android SDK is build tooling and is not linked into Northrend or a
+generated game binary. Installing SDK packages requires acceptance of
+Google's Android SDK license terms.
+
 ## Android NDK Toolchain
 
 Android builds currently link the NDK's static C++ runtime into the generated

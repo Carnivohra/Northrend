@@ -4,6 +4,7 @@ plugins {
 
 android {
     namespace = "@NORTHREND_ANDROID_PACKAGE@"
+    buildToolsVersion = "@NORTHREND_ANDROID_BUILD_TOOLS@"
     compileSdk = @NORTHREND_ANDROID_COMPILE_SDK@
     ndkVersion = "@NORTHREND_ANDROID_NDK_VERSION@"
 

@@ -8,6 +8,7 @@ function(northrend_add_game)
   set(options)
   set(one_value_arguments
     ANDROID_APP_NAME
+    ANDROID_BUILD_TOOLS
     ANDROID_COMPILE_SDK
     ANDROID_ICON
     ANDROID_MIN_SDK
@@ -61,6 +62,7 @@ function(northrend_add_game)
       VERSION_CODE "${GAME_ANDROID_VERSION_CODE}"
       VERSION_NAME "${GAME_ANDROID_VERSION_NAME}"
       ICON "${GAME_ANDROID_ICON}"
+      BUILD_TOOLS "${GAME_ANDROID_BUILD_TOOLS}"
       COMPILE_SDK "${GAME_ANDROID_COMPILE_SDK}"
       MIN_SDK "${GAME_ANDROID_MIN_SDK}"
       NDK_VERSION "${GAME_ANDROID_NDK_VERSION}"
