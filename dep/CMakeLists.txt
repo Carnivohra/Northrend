@@ -5,3 +5,5 @@ endif()
 if(NORTHREND_RENDERER STREQUAL "Vulkan")
   add_subdirectory(Vulkan)
 endif()
+
+add_subdirectory(Flecs)

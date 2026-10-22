@@ -6,6 +6,7 @@ target_sources(Northrend
     App/app.cpp
     Backend/session.cpp
     Backend/session.hpp
+    ECS/registry.cpp
   PUBLIC
     FILE_SET HEADERS
     BASE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}
@@ -16,6 +17,8 @@ target_sources(Northrend
       Backend/Window/handle.hpp
       Backend/Window/size.hpp
       Backend/Window/window.hpp
+      ECS/entity.hpp
+      ECS/registry.hpp
       Engine/engine.hpp
       Engine/fps.hpp
       Render/renderer.hpp
@@ -124,5 +127,7 @@ if(IPO_SUPPORTED)
 endif()
 
 target_link_libraries(Northrend
+  PUBLIC
+    flecs::flecs_static
   PRIVATE
     Northrend::CompileOptions)
