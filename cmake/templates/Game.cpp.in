@@ -2,6 +2,10 @@
 
 #include "App/launch.hpp"
 
+#if defined(__ANDROID__)
+extern "C" int SDL_main(int, char**) {
+#else
 int main() {
+#endif
     return Northrend::launch<@NORTHREND_GAME_APPLICATION@>();
 }

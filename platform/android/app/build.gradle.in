@@ -1,0 +1,46 @@
+plugins {
+    id "com.android.application"
+}
+
+android {
+    namespace = "@NORTHREND_ANDROID_PACKAGE@"
+    compileSdk = @NORTHREND_ANDROID_COMPILE_SDK@
+    ndkVersion = "@NORTHREND_ANDROID_NDK_VERSION@"
+
+    defaultConfig {
+        applicationId = "@NORTHREND_ANDROID_PACKAGE@"
+        minSdk = @NORTHREND_ANDROID_MIN_SDK@
+        targetSdk = @NORTHREND_ANDROID_TARGET_SDK@
+        versionCode = @NORTHREND_ANDROID_VERSION_CODE@
+        versionName = "@NORTHREND_ANDROID_VERSION_NAME@"
+
+        externalNativeBuild {
+            cmake {
+                arguments(
+                    "-DANDROID_STL=c++_static",
+                    "-DFETCHCONTENT_SOURCE_DIR_NORTHREND=@NORTHREND_ANDROID_ENGINE_SOURCE_DIR@",
+                    "-DNORTHREND_ANDROID_PACKAGE_BUILD=ON")
+                abiFilters("arm64-v8a")
+            }
+        }
+    }
+
+    buildTypes {
+        debug {
+            debuggable = true
+        }
+        release {
+            minifyEnabled = false
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro")
+        }
+    }
+
+    externalNativeBuild {
+        cmake {
+            path = file("@NORTHREND_ANDROID_GAME_SOURCE_DIR@/CMakeLists.txt")
+            version = "@NORTHREND_ANDROID_CMAKE_VERSION@"
+        }
+    }
+}

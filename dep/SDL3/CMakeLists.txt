@@ -4,10 +4,15 @@ endif()
 
 include(FetchContent)
 
-# Build SDL as a static dependency.
+# Android packages SDL as a shared library; desktop targets link it statically.
 
-set(SDL_SHARED OFF)
-set(SDL_STATIC ON)
+if(ANDROID)
+  set(SDL_SHARED ON)
+  set(SDL_STATIC OFF)
+else()
+  set(SDL_SHARED OFF)
+  set(SDL_STATIC ON)
+endif()
 set(SDL_TEST_LIBRARY OFF)
 set(SDL_TESTS OFF)
 set(SDL_EXAMPLES OFF)
