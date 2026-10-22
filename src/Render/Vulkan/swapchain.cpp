@@ -51,6 +51,17 @@ VkExtent2D choose_extent(
     };
 }
 
+VkPresentModeKHR choose_present_mode(
+    const std::vector<VkPresentModeKHR>& presentModes) {
+    for (VkPresentModeKHR presentMode : presentModes) {
+        if (presentMode == VK_PRESENT_MODE_MAILBOX_KHR) {
+            return presentMode;
+        }
+    }
+
+    return VK_PRESENT_MODE_FIFO_KHR;
+}
+
 VkCompositeAlphaFlagBitsKHR choose_composite_alpha(VkCompositeAlphaFlagsKHR supported) {
     constexpr std::array<VkCompositeAlphaFlagBitsKHR, 4> choices{
         VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
@@ -286,7 +297,33 @@ void VulkanSwapchain::create_swapchain_resources() {
             "Failed to query Vulkan surface formats: " + std::to_string(result));
     }
 
+    std::uint32_t presentModeCount = 0;
+    result = vkGetPhysicalDeviceSurfacePresentModesKHR(
+        this->device.physical(),
+        this->surface,
+        &presentModeCount,
+        nullptr);
+
+    if (result != VK_SUCCESS || presentModeCount == 0) {
+        throw std::runtime_error(
+            "The Vulkan surface does not provide a usable present mode");
+    }
+
+    std::vector<VkPresentModeKHR> presentModes(presentModeCount);
+    result = vkGetPhysicalDeviceSurfacePresentModesKHR(
+        this->device.physical(),
+        this->surface,
+        &presentModeCount,
+        presentModes.data());
+
+    if (result != VK_SUCCESS) {
+        throw std::runtime_error(
+            "Failed to query Vulkan present modes: " + std::to_string(result));
+    }
+
     const VkSurfaceFormatKHR surfaceFormat = VulkanSwapchainSelection::choose_format(formats);
+    const VkPresentModeKHR presentMode =
+        VulkanSwapchainSelection::choose_present_mode(presentModes);
     this->imageFormat = surfaceFormat.format;
     this->extent = VulkanSwapchainSelection::choose_extent(capabilities, windowSize);
 
@@ -318,7 +355,7 @@ void VulkanSwapchain::create_swapchain_resources() {
         .preTransform = capabilities.currentTransform,
         .compositeAlpha = VulkanSwapchainSelection::choose_composite_alpha(
             capabilities.supportedCompositeAlpha),
-        .presentMode = VK_PRESENT_MODE_IMMEDIATE_KHR,
+        .presentMode = presentMode,
         .clipped = VK_TRUE,
         .oldSwapchain = VK_NULL_HANDLE
     };

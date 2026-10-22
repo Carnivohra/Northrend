@@ -82,6 +82,13 @@ function(northrend_configure_android_game)
     NDK_VERSION "${ANDROID_GAME_NDK_VERSION}")
 
   file(MAKE_DIRECTORY "${output_dir}")
+
+  file(GLOB legacy_icons
+    "${output_dir}/app/src/main/res/mipmap-*/ic_launcher.png")
+  file(REMOVE
+    ${legacy_icons}
+    "${output_dir}/app/src/main/res/drawable/app_icon.png")
+
   file(COPY "${template_dir}/"
     DESTINATION "${output_dir}"
     PATTERN "*.in" EXCLUDE)
@@ -114,9 +121,10 @@ function(northrend_configure_android_game)
       "${icon}"
       "${output_dir}/app/src/main/res/drawable/app_icon.png"
       ONLY_IF_DIFFERENT)
-    set(NORTHREND_ANDROID_ICON_RESOURCE "@drawable/app_icon")
+    set(NORTHREND_ANDROID_ICON_ATTRIBUTE
+      "        android:icon=\"@drawable/app_icon\"")
   else()
-    set(NORTHREND_ANDROID_ICON_RESOURCE "@mipmap/ic_launcher")
+    set(NORTHREND_ANDROID_ICON_ATTRIBUTE)
   endif()
 
   configure_file(

@@ -19,7 +19,7 @@
         android:allowBackup="true"
         android:enableOnBackInvokedCallback="false"
         android:hardwareAccelerated="true"
-        android:icon="@NORTHREND_ANDROID_ICON_RESOURCE@"
+@NORTHREND_ANDROID_ICON_ATTRIBUTE@
         android:label="@string/app_name"
         android:theme="@style/AppTheme">
 
