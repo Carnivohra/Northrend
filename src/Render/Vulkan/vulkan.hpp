@@ -16,7 +16,7 @@ public:
     VulkanRenderer(const VulkanRenderer&) = delete;
     VulkanRenderer& operator=(const VulkanRenderer&) = delete;
 
-    RendererStatus frame() override;
+    RendererStatus frame(const RenderSnapshot& snapshot) override;
     void suspend() override;
 
 private:

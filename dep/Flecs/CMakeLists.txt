@@ -26,7 +26,8 @@ target_compile_definitions(flecs-static
   PUBLIC
     FLECS_CPP
     FLECS_CPP_NO_ENUM_REFLECTION
-    FLECS_CUSTOM_BUILD)
+    FLECS_CUSTOM_BUILD
+    FLECS_PIPELINE)
 
 target_compile_features(flecs-static
   PRIVATE

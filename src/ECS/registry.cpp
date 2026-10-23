@@ -14,4 +14,8 @@ bool Registry::alive(Entity entity) const noexcept {
     return this->world.is_alive(entity.id());
 }
 
+void Registry::progress(std::chrono::duration<float> delta) {
+    this->world.progress(delta.count());
+}
+
 }

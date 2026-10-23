@@ -4,6 +4,7 @@
 
 #include <flecs.h>
 
+#include <chrono>
 #include <concepts>
 #include <utility>
 
@@ -15,11 +16,20 @@ public:
 
     Registry(const Registry&) = delete;
     Registry& operator=(const Registry&) = delete;
+    Registry(Registry&&) = default;
+    Registry& operator=(Registry&&) = default;
 
     [[nodiscard]] Entity create();
     void destroy(Entity entity);
 
     [[nodiscard]] bool alive(Entity entity) const noexcept;
+    void progress(std::chrono::duration<float> delta);
+
+    template <typename... Components, typename Callback>
+    void add_system(Callback&& callback) {
+        this->world.system<Components...>().each(
+            std::forward<Callback>(callback));
+    }
 
     template <typename Component, typename... Arguments>
         requires std::constructible_from<Component, Arguments...>

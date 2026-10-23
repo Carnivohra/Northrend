@@ -249,7 +249,7 @@ VulkanRenderer::VulkanRenderer(const Window& window)
 
 VulkanRenderer::~VulkanRenderer() = default;
 
-RendererStatus VulkanRenderer::frame() {
+RendererStatus VulkanRenderer::frame(const RenderSnapshot&) {
     return this->implementation->frame();
 }
 

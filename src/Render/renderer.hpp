@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Render/snapshot.hpp"
+
 namespace Northrend {
 
 enum class RendererStatus {
@@ -12,7 +14,7 @@ class Renderer {
 public:
     virtual ~Renderer() = default;
 
-    virtual RendererStatus frame() = 0;
+    virtual RendererStatus frame(const RenderSnapshot& snapshot) = 0;
     virtual void suspend() = 0;
 };
 

@@ -7,6 +7,8 @@ target_sources(Northrend
     Backend/session.cpp
     Backend/session.hpp
     ECS/registry.cpp
+    World/simulation.cpp
+    World/world.cpp
   PUBLIC
     FILE_SET HEADERS
     BASE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}
@@ -22,8 +24,15 @@ target_sources(Northrend
       ECS/registry.hpp
       Engine/engine.hpp
       Engine/fps.hpp
+      Render/exchange.hpp
       Render/renderer.hpp
+      Render/snapshot.hpp
       Render/surface.hpp
+      Thread/rate.hpp
+      Thread/runner.hpp
+      Thread/task.hpp
+      World/simulation.hpp
+      World/world.hpp
       ${NORTHREND_PLATFORM_HEADERS})
 
 # Component modules own their sources, dependencies, and compile definitions.
