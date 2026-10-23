@@ -26,6 +26,22 @@ SDL3Context::SDL3Context(const std::string& title, int width, int height)
         SDL_Quit();
         throw std::runtime_error(error);
     }
+
+    int pixelWidth = 0;
+    int pixelHeight = 0;
+
+    if (!SDL_GetWindowSizeInPixels(this->window, &pixelWidth, &pixelHeight)) {
+        const std::string error =
+            std::string("Failed to get SDL3 window size: ") + SDL_GetError();
+        SDL_DestroyWindow(this->window);
+        SDL_Quit();
+        throw std::runtime_error(error);
+    }
+
+    this->pixelSize = WindowSize{
+        .width = static_cast<std::uint32_t>(pixelWidth),
+        .height = static_cast<std::uint32_t>(pixelHeight)
+    };
 }
 
 SDL3Context::~SDL3Context() {
@@ -48,6 +64,12 @@ bool SDL3Context::process_events(BackendSession& session) {
                 break;
             case SDL_EVENT_WINDOW_RESTORED:
                 session.resume();
+                break;
+            case SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED:
+                this->pixelSize = WindowSize{
+                    .width = static_cast<std::uint32_t>(event.window.data1),
+                    .height = static_cast<std::uint32_t>(event.window.data2)
+                };
                 break;
             default:
                 break;
@@ -120,18 +142,8 @@ NativeWindowHandle SDL3Context::native_handle() const {
 #endif
 }
 
-WindowSize SDL3Context::size() const {
-    int width = 0;
-    int height = 0;
-
-    if (!SDL_GetWindowSizeInPixels(this->window, &width, &height)) {
-        throw std::runtime_error(std::string("Failed to get SDL3 window size: ") + SDL_GetError());
-    }
-
-    return WindowSize{
-        .width = static_cast<std::uint32_t>(width),
-        .height = static_cast<std::uint32_t>(height)
-    };
+WindowSize SDL3Context::size() const noexcept {
+    return this->pixelSize;
 }
 
 }

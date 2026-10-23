@@ -23,10 +23,11 @@ public:
     void delay(std::uint32_t milliseconds) const noexcept;
 
     NativeWindowHandle native_handle() const override;
-    WindowSize size() const override;
+    WindowSize size() const noexcept override;
 
 private:
     SDL_Window* window;
+    WindowSize pixelSize;
 };
 
 }
