@@ -31,6 +31,13 @@ licensed under the BSD 3-Clause license.
 - License: MIT
 - License text: [Flecs.txt](licenses/third-party/Flecs.txt)
 
+## GLM
+
+- Version: 1.0.3
+- Source: <https://github.com/g-truc/glm>
+- License: MIT OR Happy Bunny License
+- License text: [GLM.txt](licenses/third-party/GLM.txt)
+
 ## volk
 
 - Revision: 54fc0d7a72887cbfc5b030d26897b2b40ac53fb8

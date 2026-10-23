@@ -15,3 +15,4 @@ foreach(dependency
 endforeach()
 
 add_subdirectory(Flecs)
+add_subdirectory(GLM)

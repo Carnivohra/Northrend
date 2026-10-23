@@ -7,6 +7,8 @@ target_sources(Northrend
     Backend/session.cpp
     Backend/session.hpp
     ECS/registry.cpp
+    Render/camera.cpp
+    World/camera.cpp
     World/simulation.cpp
     World/world.cpp
   PUBLIC
@@ -24,6 +26,10 @@ target_sources(Northrend
       ECS/registry.hpp
       Engine/engine.hpp
       Engine/fps.hpp
+      Math/matrix.hpp
+      Math/quaternion.hpp
+      Math/vector.hpp
+      Render/camera.hpp
       Render/exchange.hpp
       Render/renderer.hpp
       Render/snapshot.hpp
@@ -31,6 +37,7 @@ target_sources(Northrend
       Thread/rate.hpp
       Thread/runner.hpp
       Thread/task.hpp
+      World/camera.hpp
       World/simulation.hpp
       World/world.hpp
       ${NORTHREND_PLATFORM_HEADERS})
@@ -60,4 +67,5 @@ target_link_libraries(Northrend
   PUBLIC
     flecs::flecs_static
   PRIVATE
+    glm::glm
     Northrend::CompileOptions)
