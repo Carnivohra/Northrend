@@ -1,8 +1,11 @@
 #include "Render/Vulkan/swapchain.hpp"
 
 #include "Backend/Window/window.hpp"
+#include "Render/Vulkan/depth.hpp"
 #include "Render/Vulkan/device.hpp"
 #include "Render/Vulkan/frame.hpp"
+#include "Render/Vulkan/pipeline.hpp"
+#include "Render/frame.hpp"
 
 #include <algorithm>
 #include <array>
@@ -104,7 +107,7 @@ VulkanSwapchain::~VulkanSwapchain() {
     this->destroy();
 }
 
-void VulkanSwapchain::render() {
+void VulkanSwapchain::render(const RenderFrame& renderFrame) {
     const WindowSize windowSize = this->window.size();
 
     if (windowSize.width == 0 || windowSize.height == 0) {
@@ -167,6 +170,12 @@ void VulkanSwapchain::render() {
                 "Failed to wait for a Vulkan swapchain image: " + std::to_string(result));
         }
     }
+
+    this->pipeline->update_camera(
+        imageIndex,
+        renderFrame.camera,
+        renderFrame.cameraRevision,
+        this->extent);
 
     result = vkResetFences(this->device.handle(), 1, &frameFence);
 
@@ -395,7 +404,13 @@ void VulkanSwapchain::create_swapchain_resources() {
 
     this->imagesInFlight.assign(this->images.size(), VK_NULL_HANDLE);
     this->create_image_views();
+    this->create_depth_images();
     this->create_render_pass();
+    this->pipeline = std::make_unique<VulkanPipeline>(
+        this->device,
+        this->renderPass,
+        this->extent,
+        this->images.size());
     this->create_framebuffers();
     this->create_command_buffers();
 }
@@ -441,21 +456,50 @@ void VulkanSwapchain::create_image_views() {
     }
 }
 
+void VulkanSwapchain::create_depth_images() {
+    this->depthFormat = choose_depth_format(this->device.physical());
+    this->depthImages.reserve(this->images.size());
+
+    for (std::size_t index = 0; index < this->images.size(); ++index) {
+        this->depthImages.push_back(std::make_unique<VulkanDepthImage>(
+            this->device,
+            this->extent,
+            this->depthFormat));
+    }
+}
+
 void VulkanSwapchain::create_render_pass() {
-    const VkAttachmentDescription colorAttachment{
-        .flags = 0,
-        .format = this->imageFormat,
-        .samples = VK_SAMPLE_COUNT_1_BIT,
-        .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
-        .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
-        .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
-        .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
-        .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-        .finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
+    const std::array<VkAttachmentDescription, 2> attachments{
+        VkAttachmentDescription{
+            .flags = 0,
+            .format = this->imageFormat,
+            .samples = VK_SAMPLE_COUNT_1_BIT,
+            .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
+            .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+            .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+            .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
+            .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+            .finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
+        },
+        VkAttachmentDescription{
+            .flags = 0,
+            .format = this->depthFormat,
+            .samples = VK_SAMPLE_COUNT_1_BIT,
+            .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
+            .storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
+            .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+            .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
+            .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+            .finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
+        }
     };
     const VkAttachmentReference colorReference{
         .attachment = 0,
         .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+    };
+    const VkAttachmentReference depthReference{
+        .attachment = 1,
+        .layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
     };
     const VkSubpassDescription subpass{
         .flags = 0,
@@ -465,25 +509,28 @@ void VulkanSwapchain::create_render_pass() {
         .colorAttachmentCount = 1,
         .pColorAttachments = &colorReference,
         .pResolveAttachments = nullptr,
-        .pDepthStencilAttachment = nullptr,
+        .pDepthStencilAttachment = &depthReference,
         .preserveAttachmentCount = 0,
         .pPreserveAttachments = nullptr
     };
     const VkSubpassDependency dependency{
         .srcSubpass = VK_SUBPASS_EXTERNAL,
         .dstSubpass = 0,
-        .srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-        .dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+        .srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT |
+            VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,
+        .dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT |
+            VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,
         .srcAccessMask = 0,
-        .dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+        .dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT |
+            VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
         .dependencyFlags = 0
     };
     const VkRenderPassCreateInfo createInfo{
         .sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
         .pNext = nullptr,
         .flags = 0,
-        .attachmentCount = 1,
-        .pAttachments = &colorAttachment,
+        .attachmentCount = static_cast<std::uint32_t>(attachments.size()),
+        .pAttachments = attachments.data(),
         .subpassCount = 1,
         .pSubpasses = &subpass,
         .dependencyCount = 1,
@@ -504,15 +551,18 @@ void VulkanSwapchain::create_render_pass() {
 void VulkanSwapchain::create_framebuffers() {
     this->framebuffers.reserve(this->imageViews.size());
 
-    for (VkImageView imageView : this->imageViews) {
-        const VkImageView attachments[] = { imageView };
+    for (std::size_t index = 0; index < this->imageViews.size(); ++index) {
+        const std::array<VkImageView, 2> attachments{
+            this->imageViews[index],
+            this->depthImages[index]->view()
+        };
         const VkFramebufferCreateInfo createInfo{
             .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
             .pNext = nullptr,
             .flags = 0,
             .renderPass = this->renderPass,
-            .attachmentCount = 1,
-            .pAttachments = attachments,
+            .attachmentCount = static_cast<std::uint32_t>(attachments.size()),
+            .pAttachments = attachments.data(),
             .width = this->extent.width,
             .height = this->extent.height,
             .layers = 1
@@ -574,8 +624,12 @@ void VulkanSwapchain::record_commands(std::uint32_t imageIndex) {
             "Failed to begin a Vulkan command buffer: " + std::to_string(result));
     }
 
-    VkClearValue clearValue{};
-    clearValue.color = this->clearColor;
+    std::array<VkClearValue, 2> clearValues{};
+    clearValues[0].color = this->clearColor;
+    clearValues[1].depthStencil = VkClearDepthStencilValue{
+        .depth = 1.0F,
+        .stencil = 0
+    };
 
     const VkRenderPassBeginInfo renderPassInfo{
         .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
@@ -586,11 +640,12 @@ void VulkanSwapchain::record_commands(std::uint32_t imageIndex) {
             .offset = VkOffset2D{ .x = 0, .y = 0 },
             .extent = this->extent
         },
-        .clearValueCount = 1,
-        .pClearValues = &clearValue
+        .clearValueCount = static_cast<std::uint32_t>(clearValues.size()),
+        .pClearValues = clearValues.data()
     };
 
     vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+    this->pipeline->record(commandBuffer, imageIndex);
     vkCmdEndRenderPass(commandBuffer);
 
     result = vkEndCommandBuffer(commandBuffer);
@@ -628,11 +683,15 @@ void VulkanSwapchain::destroy_swapchain_resources() noexcept {
         vkDestroyFramebuffer(this->device.handle(), framebuffer, nullptr);
     }
     this->framebuffers.clear();
+    this->pipeline.reset();
 
     if (this->renderPass != VK_NULL_HANDLE) {
         vkDestroyRenderPass(this->device.handle(), this->renderPass, nullptr);
         this->renderPass = VK_NULL_HANDLE;
     }
+
+    this->depthImages.clear();
+    this->depthFormat = VK_FORMAT_UNDEFINED;
 
     for (VkImageView imageView : this->imageViews) {
         vkDestroyImageView(this->device.handle(), imageView, nullptr);

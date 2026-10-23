@@ -31,6 +31,7 @@ target_sources(Northrend
       Math/vector.hpp
       Render/camera.hpp
       Render/exchange.hpp
+      Render/frame.hpp
       Render/renderer.hpp
       Render/snapshot.hpp
       Render/surface.hpp

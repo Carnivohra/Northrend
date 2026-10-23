@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Render/snapshot.hpp"
+#include "Render/frame.hpp"
 
 namespace Northrend {
 
@@ -14,7 +14,7 @@ class Renderer {
 public:
     virtual ~Renderer() = default;
 
-    virtual RendererStatus frame(const RenderSnapshot& snapshot) = 0;
+    virtual RendererStatus frame(const RenderFrame& frame) = 0;
     virtual void suspend() = 0;
 };
 

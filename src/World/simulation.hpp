@@ -2,7 +2,6 @@
 
 #include "Render/exchange.hpp"
 #include "Thread/task.hpp"
-#include "World/camera.hpp"
 #include "World/world.hpp"
 
 #include <chrono>
@@ -29,7 +28,6 @@ public:
 private:
     RenderExchange& renderExchange;
     World state;
-    Entity cameraEntity;
     std::chrono::nanoseconds elapsed{};
     std::uint64_t sequence = 0;
 };

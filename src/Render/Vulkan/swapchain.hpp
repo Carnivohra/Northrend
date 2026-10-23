@@ -9,8 +9,11 @@
 
 namespace Northrend {
 
+struct RenderFrame;
+class VulkanDepthImage;
 class VulkanDevice;
 class VulkanFrame;
+class VulkanPipeline;
 class Window;
 
 class VulkanSwapchain final {
@@ -25,7 +28,7 @@ public:
     VulkanSwapchain(const VulkanSwapchain&) = delete;
     VulkanSwapchain& operator=(const VulkanSwapchain&) = delete;
 
-    void render();
+    void render(const RenderFrame& frame);
     void suspend() noexcept;
 
 private:
@@ -35,6 +38,7 @@ private:
     void create_frame_resources();
     void create_swapchain_resources();
     void create_image_views();
+    void create_depth_images();
     void create_render_pass();
     void create_framebuffers();
     void create_command_buffers();
@@ -49,15 +53,18 @@ private:
     VkClearColorValue clearColor;
     VkSwapchainKHR swapchain = VK_NULL_HANDLE;
     VkFormat imageFormat = VK_FORMAT_UNDEFINED;
+    VkFormat depthFormat = VK_FORMAT_UNDEFINED;
     VkExtent2D extent{};
     VkRenderPass renderPass = VK_NULL_HANDLE;
     VkCommandPool commandPool = VK_NULL_HANDLE;
     std::vector<VkImage> images;
     std::vector<VkImageView> imageViews;
+    std::vector<std::unique_ptr<VulkanDepthImage>> depthImages;
     std::vector<VkFramebuffer> framebuffers;
     std::vector<VkCommandBuffer> commandBuffers;
     std::vector<std::unique_ptr<VulkanFrame>> frames;
     std::vector<VkFence> imagesInFlight;
+    std::unique_ptr<VulkanPipeline> pipeline;
     std::size_t currentFrame = 0;
 };
 

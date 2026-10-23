@@ -2,14 +2,19 @@
 
 #include "Backend/application.hpp"
 #include "Engine/fps.hpp"
+#include "Render/exchange.hpp"
+#include "Render/frame.hpp"
 #include "Render/renderer.hpp"
 #include "Thread/runner.hpp"
+#include "World/camera.hpp"
 #include "World/simulation.hpp"
+#include "World/world.hpp"
 
 #include <concepts>
 #include <cstdint>
 #include <iostream>
 #include <optional>
+#include <stdexcept>
 
 namespace Northrend {
 
@@ -27,6 +32,13 @@ public:
 
     void started(const Window& window) override {
         this->renderer.emplace(window);
+        this->cameraEntity = this->presentationWorld.registry().create();
+
+        const Camera& camera =
+            this->presentationWorld.registry().emplace<Camera>(this->cameraEntity);
+        this->renderCamera = extract_camera(camera);
+        this->cameraRevision = camera.revision;
+
         this->simulation.emplace(
             Simulation{ this->renderExchange },
             TickRate::fixed(128));
@@ -49,7 +61,25 @@ public:
 
     void tick() override {
         this->simulation->rethrow_if_failed();
-        this->renderer->frame(this->renderExchange.read_latest());
+
+        const Camera* camera =
+            this->presentationWorld.registry().get<Camera>(this->cameraEntity);
+
+        if (!camera) {
+            throw std::runtime_error("Presentation world has no active camera");
+        }
+
+        if (camera->revision != this->cameraRevision) {
+            this->renderCamera = extract_camera(*camera);
+            this->cameraRevision = camera->revision;
+        }
+
+        const RenderFrame frame{
+            .snapshot = this->renderExchange.read_latest(),
+            .camera = this->renderCamera,
+            .cameraRevision = this->cameraRevision
+        };
+        this->renderer->frame(frame);
 
         if (const auto currentFps = this->fps.record_frame()) {
             std::cout
@@ -65,11 +95,21 @@ public:
             this->simulation.reset();
         }
 
+        if (this->cameraEntity) {
+            this->presentationWorld.registry().destroy(this->cameraEntity);
+            this->cameraEntity = Entity{};
+        }
+
+        this->cameraRevision = 0;
         this->renderer.reset();
     }
 
 private:
     RenderExchange renderExchange;
+    World presentationWorld;
+    Entity cameraEntity;
+    RenderCamera renderCamera;
+    std::uint64_t cameraRevision = 0;
     std::optional<RendererType> renderer;
     std::optional<TaskRunner<Simulation>> simulation;
     Fps fps;

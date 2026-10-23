@@ -193,8 +193,8 @@ public:
         this->destroy();
     }
 
-    RendererStatus frame() {
-        this->swapchain->render();
+    RendererStatus frame(const RenderFrame& frame) {
+        this->swapchain->render(frame);
         return this->status;
     }
 
@@ -249,8 +249,8 @@ VulkanRenderer::VulkanRenderer(const Window& window)
 
 VulkanRenderer::~VulkanRenderer() = default;
 
-RendererStatus VulkanRenderer::frame(const RenderSnapshot&) {
-    return this->implementation->frame();
+RendererStatus VulkanRenderer::frame(const RenderFrame& frame) {
+    return this->implementation->frame(frame);
 }
 
 void VulkanRenderer::suspend() {

@@ -20,6 +20,9 @@ public:
     VkQueue present_queue() const noexcept;
     std::uint32_t graphics_family() const noexcept;
     std::uint32_t present_family() const noexcept;
+    std::uint32_t memory_type(
+        std::uint32_t typeBits,
+        VkMemoryPropertyFlags properties) const;
 
     void wait_idle() const noexcept;
 

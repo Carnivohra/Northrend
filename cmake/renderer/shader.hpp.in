@@ -1,0 +1,12 @@
+#pragma once
+
+#include <array>
+#include <cstdint>
+
+namespace Northrend::VulkanShader {
+
+alignas(std::uint32_t) inline constexpr std::array<unsigned char, @SHADER_SIZE@> @SHADER_SYMBOL@{
+    @SHADER_BYTES@
+};
+
+}

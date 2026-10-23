@@ -219,6 +219,25 @@ std::uint32_t VulkanDevice::present_family() const noexcept {
     return this->presentFamily;
 }
 
+std::uint32_t VulkanDevice::memory_type(
+    std::uint32_t typeBits,
+    VkMemoryPropertyFlags properties) const {
+    VkPhysicalDeviceMemoryProperties memoryProperties;
+    vkGetPhysicalDeviceMemoryProperties(this->physicalDevice, &memoryProperties);
+
+    for (std::uint32_t index = 0; index < memoryProperties.memoryTypeCount; ++index) {
+        const bool supported = typeBits & (1U << index);
+        const bool matches =
+            (memoryProperties.memoryTypes[index].propertyFlags & properties) == properties;
+
+        if (supported && matches) {
+            return index;
+        }
+    }
+
+    throw std::runtime_error("No compatible Vulkan memory type was found");
+}
+
 void VulkanDevice::wait_idle() const noexcept {
     if (this->device != VK_NULL_HANDLE) {
         vkDeviceWaitIdle(this->device);
