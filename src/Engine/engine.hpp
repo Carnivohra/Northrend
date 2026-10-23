@@ -35,7 +35,8 @@ public:
         this->cameraEntity = this->presentationWorld.registry().create();
 
         const Camera& camera =
-            this->presentationWorld.registry().emplace<Camera>(this->cameraEntity);
+            this->presentationWorld.registry().template emplace<Camera>(
+                this->cameraEntity);
         this->renderCamera = extract_camera(camera);
         this->cameraRevision = camera.revision;
 
@@ -63,7 +64,8 @@ public:
         this->simulation->rethrow_if_failed();
 
         const Camera* camera =
-            this->presentationWorld.registry().get<Camera>(this->cameraEntity);
+            this->presentationWorld.registry().template get<Camera>(
+                this->cameraEntity);
 
         if (!camera) {
             throw std::runtime_error("Presentation world has no active camera");

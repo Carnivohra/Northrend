@@ -8,7 +8,6 @@
 #include <cstdint>
 #include <exception>
 #include <mutex>
-#include <stop_token>
 #include <thread>
 #include <utility>
 
@@ -21,9 +20,8 @@ public:
         : tickRate(tickRate),
           tickInterval(tickRate.interval()),
           worker(
-              [this, task = std::move(task)](
-                  std::stop_token stopToken) mutable {
-                  this->run(stopToken, task);
+              [this, task = std::move(task)]() mutable {
+                  this->run(task);
               }) {}
 
     ~TaskRunner() {
@@ -150,14 +148,14 @@ private:
             : ThreadDuration(1);
     }
 
-    void run(std::stop_token stopToken, Task& task) noexcept {
+    void run(Task& task) noexcept {
         std::exception_ptr currentFailure;
         bool started = false;
 
         try {
             task.start();
             started = true;
-            this->run_ticks(stopToken, task);
+            this->run_ticks(task);
         } catch (...) {
             currentFailure = std::current_exception();
         }
@@ -182,24 +180,28 @@ private:
         this->wake.notify_all();
     }
 
-    void run_ticks(std::stop_token stopToken, Task& task) {
+    void run_ticks(Task& task) {
         Clock::time_point previousTick = Clock::now();
         Clock::time_point deadline = previousTick;
         std::uint64_t observedRevision = 0;
         std::uint32_t catchUpTicks = 0;
 
-        while (!stopToken.stop_requested()) {
+        while (true) {
             std::unique_lock lock(this->mutex);
+
+            if (this->stopRequested) {
+                break;
+            }
 
             if (this->isPaused) {
                 this->wake.wait(
                     lock,
-                    [this, stopToken] {
-                        return stopToken.stop_requested() ||
+                    [this] {
+                        return this->stopRequested ||
                             !this->isPaused;
                     });
 
-                if (stopToken.stop_requested()) {
+                if (this->stopRequested) {
                     break;
                 }
 
@@ -216,7 +218,7 @@ private:
                 catchUpTicks = 0;
             }
 
-            if (stopToken.stop_requested()) {
+            if (this->stopRequested) {
                 break;
             }
 
@@ -237,8 +239,8 @@ private:
                 const bool interrupted = this->wake.wait_until(
                     lock,
                     deadline,
-                    [this, stopToken, observedRevision] {
-                        return stopToken.stop_requested() ||
+                    [this, observedRevision] {
+                        return this->stopRequested ||
                             this->isPaused ||
                             this->revision != observedRevision;
                     });
@@ -264,7 +266,11 @@ private:
             return;
         }
 
-        this->worker.request_stop();
+        {
+            const std::scoped_lock lock(this->mutex);
+            this->stopRequested = true;
+        }
+
         this->wake.notify_all();
         this->worker.join();
     }
@@ -277,7 +283,8 @@ private:
     ThreadDuration tickInterval;
     bool isPaused = false;
     bool isRunning = true;
-    std::jthread worker;
+    bool stopRequested = false;
+    std::thread worker;
 };
 
 }
