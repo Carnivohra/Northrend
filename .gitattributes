@@ -1,2 +1,5 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+
+# Exclude bundled SDL Android sources from repository language statistics.
+platform/android/app/src/main/java/org/libsdl/app/** linguist-vendored
