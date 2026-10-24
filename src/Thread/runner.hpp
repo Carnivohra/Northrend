@@ -3,6 +3,7 @@
 #include "Thread/rate.hpp"
 #include "Thread/task.hpp"
 
+#include <atomic>
 #include <chrono>
 #include <condition_variable>
 #include <cstdint>
@@ -95,6 +96,10 @@ public:
     }
 
     void rethrow_if_failed() const {
+        if (!this->failureAvailable.load(std::memory_order_acquire)) {
+            return;
+        }
+
         std::exception_ptr currentFailure;
 
         {
@@ -173,6 +178,13 @@ private:
         {
             const std::scoped_lock lock(this->mutex);
             this->failure = currentFailure;
+
+            if (currentFailure) {
+                this->failureAvailable.store(
+                    true,
+                    std::memory_order_release);
+            }
+
             this->isRunning = false;
             this->isPaused = false;
         }
@@ -278,6 +290,7 @@ private:
     mutable std::mutex mutex;
     std::condition_variable wake;
     std::exception_ptr failure;
+    std::atomic_bool failureAvailable = false;
     std::uint64_t revision = 0;
     TickRate tickRate;
     ThreadDuration tickInterval;
