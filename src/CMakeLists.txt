@@ -34,6 +34,8 @@ target_sources(Northrend
       Render/camera.hpp
       Render/exchange.hpp
       Render/frame.hpp
+      Render/instance.hpp
+      Render/mesh.hpp
       Render/renderer.hpp
       Render/snapshot.hpp
       Render/surface.hpp

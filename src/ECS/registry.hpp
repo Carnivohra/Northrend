@@ -31,6 +31,14 @@ public:
             std::forward<Callback>(callback));
     }
 
+    template <typename... Components>
+    [[nodiscard]] flecs::query<Components...> tracked_query() {
+        return this->world.query_builder<Components...>()
+            .cached()
+            .detect_changes()
+            .build();
+    }
+
     template <typename Component, typename... Arguments>
         requires std::constructible_from<Component, Arguments...>
     Component& emplace(Entity entity, Arguments&&... arguments) {
@@ -56,7 +64,14 @@ public:
 
     template <typename Component>
     [[nodiscard]] Component* get(Entity entity) {
-        return this->world.entity(entity.id()).try_get_mut<Component>();
+        auto handle = this->world.entity(entity.id());
+        Component* component = handle.try_get_mut<Component>();
+
+        if (component) {
+            handle.modified<Component>();
+        }
+
+        return component;
     }
 
 private:
