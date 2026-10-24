@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cstring>
+#include <limits>
 #include <optional>
 #include <set>
 #include <stdexcept>
@@ -190,6 +191,14 @@ VulkanDevice::VulkanDevice(VkInstance instance, VkSurfaceKHR surface) {
 }
 
 VulkanDevice::~VulkanDevice() {
+    if (this->transferFence != VK_NULL_HANDLE) {
+        vkDestroyFence(this->device, this->transferFence, nullptr);
+    }
+
+    if (this->transferPool != VK_NULL_HANDLE) {
+        vkDestroyCommandPool(this->device, this->transferPool, nullptr);
+    }
+
     if (this->device != VK_NULL_HANDLE) {
         vkDestroyDevice(this->device, nullptr);
     }
@@ -236,6 +245,174 @@ std::uint32_t VulkanDevice::memory_type(
     }
 
     throw std::runtime_error("No compatible Vulkan memory type was found");
+}
+
+void VulkanDevice::copy_buffer(
+    VkBuffer source,
+    VkBuffer destination,
+    VkDeviceSize size) {
+    if (this->transferCommandBuffer == VK_NULL_HANDLE) {
+        this->create_transfer_context();
+    }
+
+    VkResult result = vkResetFences(
+        this->device,
+        1,
+        &this->transferFence);
+
+    if (result != VK_SUCCESS) {
+        throw std::runtime_error(
+            "Failed to reset the Vulkan transfer fence: " +
+            std::to_string(result));
+    }
+
+    result = vkResetCommandBuffer(this->transferCommandBuffer, 0);
+
+    if (result != VK_SUCCESS) {
+        throw std::runtime_error(
+            "Failed to reset the Vulkan transfer command buffer: " +
+            std::to_string(result));
+    }
+
+    const VkCommandBufferBeginInfo beginInfo{
+        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+        .pNext = nullptr,
+        .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
+        .pInheritanceInfo = nullptr
+    };
+    result = vkBeginCommandBuffer(this->transferCommandBuffer, &beginInfo);
+
+    if (result != VK_SUCCESS) {
+        throw std::runtime_error(
+            "Failed to begin the Vulkan transfer command buffer: " +
+            std::to_string(result));
+    }
+
+    const VkBufferCopy region{
+        .srcOffset = 0,
+        .dstOffset = 0,
+        .size = size
+    };
+    vkCmdCopyBuffer(
+        this->transferCommandBuffer,
+        source,
+        destination,
+        1,
+        &region);
+    result = vkEndCommandBuffer(this->transferCommandBuffer);
+
+    if (result != VK_SUCCESS) {
+        throw std::runtime_error(
+            "Failed to end the Vulkan transfer command buffer: " +
+            std::to_string(result));
+    }
+
+    const VkSubmitInfo submitInfo{
+        .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
+        .pNext = nullptr,
+        .waitSemaphoreCount = 0,
+        .pWaitSemaphores = nullptr,
+        .pWaitDstStageMask = nullptr,
+        .commandBufferCount = 1,
+        .pCommandBuffers = &this->transferCommandBuffer,
+        .signalSemaphoreCount = 0,
+        .pSignalSemaphores = nullptr
+    };
+    result = vkQueueSubmit(
+        this->graphicsQueue,
+        1,
+        &submitInfo,
+        this->transferFence);
+
+    if (result != VK_SUCCESS) {
+        throw std::runtime_error(
+            "Failed to submit the Vulkan buffer transfer: " +
+            std::to_string(result));
+    }
+
+    result = vkWaitForFences(
+        this->device,
+        1,
+        &this->transferFence,
+        VK_TRUE,
+        std::numeric_limits<std::uint64_t>::max());
+
+    if (result != VK_SUCCESS) {
+        throw std::runtime_error(
+            "Failed to wait for the Vulkan buffer transfer: " +
+            std::to_string(result));
+    }
+}
+
+void VulkanDevice::create_transfer_context() {
+    const VkCommandPoolCreateInfo poolInfo{
+        .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+        .pNext = nullptr,
+        .flags = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT |
+            VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
+        .queueFamilyIndex = this->graphicsFamily
+    };
+    VkResult result = vkCreateCommandPool(
+        this->device,
+        &poolInfo,
+        nullptr,
+        &this->transferPool);
+
+    if (result != VK_SUCCESS) {
+        throw std::runtime_error(
+            "Failed to create the Vulkan transfer command pool: " +
+            std::to_string(result));
+    }
+
+    try {
+        const VkCommandBufferAllocateInfo allocationInfo{
+            .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+            .pNext = nullptr,
+            .commandPool = this->transferPool,
+            .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+            .commandBufferCount = 1
+        };
+        result = vkAllocateCommandBuffers(
+            this->device,
+            &allocationInfo,
+            &this->transferCommandBuffer);
+
+        if (result != VK_SUCCESS) {
+            throw std::runtime_error(
+                "Failed to allocate the Vulkan transfer command buffer: " +
+                std::to_string(result));
+        }
+
+        const VkFenceCreateInfo fenceInfo{
+            .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
+            .pNext = nullptr,
+            .flags = VK_FENCE_CREATE_SIGNALED_BIT
+        };
+        result = vkCreateFence(
+            this->device,
+            &fenceInfo,
+            nullptr,
+            &this->transferFence);
+
+        if (result != VK_SUCCESS) {
+            throw std::runtime_error(
+                "Failed to create the Vulkan transfer fence: " +
+                std::to_string(result));
+        }
+    } catch (...) {
+        if (this->transferCommandBuffer != VK_NULL_HANDLE) {
+            vkFreeCommandBuffers(
+                this->device,
+                this->transferPool,
+                1,
+                &this->transferCommandBuffer);
+            this->transferCommandBuffer = VK_NULL_HANDLE;
+        }
+
+        vkDestroyCommandPool(this->device, this->transferPool, nullptr);
+        this->transferPool = VK_NULL_HANDLE;
+        throw;
+    }
 }
 
 void VulkanDevice::wait_idle() const noexcept {

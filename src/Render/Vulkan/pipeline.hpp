@@ -1,22 +1,26 @@
 #pragma once
 
 #include "Math/matrix.hpp"
+#include "Render/Vulkan/buffer.hpp"
 
 #include <volk.h>
 
 #include <cstddef>
 #include <cstdint>
+#include <memory>
 #include <vector>
 
 namespace Northrend {
 
 struct RenderCamera;
 class VulkanDevice;
+class VulkanMesh;
 
 class VulkanPipeline final {
 public:
     VulkanPipeline(
         VulkanDevice& device,
+        const VulkanMesh& mesh,
         VkRenderPass renderPass,
         VkExtent2D extent,
         std::size_t imageCount);
@@ -34,8 +38,7 @@ public:
 
 private:
     struct CameraBuffer final {
-        VkBuffer buffer = VK_NULL_HANDLE;
-        VkDeviceMemory memory = VK_NULL_HANDLE;
+        std::unique_ptr<VulkanBuffer> buffer;
         void* mapped = nullptr;
         std::uint64_t uploadRevision = 0;
     };
@@ -48,6 +51,7 @@ private:
     void destroy() noexcept;
 
     VulkanDevice& device;
+    const VulkanMesh& mesh;
     VkDescriptorSetLayout descriptorLayout = VK_NULL_HANDLE;
     VkDescriptorPool descriptorPool = VK_NULL_HANDLE;
     VkPipelineLayout layout = VK_NULL_HANDLE;

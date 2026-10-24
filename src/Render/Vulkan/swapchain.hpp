@@ -13,6 +13,7 @@ struct RenderFrame;
 class VulkanDepthImage;
 class VulkanDevice;
 class VulkanFrame;
+class VulkanMesh;
 class VulkanPipeline;
 class Window;
 
@@ -64,6 +65,7 @@ private:
     std::vector<VkCommandBuffer> commandBuffers;
     std::vector<std::unique_ptr<VulkanFrame>> frames;
     std::vector<VkFence> imagesInFlight;
+    std::unique_ptr<VulkanMesh> mesh;
     std::unique_ptr<VulkanPipeline> pipeline;
     std::size_t currentFrame = 0;
 };

@@ -24,13 +24,22 @@ public:
         std::uint32_t typeBits,
         VkMemoryPropertyFlags properties) const;
 
+    void copy_buffer(
+        VkBuffer source,
+        VkBuffer destination,
+        VkDeviceSize size);
     void wait_idle() const noexcept;
 
 private:
+    void create_transfer_context();
+
     VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
     VkDevice device = VK_NULL_HANDLE;
     VkQueue graphicsQueue = VK_NULL_HANDLE;
     VkQueue presentQueue = VK_NULL_HANDLE;
+    VkCommandPool transferPool = VK_NULL_HANDLE;
+    VkCommandBuffer transferCommandBuffer = VK_NULL_HANDLE;
+    VkFence transferFence = VK_NULL_HANDLE;
     std::uint32_t graphicsFamily = 0;
     std::uint32_t presentFamily = 0;
 };

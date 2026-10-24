@@ -4,7 +4,9 @@
 #include "Render/Vulkan/depth.hpp"
 #include "Render/Vulkan/device.hpp"
 #include "Render/Vulkan/frame.hpp"
+#include "Render/Vulkan/mesh.hpp"
 #include "Render/Vulkan/pipeline.hpp"
+#include "Render/Vulkan/triangle.hpp"
 #include "Render/frame.hpp"
 
 #include <algorithm>
@@ -95,6 +97,7 @@ VulkanSwapchain::VulkanSwapchain(
     try {
         this->create_command_pool();
         this->create_frame_resources();
+        this->mesh = VulkanTriangle::create(this->device);
         this->create_swapchain_resources();
     } catch (...) {
         this->destroy();
@@ -408,6 +411,7 @@ void VulkanSwapchain::create_swapchain_resources() {
     this->create_render_pass();
     this->pipeline = std::make_unique<VulkanPipeline>(
         this->device,
+        *this->mesh,
         this->renderPass,
         this->extent,
         this->images.size());
@@ -709,6 +713,7 @@ void VulkanSwapchain::destroy_swapchain_resources() noexcept {
 void VulkanSwapchain::destroy() noexcept {
     this->destroy_swapchain_resources();
     this->frames.clear();
+    this->mesh.reset();
 
     if (this->commandPool != VK_NULL_HANDLE) {
         vkDestroyCommandPool(this->device.handle(), this->commandPool, nullptr);

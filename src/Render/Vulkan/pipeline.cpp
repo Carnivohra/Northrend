@@ -2,12 +2,17 @@
 
 #include "Render/Vulkan/Shader/triangle_fragment.hpp"
 #include "Render/Vulkan/Shader/triangle_vertex.hpp"
+#include "Render/Vulkan/buffer.hpp"
 #include "Render/Vulkan/device.hpp"
+#include "Render/Vulkan/mesh.hpp"
+#include "Render/Vulkan/triangle.hpp"
 #include "Render/camera.hpp"
 
 #include <array>
+#include <cstddef>
 #include <cstdint>
 #include <cstring>
+#include <memory>
 #include <span>
 #include <stdexcept>
 #include <string>
@@ -70,10 +75,11 @@ namespace Northrend {
 
 VulkanPipeline::VulkanPipeline(
     VulkanDevice& device,
+    const VulkanMesh& mesh,
     VkRenderPass renderPass,
     VkExtent2D extent,
     std::size_t imageCount)
-    : device(device) {
+    : device(device), mesh(mesh) {
     try {
         this->create_descriptor_layout();
         this->create_camera_buffers(imageCount);
@@ -147,7 +153,8 @@ void VulkanPipeline::record(
         &this->descriptorSets[imageIndex],
         0,
         nullptr);
-    vkCmdDraw(commandBuffer, 3, 1, 0, 0);
+
+    this->mesh.draw(commandBuffer);
 }
 
 void VulkanPipeline::create_descriptor_layout() {
@@ -182,80 +189,13 @@ void VulkanPipeline::create_camera_buffers(std::size_t imageCount) {
     this->cameraBuffers.resize(imageCount);
 
     for (CameraBuffer& cameraBuffer : this->cameraBuffers) {
-        const VkBufferCreateInfo bufferInfo{
-            .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
-            .pNext = nullptr,
-            .flags = 0,
-            .size = sizeof(Matrix4),
-            .usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-            .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
-            .queueFamilyIndexCount = 0,
-            .pQueueFamilyIndices = nullptr
-        };
-        VkResult result = vkCreateBuffer(
-            this->device.handle(),
-            &bufferInfo,
-            nullptr,
-            &cameraBuffer.buffer);
-
-        if (result != VK_SUCCESS) {
-            throw std::runtime_error(
-                "Failed to create a Vulkan camera buffer: " +
-                std::to_string(result));
-        }
-
-        VkMemoryRequirements requirements;
-        vkGetBufferMemoryRequirements(
-            this->device.handle(),
-            cameraBuffer.buffer,
-            &requirements);
-
-        const VkMemoryAllocateInfo allocationInfo{
-            .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
-            .pNext = nullptr,
-            .allocationSize = requirements.size,
-            .memoryTypeIndex = this->device.memory_type(
-                requirements.memoryTypeBits,
-                VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
-                    VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)
-        };
-        result = vkAllocateMemory(
-            this->device.handle(),
-            &allocationInfo,
-            nullptr,
-            &cameraBuffer.memory);
-
-        if (result != VK_SUCCESS) {
-            throw std::runtime_error(
-                "Failed to allocate Vulkan camera memory: " +
-                std::to_string(result));
-        }
-
-        result = vkBindBufferMemory(
-            this->device.handle(),
-            cameraBuffer.buffer,
-            cameraBuffer.memory,
-            0);
-
-        if (result != VK_SUCCESS) {
-            throw std::runtime_error(
-                "Failed to bind Vulkan camera memory: " +
-                std::to_string(result));
-        }
-
-        result = vkMapMemory(
-            this->device.handle(),
-            cameraBuffer.memory,
-            0,
+        cameraBuffer.buffer = std::make_unique<VulkanBuffer>(
+            this->device,
             sizeof(Matrix4),
-            0,
-            &cameraBuffer.mapped);
-
-        if (result != VK_SUCCESS) {
-            throw std::runtime_error(
-                "Failed to map Vulkan camera memory: " +
-                std::to_string(result));
-        }
+            VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+                VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+        cameraBuffer.mapped = cameraBuffer.buffer->map();
     }
 }
 
@@ -311,7 +251,7 @@ void VulkanPipeline::create_descriptors() {
 
     for (std::size_t index = 0; index < this->cameraBuffers.size(); ++index) {
         const VkDescriptorBufferInfo bufferInfo{
-            .buffer = this->cameraBuffers[index].buffer,
+            .buffer = this->cameraBuffers[index].buffer->handle(),
             .offset = 0,
             .range = sizeof(Matrix4)
         };
@@ -396,14 +336,34 @@ void VulkanPipeline::create_graphics_pipeline(
             .pSpecializationInfo = nullptr
         }
     };
+    const VkVertexInputBindingDescription vertexBinding{
+        .binding = 0,
+        .stride = sizeof(VulkanTriangle::Vertex),
+        .inputRate = VK_VERTEX_INPUT_RATE_VERTEX
+    };
+    const std::array<VkVertexInputAttributeDescription, 2> vertexAttributes{
+        VkVertexInputAttributeDescription{
+            .location = 0,
+            .binding = 0,
+            .format = VK_FORMAT_R32G32B32_SFLOAT,
+            .offset = offsetof(VulkanTriangle::Vertex, position)
+        },
+        VkVertexInputAttributeDescription{
+            .location = 1,
+            .binding = 0,
+            .format = VK_FORMAT_R32G32B32_SFLOAT,
+            .offset = offsetof(VulkanTriangle::Vertex, color)
+        }
+    };
     const VkPipelineVertexInputStateCreateInfo vertexInput{
         .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
         .pNext = nullptr,
         .flags = 0,
-        .vertexBindingDescriptionCount = 0,
-        .pVertexBindingDescriptions = nullptr,
-        .vertexAttributeDescriptionCount = 0,
-        .pVertexAttributeDescriptions = nullptr
+        .vertexBindingDescriptionCount = 1,
+        .pVertexBindingDescriptions = &vertexBinding,
+        .vertexAttributeDescriptionCount =
+            static_cast<std::uint32_t>(vertexAttributes.size()),
+        .pVertexAttributeDescriptions = vertexAttributes.data()
     };
     const VkPipelineInputAssemblyStateCreateInfo inputAssembly{
         .sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
@@ -552,22 +512,6 @@ void VulkanPipeline::destroy() noexcept {
     }
     this->descriptorSets.clear();
 
-    for (CameraBuffer& cameraBuffer : this->cameraBuffers) {
-        if (cameraBuffer.mapped != nullptr) {
-            vkUnmapMemory(this->device.handle(), cameraBuffer.memory);
-            cameraBuffer.mapped = nullptr;
-        }
-
-        if (cameraBuffer.buffer != VK_NULL_HANDLE) {
-            vkDestroyBuffer(this->device.handle(), cameraBuffer.buffer, nullptr);
-            cameraBuffer.buffer = VK_NULL_HANDLE;
-        }
-
-        if (cameraBuffer.memory != VK_NULL_HANDLE) {
-            vkFreeMemory(this->device.handle(), cameraBuffer.memory, nullptr);
-            cameraBuffer.memory = VK_NULL_HANDLE;
-        }
-    }
     this->cameraBuffers.clear();
 
     if (this->descriptorLayout != VK_NULL_HANDLE) {

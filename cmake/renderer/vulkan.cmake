@@ -30,12 +30,16 @@ endfunction()
 
 target_sources(Northrend
   PRIVATE
+    Render/Vulkan/buffer.cpp
+    Render/Vulkan/buffer.hpp
     Render/Vulkan/depth.cpp
     Render/Vulkan/depth.hpp
     Render/Vulkan/device.cpp
     Render/Vulkan/device.hpp
     Render/Vulkan/frame.cpp
     Render/Vulkan/frame.hpp
+    Render/Vulkan/mesh.cpp
+    Render/Vulkan/mesh.hpp
     Render/Vulkan/pipeline.cpp
     Render/Vulkan/pipeline.hpp
     Render/Vulkan/Platform/surface.hpp
@@ -43,6 +47,8 @@ target_sources(Northrend
     Render/Vulkan/Shader/triangle.vert
     Render/Vulkan/swapchain.cpp
     Render/Vulkan/swapchain.hpp
+    Render/Vulkan/triangle.cpp
+    Render/Vulkan/triangle.hpp
     Render/Vulkan/vulkan.cpp
     ${NORTHREND_VULKAN_PLATFORM_SOURCES}
   PUBLIC
