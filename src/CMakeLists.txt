@@ -7,6 +7,7 @@ target_sources(Northrend
     Backend/session.cpp
     Backend/session.hpp
     ECS/registry.cpp
+    Presentation/presentation.cpp
     Render/camera.cpp
     World/camera.cpp
     World/simulation.cpp
@@ -29,6 +30,7 @@ target_sources(Northrend
       Math/matrix.hpp
       Math/quaternion.hpp
       Math/vector.hpp
+      Presentation/presentation.hpp
       Render/camera.hpp
       Render/exchange.hpp
       Render/frame.hpp
