@@ -7,6 +7,7 @@
 namespace Northrend {
 
 class Window;
+class VulkanRendererImplementation;
 
 class VulkanRenderer final : public Renderer {
 public:
@@ -16,13 +17,11 @@ public:
     VulkanRenderer(const VulkanRenderer&) = delete;
     VulkanRenderer& operator=(const VulkanRenderer&) = delete;
 
-    RendererStatus frame(const RenderFrame& frame) override;
+    void frame(const RenderFrame& frame) override;
     void suspend() override;
 
 private:
-    class Implementation;
-
-    std::unique_ptr<Implementation> implementation;
+    std::unique_ptr<VulkanRendererImplementation> implementation;
 };
 
 }

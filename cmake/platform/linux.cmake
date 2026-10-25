@@ -14,7 +14,8 @@ set(NORTHREND_PLATFORM_HEADERS
   Backend/Window/Handle/x11.hpp)
 
 set(NORTHREND_VULKAN_PLATFORM_SOURCES
-  Render/Vulkan/Platform/surface.cpp
+  Render/Vulkan/Platform/Surface/creation.cpp
+  Render/Vulkan/Platform/Surface/extension.cpp
   Render/Vulkan/Platform/wayland.cpp
   Render/Vulkan/Platform/wayland.hpp
   Render/Vulkan/Platform/x11.cpp

@@ -6,6 +6,8 @@
 namespace Northrend {
 
 struct Matrix4 final {
+    [[nodiscard]] Matrix4 operator*(const Matrix4& right) const noexcept;
+
     std::array<float, 16> values{
         1.0F, 0.0F, 0.0F, 0.0F,
         0.0F, 1.0F, 0.0F, 0.0F,

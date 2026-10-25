@@ -7,7 +7,11 @@
 #include "Render/snapshot.hpp"
 #include "World/camera.hpp"
 
+#include <concepts>
 #include <cstdint>
+#include <functional>
+#include <stdexcept>
+#include <utility>
 #include <vector>
 
 namespace Northrend {
@@ -20,7 +24,26 @@ public:
 
     [[nodiscard]] Registry& registry() noexcept;
     [[nodiscard]] const Registry& registry() const noexcept;
-    [[nodiscard]] Camera& active_camera();
+    [[nodiscard]] const Camera& active_camera() const;
+
+    template <typename Callback>
+        requires std::invocable<Callback, Camera&>
+    void modify_active_camera(Callback&& callback) {
+        const bool modified = this->state.modify<Camera>(
+            this->cameraEntity,
+            [&callback](Camera& camera) {
+                std::invoke(
+                    std::forward<Callback>(callback),
+                    camera);
+                ++camera.revision;
+            });
+
+        if (!modified) {
+            throw std::runtime_error(
+                "Presentation has no active camera");
+        }
+    }
+
     [[nodiscard]] RenderFrame frame();
 
 private:

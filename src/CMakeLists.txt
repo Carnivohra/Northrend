@@ -4,14 +4,19 @@ add_library(Northrend::Northrend ALIAS Northrend)
 target_sources(Northrend
   PRIVATE
     App/app.cpp
-    Assets/asset.cpp
-    Assets/filesystem.cpp
+    Asset/data.cpp
+    Asset/id.cpp
+    Asset/Filesystem/source.cpp
     Backend/session.cpp
     Backend/session.hpp
     ECS/registry.cpp
+    Math/Glm/matrix.cpp
+    Math/Glm/matrix.hpp
+    Math/matrix.cpp
     Presentation/presentation.cpp
+    Render/Mesh/registry.cpp
     Render/camera.cpp
-    World/camera.cpp
+    World/Camera/extraction.cpp
     World/simulation.cpp
     World/world.cpp
   PUBLIC
@@ -20,9 +25,10 @@ target_sources(Northrend
     FILES
       App/app.hpp
       App/launch.hpp
-      Assets/asset.hpp
-      Assets/filesystem.hpp
-      Assets/source.hpp
+      Asset/data.hpp
+      Asset/id.hpp
+      Asset/Filesystem/source.hpp
+      Asset/source.hpp
       Backend/application.hpp
       Backend/backend.hpp
       Backend/Window/handle.hpp
@@ -41,13 +47,14 @@ target_sources(Northrend
       Render/frame.hpp
       Render/instance.hpp
       Render/mesh.hpp
+      Render/Mesh/registry.hpp
       Render/renderer.hpp
       Render/snapshot.hpp
-      Render/surface.hpp
       Thread/rate.hpp
       Thread/runner.hpp
       Thread/task.hpp
       World/camera.hpp
+      World/Camera/extraction.hpp
       World/simulation.hpp
       World/world.hpp
       ${NORTHREND_PLATFORM_HEADERS})

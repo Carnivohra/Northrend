@@ -6,12 +6,11 @@
 
 namespace Northrend {
 
+class MeshRegistry;
+
 class MeshHandle final {
 public:
     constexpr MeshHandle() noexcept = default;
-
-    explicit constexpr MeshHandle(std::uint64_t value) noexcept
-        : value(value) {}
 
     [[nodiscard]] constexpr std::uint64_t id() const noexcept {
         return this->value;
@@ -24,6 +23,11 @@ public:
     auto operator<=>(const MeshHandle&) const = default;
 
 private:
+    friend class MeshRegistry;
+
+    explicit constexpr MeshHandle(std::uint64_t value) noexcept
+        : value(value) {}
+
     std::uint64_t value = 0;
 };
 

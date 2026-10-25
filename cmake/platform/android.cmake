@@ -13,7 +13,8 @@ set(NORTHREND_PLATFORM_HEADERS
   Backend/Window/Handle/android.hpp)
 
 set(NORTHREND_VULKAN_PLATFORM_SOURCES
-  Render/Vulkan/Platform/android.cpp)
+  Render/Vulkan/Platform/Android/extension.cpp
+  Render/Vulkan/Platform/Android/surface.cpp)
 
 set(NORTHREND_VULKAN_PLATFORM_DEFINITIONS
   VK_USE_PLATFORM_ANDROID_KHR)

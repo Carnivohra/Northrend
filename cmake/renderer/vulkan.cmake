@@ -18,7 +18,8 @@ function(northrend_embed_spirv source symbol output_name)
   set(SHADER_SYMBOL "${symbol}")
   set(SHADER_BYTES "${shader_bytes}")
 
-  file(MAKE_DIRECTORY "${output_directory}")
+  get_filename_component(output_path_directory "${output_path}" DIRECTORY)
+  file(MAKE_DIRECTORY "${output_path_directory}")
   configure_file(
     "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/shader.hpp.in"
     "${output_path}"
@@ -32,25 +33,43 @@ target_sources(Northrend
   PRIVATE
     Render/Vulkan/buffer.cpp
     Render/Vulkan/buffer.hpp
+    Render/Vulkan/Camera/buffer.hpp
+    Render/Vulkan/Camera/context.cpp
+    Render/Vulkan/Camera/context.hpp
+    Render/Vulkan/commands.cpp
+    Render/Vulkan/commands.hpp
     Render/Vulkan/depth.cpp
     Render/Vulkan/depth.hpp
     Render/Vulkan/device.cpp
     Render/Vulkan/device.hpp
     Render/Vulkan/frame.cpp
     Render/Vulkan/frame.hpp
+    Render/Vulkan/implementation.cpp
+    Render/Vulkan/implementation.hpp
+    Render/Vulkan/instance.cpp
+    Render/Vulkan/instance.hpp
     Render/Vulkan/mesh.cpp
     Render/Vulkan/mesh.hpp
-    Render/Vulkan/mesh_store.cpp
-    Render/Vulkan/mesh_store.hpp
-    Render/Vulkan/pipeline.cpp
-    Render/Vulkan/pipeline.hpp
-    Render/Vulkan/Platform/surface.hpp
-    Render/Vulkan/Shader/triangle.frag
-    Render/Vulkan/Shader/triangle.vert
+    Render/Vulkan/Mesh/store.cpp
+    Render/Vulkan/Mesh/store.hpp
+    Render/Vulkan/Pipeline/mesh.cpp
+    Render/Vulkan/Pipeline/mesh.hpp
+    Render/Vulkan/physical.cpp
+    Render/Vulkan/physical.hpp
+    Render/Vulkan/Queue/families.hpp
+    Render/Vulkan/Platform/Surface/creation.hpp
+    Render/Vulkan/Platform/Surface/extension.hpp
+    Render/Vulkan/surface.cpp
+    Render/Vulkan/surface.hpp
+    Render/Vulkan/target.cpp
+    Render/Vulkan/target.hpp
+    Render/Vulkan/transfer.cpp
+    Render/Vulkan/transfer.hpp
+    Render/Vulkan/Shader/Mesh/fragment.frag
+    Render/Vulkan/Shader/Mesh/vertex.vert
     Render/Vulkan/swapchain.cpp
     Render/Vulkan/swapchain.hpp
-    Render/Vulkan/triangle.cpp
-    Render/Vulkan/triangle.hpp
+    Render/Vulkan/Mesh/vertex.hpp
     Render/Vulkan/vulkan.cpp
     ${NORTHREND_VULKAN_PLATFORM_SOURCES}
   PUBLIC
@@ -60,13 +79,13 @@ target_sources(Northrend
       Render/Vulkan/vulkan.hpp)
 
 northrend_embed_spirv(
-  Render/Vulkan/Shader/triangle.vert.spv
-  TriangleVertex
-  triangle_vertex)
+  Render/Vulkan/Shader/Mesh/vertex.spv
+  MeshVertex
+  Mesh/vertex)
 northrend_embed_spirv(
-  Render/Vulkan/Shader/triangle.frag.spv
-  TriangleFragment
-  triangle_fragment)
+  Render/Vulkan/Shader/Mesh/fragment.spv
+  MeshFragment
+  Mesh/fragment)
 
 target_include_directories(Northrend
   PRIVATE

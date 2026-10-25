@@ -1,10 +1,15 @@
 #pragma once
 
+#include "Render/Vulkan/physical.hpp"
+
 #include <volk.h>
 
 #include <cstdint>
+#include <memory>
 
 namespace Northrend {
+
+class VulkanTransferContext;
 
 class VulkanDevice final {
 public:
@@ -14,13 +19,16 @@ public:
     VulkanDevice(const VulkanDevice&) = delete;
     VulkanDevice& operator=(const VulkanDevice&) = delete;
 
-    VkPhysicalDevice physical() const noexcept;
-    VkDevice handle() const noexcept;
-    VkQueue graphics_queue() const noexcept;
-    VkQueue present_queue() const noexcept;
-    std::uint32_t graphics_family() const noexcept;
-    std::uint32_t present_family() const noexcept;
-    std::uint32_t memory_type(
+    [[nodiscard]] VkPhysicalDevice physical() const noexcept;
+    [[nodiscard]] VkDevice handle() const noexcept;
+    [[nodiscard]] VkQueue graphics_queue() const noexcept;
+    [[nodiscard]] VkQueue present_queue() const noexcept;
+    [[nodiscard]] std::uint32_t
+        graphics_family() const noexcept;
+    [[nodiscard]] std::uint32_t
+        present_family() const noexcept;
+    [[nodiscard]] VkFormat depth_format() const;
+    [[nodiscard]] std::uint32_t memory_type(
         std::uint32_t typeBits,
         VkMemoryPropertyFlags properties) const;
 
@@ -31,17 +39,11 @@ public:
     void wait_idle() const noexcept;
 
 private:
-    void create_transfer_context();
-
-    VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
+    VulkanPhysicalDevice physicalDevice;
     VkDevice device = VK_NULL_HANDLE;
     VkQueue graphicsQueue = VK_NULL_HANDLE;
     VkQueue presentQueue = VK_NULL_HANDLE;
-    VkCommandPool transferPool = VK_NULL_HANDLE;
-    VkCommandBuffer transferCommandBuffer = VK_NULL_HANDLE;
-    VkFence transferFence = VK_NULL_HANDLE;
-    std::uint32_t graphicsFamily = 0;
-    std::uint32_t presentFamily = 0;
+    std::unique_ptr<VulkanTransferContext> transfer;
 };
 
 }

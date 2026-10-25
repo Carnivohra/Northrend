@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Assets/source.hpp"
+#include "Asset/source.hpp"
 
 #include <filesystem>
 

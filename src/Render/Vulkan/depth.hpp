@@ -6,7 +6,6 @@ namespace Northrend {
 
 class VulkanDevice;
 
-VkFormat choose_depth_format(VkPhysicalDevice device);
 
 class VulkanDepthImage final {
 public:

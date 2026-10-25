@@ -1,9 +1,8 @@
-#include "Assets/asset.hpp"
+#include "Asset/id.hpp"
 
 #include <algorithm>
 #include <filesystem>
 #include <stdexcept>
-#include <utility>
 
 namespace Northrend {
 
@@ -36,21 +35,6 @@ AssetId::AssetId(std::string_view path)
 
 std::string_view AssetId::path() const noexcept {
     return this->value;
-}
-
-AssetData::AssetData(std::vector<std::byte> bytes) noexcept
-    : storage(std::move(bytes)) {}
-
-std::span<const std::byte> AssetData::bytes() const noexcept {
-    return this->storage;
-}
-
-std::size_t AssetData::size() const noexcept {
-    return this->storage.size();
-}
-
-bool AssetData::empty() const noexcept {
-    return this->storage.empty();
 }
 
 }

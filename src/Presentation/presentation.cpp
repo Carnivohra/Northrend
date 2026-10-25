@@ -1,7 +1,7 @@
 #include "Presentation/presentation.hpp"
+#include "World/Camera/extraction.hpp"
 
 #include <cstddef>
-#include <stdexcept>
 
 namespace Northrend {
 
@@ -29,11 +29,13 @@ const Registry& Presentation::registry() const noexcept {
     return this->state;
 }
 
-Camera& Presentation::active_camera() {
-    Camera* camera = this->state.get<Camera>(this->cameraEntity);
+const Camera& Presentation::active_camera() const {
+    const Camera* camera =
+        this->state.get<Camera>(this->cameraEntity);
 
     if (!camera) {
-        throw std::runtime_error("Presentation has no active camera");
+        throw std::runtime_error(
+            "Presentation has no active camera");
     }
 
     return *camera;

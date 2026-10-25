@@ -2,31 +2,10 @@
 
 #include "Render/Vulkan/device.hpp"
 
-#include <array>
 #include <stdexcept>
 #include <string>
 
 namespace Northrend {
-
-VkFormat choose_depth_format(VkPhysicalDevice device) {
-    constexpr std::array<VkFormat, 3> candidates{
-        VK_FORMAT_D32_SFLOAT,
-        VK_FORMAT_D32_SFLOAT_S8_UINT,
-        VK_FORMAT_D24_UNORM_S8_UINT
-    };
-
-    for (VkFormat format : candidates) {
-        VkFormatProperties properties;
-        vkGetPhysicalDeviceFormatProperties(device, format, &properties);
-
-        if (properties.optimalTilingFeatures &
-            VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT) {
-            return format;
-        }
-    }
-
-    throw std::runtime_error("No supported Vulkan depth format was found");
-}
 
 VulkanDepthImage::VulkanDepthImage(
     VulkanDevice& device,

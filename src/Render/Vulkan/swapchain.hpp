@@ -10,11 +10,13 @@
 namespace Northrend {
 
 struct RenderFrame;
-class VulkanDepthImage;
+struct WindowSize;
+class VulkanCommandContext;
 class VulkanDevice;
 class VulkanFrame;
 class VulkanMeshStore;
-class VulkanPipeline;
+class VulkanMeshPipeline;
+class VulkanRenderTarget;
 class Window;
 
 class VulkanSwapchain final {
@@ -36,17 +38,19 @@ public:
 private:
     static constexpr std::size_t FramesInFlight = 2;
 
-    void create_command_pool();
+    [[nodiscard]] static VkSurfaceFormatKHR choose_surface_format(
+        const std::vector<VkSurfaceFormatKHR>& formats);
+    [[nodiscard]] static VkExtent2D choose_surface_extent(
+        const VkSurfaceCapabilitiesKHR& capabilities,
+        const WindowSize& windowSize);
+    [[nodiscard]] static VkPresentModeKHR choose_present_mode(
+        const std::vector<VkPresentModeKHR>& presentModes);
+    [[nodiscard]] static VkCompositeAlphaFlagBitsKHR
+        choose_composite_alpha(
+            VkCompositeAlphaFlagsKHR supported);
+
     void create_frame_resources();
     void create_swapchain_resources();
-    void create_image_views();
-    void create_depth_images();
-    void create_render_pass();
-    void create_framebuffers();
-    void create_command_buffers();
-    void record_commands(
-        std::uint32_t imageIndex,
-        const RenderFrame& frame);
     void recreate();
     void destroy_swapchain_resources() noexcept;
     void destroy() noexcept;
@@ -58,18 +62,13 @@ private:
     VkClearColorValue clearColor;
     VkSwapchainKHR swapchain = VK_NULL_HANDLE;
     VkFormat imageFormat = VK_FORMAT_UNDEFINED;
-    VkFormat depthFormat = VK_FORMAT_UNDEFINED;
     VkExtent2D extent{};
-    VkRenderPass renderPass = VK_NULL_HANDLE;
-    VkCommandPool commandPool = VK_NULL_HANDLE;
     std::vector<VkImage> images;
-    std::vector<VkImageView> imageViews;
-    std::vector<std::unique_ptr<VulkanDepthImage>> depthImages;
-    std::vector<VkFramebuffer> framebuffers;
-    std::vector<VkCommandBuffer> commandBuffers;
     std::vector<std::unique_ptr<VulkanFrame>> frames;
     std::vector<VkFence> imagesInFlight;
-    std::unique_ptr<VulkanPipeline> pipeline;
+    std::unique_ptr<VulkanRenderTarget> target;
+    std::unique_ptr<VulkanMeshPipeline> pipeline;
+    std::unique_ptr<VulkanCommandContext> commands;
     std::size_t currentFrame = 0;
 };
 

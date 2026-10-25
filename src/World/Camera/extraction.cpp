@@ -1,21 +1,12 @@
+#include "World/Camera/extraction.hpp"
+
+#include "Math/Glm/matrix.hpp"
 #include "World/camera.hpp"
 
 #include <glm/ext/matrix_transform.hpp>
 #include <glm/gtc/quaternion.hpp>
-#include <glm/gtc/type_ptr.hpp>
-
-#include <algorithm>
 
 namespace Northrend {
-namespace {
-
-Matrix4 to_matrix(const glm::mat4& source) noexcept {
-    Matrix4 result;
-    std::copy_n(glm::value_ptr(source), result.values.size(), result.values.begin());
-    return result;
-}
-
-}
 
 RenderCamera extract_camera(const Camera& camera) noexcept {
     glm::quat orientation(
@@ -41,7 +32,7 @@ RenderCamera extract_camera(const Camera& camera) noexcept {
         glm::translate(glm::mat4(1.0F), -position);
 
     return RenderCamera{
-        .view = to_matrix(view),
+        .view = from_glm(view),
         .position = camera.position,
         .verticalFieldOfView = camera.verticalFieldOfView,
         .nearPlane = camera.nearPlane,

@@ -1,6 +1,7 @@
 #pragma once
 
-#include "Assets/asset.hpp"
+#include "Asset/data.hpp"
+#include "Asset/id.hpp"
 
 namespace Northrend {
 

@@ -6,6 +6,7 @@
 
 #include <chrono>
 #include <concepts>
+#include <functional>
 #include <utility>
 
 namespace Northrend {
@@ -62,16 +63,27 @@ public:
         return this->world.entity(entity.id()).try_get<Component>();
     }
 
-    template <typename Component>
-    [[nodiscard]] Component* get(Entity entity) {
+    template <typename Component, typename Callback>
+        requires std::invocable<Callback, Component&>
+    [[nodiscard]] bool modify(Entity entity, Callback&& callback) {
         auto handle = this->world.entity(entity.id());
         Component* component = handle.try_get_mut<Component>();
 
-        if (component) {
-            handle.modified<Component>();
+        if (!component) {
+            return false;
         }
 
-        return component;
+        try {
+            std::invoke(
+                std::forward<Callback>(callback),
+                *component);
+        } catch (...) {
+            handle.modified<Component>();
+            throw;
+        }
+
+        handle.modified<Component>();
+        return true;
     }
 
 private:

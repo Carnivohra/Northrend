@@ -23,7 +23,8 @@ public:
     VulkanMeshStore(const VulkanMeshStore&) = delete;
     VulkanMeshStore& operator=(const VulkanMeshStore&) = delete;
 
-    [[nodiscard]] MeshHandle create(
+    void store(
+        MeshHandle handle,
         std::span<const std::byte> vertices,
         std::span<const std::byte> indices,
         std::uint32_t indexCount,
