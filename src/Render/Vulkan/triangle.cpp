@@ -1,11 +1,9 @@
 #include "Render/Vulkan/triangle.hpp"
 
-#include "Render/Vulkan/device.hpp"
-#include "Render/Vulkan/mesh.hpp"
+#include "Render/Vulkan/mesh_store.hpp"
 
 #include <array>
 #include <cstdint>
-#include <memory>
 #include <span>
 
 namespace Northrend::VulkanTriangle {
@@ -31,9 +29,8 @@ constexpr std::array<std::uint16_t, 3> Indices{ 0, 1, 2 };
 
 }
 
-std::unique_ptr<VulkanMesh> create(VulkanDevice& device) {
-    return std::make_unique<VulkanMesh>(
-        device,
+MeshHandle create(VulkanMeshStore& meshes) {
+    return meshes.create(
         std::as_bytes(std::span(Vertices)),
         std::as_bytes(std::span(Indices)),
         static_cast<std::uint32_t>(Indices.size()),

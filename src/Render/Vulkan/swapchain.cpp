@@ -5,8 +5,8 @@
 #include "Render/Vulkan/device.hpp"
 #include "Render/Vulkan/frame.hpp"
 #include "Render/Vulkan/mesh.hpp"
+#include "Render/Vulkan/mesh_store.hpp"
 #include "Render/Vulkan/pipeline.hpp"
-#include "Render/Vulkan/triangle.hpp"
 #include "Render/frame.hpp"
 
 #include <algorithm>
@@ -90,14 +90,18 @@ namespace Northrend {
 
 VulkanSwapchain::VulkanSwapchain(
     VulkanDevice& device,
+    VulkanMeshStore& meshes,
     VkSurfaceKHR surface,
     const Window& window,
     const VkClearColorValue& clearColor)
-    : device(device), surface(surface), window(window), clearColor(clearColor) {
+    : device(device),
+      meshes(meshes),
+      surface(surface),
+      window(window),
+      clearColor(clearColor) {
     try {
         this->create_command_pool();
         this->create_frame_resources();
-        this->mesh = VulkanTriangle::create(this->device);
         this->create_swapchain_resources();
     } catch (...) {
         this->destroy();
@@ -179,6 +183,7 @@ void VulkanSwapchain::render(const RenderFrame& renderFrame) {
         renderFrame.camera,
         renderFrame.cameraRevision,
         this->extent);
+    this->record_commands(imageIndex, renderFrame);
 
     result = vkResetFences(this->device.handle(), 1, &frameFence);
 
@@ -245,7 +250,8 @@ void VulkanSwapchain::create_command_pool() {
     const VkCommandPoolCreateInfo createInfo{
         .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
         .pNext = nullptr,
-        .flags = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT,
+        .flags = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT |
+            VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
         .queueFamilyIndex = this->device.graphics_family()
     };
     const VkResult result = vkCreateCommandPool(
@@ -411,7 +417,6 @@ void VulkanSwapchain::create_swapchain_resources() {
     this->create_render_pass();
     this->pipeline = std::make_unique<VulkanPipeline>(
         this->device,
-        *this->mesh,
         this->renderPass,
         this->extent,
         this->images.size());
@@ -606,14 +611,19 @@ void VulkanSwapchain::create_command_buffers() {
         throw std::runtime_error(
             "Failed to allocate Vulkan command buffers: " + std::to_string(result));
     }
-
-    for (std::size_t imageIndex = 0; imageIndex < this->commandBuffers.size(); ++imageIndex) {
-        this->record_commands(static_cast<std::uint32_t>(imageIndex));
-    }
 }
 
-void VulkanSwapchain::record_commands(std::uint32_t imageIndex) {
+void VulkanSwapchain::record_commands(
+    std::uint32_t imageIndex,
+    const RenderFrame& renderFrame) {
     VkCommandBuffer commandBuffer = this->commandBuffers[imageIndex];
+    VkResult result = vkResetCommandBuffer(commandBuffer, 0);
+
+    if (result != VK_SUCCESS) {
+        throw std::runtime_error(
+            "Failed to reset a Vulkan command buffer: " + std::to_string(result));
+    }
+
     const VkCommandBufferBeginInfo beginInfo{
         .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
         .pNext = nullptr,
@@ -621,7 +631,7 @@ void VulkanSwapchain::record_commands(std::uint32_t imageIndex) {
         .pInheritanceInfo = nullptr
     };
 
-    VkResult result = vkBeginCommandBuffer(commandBuffer, &beginInfo);
+    result = vkBeginCommandBuffer(commandBuffer, &beginInfo);
 
     if (result != VK_SUCCESS) {
         throw std::runtime_error(
@@ -649,7 +659,19 @@ void VulkanSwapchain::record_commands(std::uint32_t imageIndex) {
     };
 
     vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
-    this->pipeline->record(commandBuffer, imageIndex);
+    this->pipeline->bind(commandBuffer, imageIndex);
+
+    for (const RenderInstance& instance : renderFrame.instances) {
+        const VulkanMesh* mesh = this->meshes.find(instance.mesh);
+
+        if (!mesh) {
+            continue;
+        }
+
+        this->pipeline->push_transform(commandBuffer, instance.transform);
+        mesh->draw(commandBuffer);
+    }
+
     vkCmdEndRenderPass(commandBuffer);
 
     result = vkEndCommandBuffer(commandBuffer);
@@ -713,8 +735,6 @@ void VulkanSwapchain::destroy_swapchain_resources() noexcept {
 void VulkanSwapchain::destroy() noexcept {
     this->destroy_swapchain_resources();
     this->frames.clear();
-    this->mesh.reset();
-
     if (this->commandPool != VK_NULL_HANDLE) {
         vkDestroyCommandPool(this->device.handle(), this->commandPool, nullptr);
         this->commandPool = VK_NULL_HANDLE;

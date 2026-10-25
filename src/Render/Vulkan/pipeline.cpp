@@ -4,7 +4,6 @@
 #include "Render/Vulkan/Shader/triangle_vertex.hpp"
 #include "Render/Vulkan/buffer.hpp"
 #include "Render/Vulkan/device.hpp"
-#include "Render/Vulkan/mesh.hpp"
 #include "Render/Vulkan/triangle.hpp"
 #include "Render/camera.hpp"
 
@@ -75,11 +74,10 @@ namespace Northrend {
 
 VulkanPipeline::VulkanPipeline(
     VulkanDevice& device,
-    const VulkanMesh& mesh,
     VkRenderPass renderPass,
     VkExtent2D extent,
     std::size_t imageCount)
-    : device(device), mesh(mesh) {
+    : device(device) {
     try {
         this->create_descriptor_layout();
         this->create_camera_buffers(imageCount);
@@ -137,7 +135,7 @@ void VulkanPipeline::update_camera(
     cameraBuffer.uploadRevision = this->cameraUploadRevision;
 }
 
-void VulkanPipeline::record(
+void VulkanPipeline::bind(
     VkCommandBuffer commandBuffer,
     std::size_t imageIndex) const noexcept {
     vkCmdBindPipeline(
@@ -153,8 +151,18 @@ void VulkanPipeline::record(
         &this->descriptorSets[imageIndex],
         0,
         nullptr);
+}
 
-    this->mesh.draw(commandBuffer);
+void VulkanPipeline::push_transform(
+    VkCommandBuffer commandBuffer,
+    const Matrix4& transform) const noexcept {
+    vkCmdPushConstants(
+        commandBuffer,
+        this->layout,
+        VK_SHADER_STAGE_VERTEX_BIT,
+        0,
+        sizeof(transform),
+        &transform);
 }
 
 void VulkanPipeline::create_descriptor_layout() {
@@ -277,14 +285,19 @@ void VulkanPipeline::create_descriptors() {
 }
 
 void VulkanPipeline::create_layout() {
+    const VkPushConstantRange instanceRange{
+        .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
+        .offset = 0,
+        .size = sizeof(Matrix4)
+    };
     const VkPipelineLayoutCreateInfo createInfo{
         .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
         .pNext = nullptr,
         .flags = 0,
         .setLayoutCount = 1,
         .pSetLayouts = &this->descriptorLayout,
-        .pushConstantRangeCount = 0,
-        .pPushConstantRanges = nullptr
+        .pushConstantRangeCount = 1,
+        .pPushConstantRanges = &instanceRange
     };
     const VkResult result = vkCreatePipelineLayout(
         this->device.handle(),

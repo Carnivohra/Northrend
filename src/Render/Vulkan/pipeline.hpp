@@ -14,13 +14,11 @@ namespace Northrend {
 
 struct RenderCamera;
 class VulkanDevice;
-class VulkanMesh;
 
 class VulkanPipeline final {
 public:
     VulkanPipeline(
         VulkanDevice& device,
-        const VulkanMesh& mesh,
         VkRenderPass renderPass,
         VkExtent2D extent,
         std::size_t imageCount);
@@ -34,7 +32,10 @@ public:
         const RenderCamera& camera,
         std::uint64_t revision,
         VkExtent2D extent);
-    void record(VkCommandBuffer commandBuffer, std::size_t imageIndex) const noexcept;
+    void bind(VkCommandBuffer commandBuffer, std::size_t imageIndex) const noexcept;
+    void push_transform(
+        VkCommandBuffer commandBuffer,
+        const Matrix4& transform) const noexcept;
 
 private:
     struct CameraBuffer final {
@@ -51,7 +52,6 @@ private:
     void destroy() noexcept;
 
     VulkanDevice& device;
-    const VulkanMesh& mesh;
     VkDescriptorSetLayout descriptorLayout = VK_NULL_HANDLE;
     VkDescriptorPool descriptorPool = VK_NULL_HANDLE;
     VkPipelineLayout layout = VK_NULL_HANDLE;

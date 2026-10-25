@@ -3,7 +3,9 @@
 #include "Backend/Window/window.hpp"
 #include "Render/Vulkan/Platform/surface.hpp"
 #include "Render/Vulkan/device.hpp"
+#include "Render/Vulkan/mesh_store.hpp"
 #include "Render/Vulkan/swapchain.hpp"
+#include "Render/Vulkan/triangle.hpp"
 
 #include <volk.h>
 
@@ -177,8 +179,11 @@ public:
 
             this->surface = VulkanPlatform::create_surface(this->instance, nativeHandle);
             this->device = std::make_unique<VulkanDevice>(this->instance, this->surface);
+            this->meshes = std::make_unique<VulkanMeshStore>(*this->device);
+            static_cast<void>(VulkanTriangle::create(*this->meshes));
             this->swapchain = std::make_unique<VulkanSwapchain>(
                 *this->device,
+                *this->meshes,
                 this->surface,
                 window,
                 ClearColor);
@@ -215,6 +220,7 @@ private:
         }
 
         this->swapchain.reset();
+        this->meshes.reset();
         this->device.reset();
 
         if (this->surface != VK_NULL_HANDLE) {
@@ -240,6 +246,7 @@ private:
     VkDebugUtilsMessengerEXT debugMessenger = VK_NULL_HANDLE;
     VkSurfaceKHR surface = VK_NULL_HANDLE;
     std::unique_ptr<VulkanDevice> device;
+    std::unique_ptr<VulkanMeshStore> meshes;
     std::unique_ptr<VulkanSwapchain> swapchain;
     bool validationEnabled = false;
 };

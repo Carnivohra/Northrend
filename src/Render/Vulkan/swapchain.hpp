@@ -13,7 +13,7 @@ struct RenderFrame;
 class VulkanDepthImage;
 class VulkanDevice;
 class VulkanFrame;
-class VulkanMesh;
+class VulkanMeshStore;
 class VulkanPipeline;
 class Window;
 
@@ -21,6 +21,7 @@ class VulkanSwapchain final {
 public:
     VulkanSwapchain(
         VulkanDevice& device,
+        VulkanMeshStore& meshes,
         VkSurfaceKHR surface,
         const Window& window,
         const VkClearColorValue& clearColor);
@@ -43,12 +44,15 @@ private:
     void create_render_pass();
     void create_framebuffers();
     void create_command_buffers();
-    void record_commands(std::uint32_t imageIndex);
+    void record_commands(
+        std::uint32_t imageIndex,
+        const RenderFrame& frame);
     void recreate();
     void destroy_swapchain_resources() noexcept;
     void destroy() noexcept;
 
     VulkanDevice& device;
+    VulkanMeshStore& meshes;
     VkSurfaceKHR surface;
     const Window& window;
     VkClearColorValue clearColor;
@@ -65,7 +69,6 @@ private:
     std::vector<VkCommandBuffer> commandBuffers;
     std::vector<std::unique_ptr<VulkanFrame>> frames;
     std::vector<VkFence> imagesInFlight;
-    std::unique_ptr<VulkanMesh> mesh;
     std::unique_ptr<VulkanPipeline> pipeline;
     std::size_t currentFrame = 0;
 };

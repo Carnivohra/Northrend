@@ -1,14 +1,13 @@
 #pragma once
 
 #include "Math/vector.hpp"
+#include "Render/mesh.hpp"
 
-#include <memory>
 #include <type_traits>
 
 namespace Northrend {
 
-class VulkanDevice;
-class VulkanMesh;
+class VulkanMeshStore;
 
 namespace VulkanTriangle {
 
@@ -20,7 +19,7 @@ struct Vertex final {
 static_assert(std::is_trivially_copyable_v<Vertex>);
 static_assert(std::is_standard_layout_v<Vertex>);
 
-[[nodiscard]] std::unique_ptr<VulkanMesh> create(VulkanDevice& device);
+[[nodiscard]] MeshHandle create(VulkanMeshStore& meshes);
 
 }
 

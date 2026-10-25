@@ -40,6 +40,8 @@ target_sources(Northrend
     Render/Vulkan/frame.hpp
     Render/Vulkan/mesh.cpp
     Render/Vulkan/mesh.hpp
+    Render/Vulkan/mesh_store.cpp
+    Render/Vulkan/mesh_store.hpp
     Render/Vulkan/pipeline.cpp
     Render/Vulkan/pipeline.hpp
     Render/Vulkan/Platform/surface.hpp
