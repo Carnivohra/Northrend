@@ -4,6 +4,8 @@ add_library(Northrend::Northrend ALIAS Northrend)
 target_sources(Northrend
   PRIVATE
     App/app.cpp
+    Assets/asset.cpp
+    Assets/filesystem.cpp
     Backend/session.cpp
     Backend/session.hpp
     ECS/registry.cpp
@@ -18,6 +20,9 @@ target_sources(Northrend
     FILES
       App/app.hpp
       App/launch.hpp
+      Assets/asset.hpp
+      Assets/filesystem.hpp
+      Assets/source.hpp
       Backend/application.hpp
       Backend/backend.hpp
       Backend/Window/handle.hpp
