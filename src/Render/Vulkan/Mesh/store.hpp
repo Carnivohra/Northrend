@@ -30,10 +30,12 @@ public:
         std::uint32_t indexCount,
         VkIndexType indexType);
     [[nodiscard]] const VulkanMesh* find(MeshHandle handle) const noexcept;
+    [[nodiscard]] std::uint64_t revision() const noexcept;
 
 private:
     VulkanDevice& device;
     std::vector<std::unique_ptr<VulkanMesh>> meshes;
+    std::uint64_t currentRevision = 0;
 };
 
 }

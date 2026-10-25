@@ -3,6 +3,7 @@
 #include <volk.h>
 
 #include <cstddef>
+#include <cstdint>
 #include <vector>
 
 namespace Northrend {
@@ -39,6 +40,9 @@ private:
     VulkanDevice& device;
     VkCommandPool pool = VK_NULL_HANDLE;
     std::vector<VkCommandBuffer> buffers;
+    std::vector<std::uint64_t> recordedInstanceRevisions;
+    std::vector<std::uint64_t> recordedMeshRevisions;
+    std::vector<std::uint8_t> recorded;
 };
 
 }

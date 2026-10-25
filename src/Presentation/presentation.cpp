@@ -54,6 +54,7 @@ RenderFrame Presentation::frame() {
     return {
         .snapshot = this->latestSnapshot,
         .instances = this->instances,
+        .instancesRevision = this->instancesRevision,
         .camera = this->cachedCamera,
         .cameraRevision = this->cachedCameraRevision
     };
@@ -89,6 +90,8 @@ void Presentation::refresh_instances() {
                 begin + count);
         }
     });
+
+    ++this->instancesRevision;
 }
 
 }

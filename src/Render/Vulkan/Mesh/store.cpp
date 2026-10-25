@@ -45,6 +45,7 @@ void VulkanMeshStore::store(
         indices,
         indexCount,
         indexType);
+    ++this->currentRevision;
 }
 
 const VulkanMesh* VulkanMeshStore::find(MeshHandle handle) const noexcept {
@@ -59,6 +60,10 @@ const VulkanMesh* VulkanMeshStore::find(MeshHandle handle) const noexcept {
     }
 
     return this->meshes[static_cast<std::size_t>(index)].get();
+}
+
+std::uint64_t VulkanMeshStore::revision() const noexcept {
+    return this->currentRevision;
 }
 
 }

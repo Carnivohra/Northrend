@@ -54,6 +54,7 @@ private:
     Entity cameraEntity;
     RenderSnapshot latestSnapshot;
     std::vector<RenderInstance> instances;
+    std::uint64_t instancesRevision = 0;
     RenderCamera cachedCamera;
     std::uint64_t cachedCameraRevision = 0;
 };

@@ -22,8 +22,7 @@ VulkanCommandContext::VulkanCommandContext(
     const VkCommandPoolCreateInfo createInfo{
         .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
         .pNext = nullptr,
-        .flags = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT |
-            VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
+        .flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
         .queueFamilyIndex = this->device.graphics_family()
     };
     const VkResult result = vkCreateCommandPool(
@@ -74,9 +73,16 @@ void VulkanCommandContext::allocate(std::size_t count) {
     }
 
     this->buffers = std::move(allocated);
+    this->recordedInstanceRevisions.assign(count, 0);
+    this->recordedMeshRevisions.assign(count, 0);
+    this->recorded.assign(count, false);
 }
 
 void VulkanCommandContext::release() noexcept {
+    this->recorded.clear();
+    this->recordedMeshRevisions.clear();
+    this->recordedInstanceRevisions.clear();
+
     if (this->buffers.empty()) {
         return;
     }
@@ -96,6 +102,16 @@ void VulkanCommandContext::record(
     VulkanMeshPipeline& pipeline,
     const VulkanMeshStore& meshes,
     const VkClearColorValue& clearColor) {
+    const std::uint64_t meshRevision = meshes.revision();
+
+    if (this->recorded[imageIndex] &&
+        this->recordedInstanceRevisions[imageIndex] ==
+            renderFrame.instancesRevision &&
+        this->recordedMeshRevisions[imageIndex] ==
+            meshRevision) {
+        return;
+    }
+
     const VkCommandBuffer commandBuffer =
         this->buffers[imageIndex];
     VkResult result = vkResetCommandBuffer(commandBuffer, 0);
@@ -168,6 +184,12 @@ void VulkanCommandContext::record(
             "Failed to record a Vulkan command buffer: " +
             std::to_string(result));
     }
+
+    this->recordedInstanceRevisions[imageIndex] =
+        renderFrame.instancesRevision;
+    this->recordedMeshRevisions[imageIndex] =
+        meshRevision;
+    this->recorded[imageIndex] = true;
 }
 
 VkCommandBuffer VulkanCommandContext::handle(
