@@ -10,7 +10,6 @@
 namespace Northrend {
 
 struct RenderFrame;
-struct WindowSize;
 class VulkanCommandContext;
 class VulkanDevice;
 class VulkanFrame;
@@ -42,7 +41,8 @@ private:
         const std::vector<VkSurfaceFormatKHR>& formats);
     [[nodiscard]] static VkExtent2D choose_surface_extent(
         const VkSurfaceCapabilitiesKHR& capabilities,
-        const WindowSize& windowSize);
+        int width,
+        int height);
     [[nodiscard]] static VkPresentModeKHR choose_present_mode(
         const std::vector<VkPresentModeKHR>& presentModes);
     [[nodiscard]] static VkCompositeAlphaFlagBitsKHR

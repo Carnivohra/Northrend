@@ -1,18 +1,23 @@
 #pragma once
 
 #include "Math/matrix.hpp"
+#include "Math/quaternion.hpp"
 #include "Math/vector.hpp"
+
+#include <cstdint>
 
 namespace Northrend {
 
-struct RenderCamera final {
+struct Camera final {
+    [[nodiscard]] Matrix4 view() const noexcept;
     [[nodiscard]] Matrix4 projection(float aspectRatio) const;
 
-    Matrix4 view;
-    Vector3 position;
+    Vector3 position{ 0.0F, 0.0F, 5.0F };
+    Quaternion orientation;
     float verticalFieldOfView = 1.0471975512F;
     float nearPlane = 0.1F;
     float farPlane = 10'000.0F;
+    std::uint64_t revision = 1;
 };
 
 }

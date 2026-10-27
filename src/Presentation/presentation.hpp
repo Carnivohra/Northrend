@@ -1,62 +1,57 @@
 #pragma once
 
-#include "ECS/registry.hpp"
-#include "Render/camera.hpp"
-#include "Render/frame.hpp"
-#include "Render/instance.hpp"
-#include "Render/snapshot.hpp"
-#include "World/camera.hpp"
+#include "Presentation/exchange.hpp"
+#include "Render/renderer.hpp"
+#include "Render/scene.hpp"
+#include "World/snapshot.hpp"
 
 #include <concepts>
-#include <cstdint>
-#include <functional>
-#include <stdexcept>
-#include <utility>
-#include <vector>
+#include <optional>
 
 namespace Northrend {
 
+class Window;
+
+template <typename Type>
+concept PresentationRenderer =
+    std::derived_from<Type, Renderer> &&
+    std::constructible_from<Type, const Window&>;
+
+template <PresentationRenderer RendererType>
 class Presentation final {
 public:
-    Presentation();
+    explicit Presentation(PresentationExchange& presentationExchange)
+        : presentationExchange(presentationExchange) {}
 
-    void synchronize(const RenderSnapshot& snapshot) noexcept;
+    void start(const Window& window) {
+        this->renderer.emplace(window);
+    }
 
-    [[nodiscard]] Registry& registry() noexcept;
-    [[nodiscard]] const Registry& registry() const noexcept;
-    [[nodiscard]] const Camera& active_camera() const;
-
-    template <typename Callback>
-        requires std::invocable<Callback, Camera&>
-    void modify_active_camera(Callback&& callback) {
-        const bool modified = this->state.modify<Camera>(
-            this->cameraEntity,
-            [&callback](Camera& camera) {
-                std::invoke(
-                    std::forward<Callback>(callback),
-                    camera);
-                ++camera.revision;
-            });
-
-        if (!modified) {
-            throw std::runtime_error(
-                "Presentation has no active camera");
+    void suspend() {
+        if (this->renderer) {
+            this->renderer->suspend();
         }
     }
 
-    [[nodiscard]] RenderFrame frame();
+    void tick() {
+        const WorldSnapshot& snapshot = this->presentationExchange.read_latest();
+
+        if (snapshot.sequence != this->latestSnapshot.sequence) {
+            this->latestSnapshot = snapshot;
+        }
+
+        this->renderer->frame(this->scene.frame());
+    }
+
+    void stop() {
+        this->renderer.reset();
+    }
 
 private:
-    void refresh_instances();
-
-    Registry state;
-    flecs::query<const RenderInstance> instanceQuery;
-    Entity cameraEntity;
-    RenderSnapshot latestSnapshot;
-    std::vector<RenderInstance> instances;
-    std::uint64_t instancesRevision = 0;
-    RenderCamera cachedCamera;
-    std::uint64_t cachedCameraRevision = 0;
+    PresentationExchange& presentationExchange;
+    WorldSnapshot latestSnapshot;
+    RenderScene scene;
+    std::optional<RendererType> renderer;
 };
 
 }

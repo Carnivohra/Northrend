@@ -2,8 +2,8 @@
 
 target_sources(Northrend
   PRIVATE
-    Backend/SDL3/context.cpp
-    Backend/SDL3/context.hpp
+    Backend/SDL3/window.cpp
+    Backend/SDL3/window.hpp
     Backend/SDL3/sdl3.cpp
   PUBLIC
     FILE_SET HEADERS

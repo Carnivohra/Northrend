@@ -1,6 +1,5 @@
 #pragma once
 
-#include "Thread/rate.hpp"
 #include "Thread/task.hpp"
 
 #include <atomic>
@@ -9,6 +8,7 @@
 #include <cstdint>
 #include <exception>
 #include <mutex>
+#include <stdexcept>
 #include <thread>
 #include <utility>
 
@@ -17,9 +17,9 @@ namespace Northrend {
 template <ThreadTask Task>
 class TaskRunner final {
 public:
-    explicit TaskRunner(Task task, TickRate tickRate)
+    explicit TaskRunner(Task task, int tickRate)
         : tickRate(tickRate),
-          tickInterval(tickRate.interval()),
+          tickInterval(interval_for(tickRate)),
           worker(
               [this, task = std::move(task)]() mutable {
                   this->run(task);
@@ -44,12 +44,14 @@ public:
         return this->isPaused;
     }
 
-    [[nodiscard]] TickRate tick_rate() const noexcept {
+    [[nodiscard]] int tick_rate() const noexcept {
         const std::scoped_lock lock(this->mutex);
         return this->tickRate;
     }
 
-    void set_tick_rate(TickRate tickRate) noexcept {
+    void set_tick_rate(int tickRate) {
+        const ThreadDuration interval = interval_for(tickRate);
+
         {
             const std::scoped_lock lock(this->mutex);
 
@@ -58,7 +60,7 @@ public:
             }
 
             this->tickRate = tickRate;
-            this->tickInterval = tickRate.interval();
+            this->tickInterval = interval;
             ++this->revision;
         }
 
@@ -121,6 +123,26 @@ private:
     using Clock = std::chrono::steady_clock;
 
     static constexpr std::uint32_t MaximumCatchUpTicks = 4;
+
+    static ThreadDuration interval_for(int tickRate) {
+        if (tickRate < 0) {
+            throw std::invalid_argument(
+                "Tick rate must not be negative");
+        }
+
+        if (tickRate == 0) {
+            return ThreadDuration::zero();
+        }
+
+        const ThreadDuration interval =
+            std::chrono::duration_cast<ThreadDuration>(
+                std::chrono::seconds(1)) / tickRate;
+
+        // A positive rate must remain paced at the clock resolution.
+        return interval > ThreadDuration::zero()
+            ? interval
+            : ThreadDuration(1);
+    }
 
     static Clock::time_point advance_deadline(
         Clock::time_point deadline,
@@ -292,7 +314,7 @@ private:
     std::exception_ptr failure;
     std::atomic_bool failureAvailable = false;
     std::uint64_t revision = 0;
-    TickRate tickRate;
+    int tickRate;
     ThreadDuration tickInterval;
     bool isPaused = false;
     bool isRunning = true;

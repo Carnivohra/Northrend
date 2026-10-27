@@ -1,7 +1,7 @@
 #include "Backend/SDL3/sdl3.hpp"
 
-#include "Backend/SDL3/context.hpp"
-#include "Backend/session.hpp"
+#include "Backend/SDL3/window.hpp"
+#include <SDL3/SDL.h>
 
 #include <stdexcept>
 #include <string>
@@ -21,24 +21,41 @@ SDL3Backend::SDL3Backend(std::string title, int width, int height)
 }
 
 void SDL3Backend::run(BackendApplication& application) {
-    SDL3Context context(this->title, this->width, this->height);
-    BackendSession session(application);
+    SDL3Window window(this->title, this->width, this->height);
+    this->execute(application, window);
+}
 
-    session.start(context);
-
+bool SDL3Backend::process_events(Window& window) {
     bool running = true;
+    SDL_Event event;
 
-    while (running) {
-        running = context.process_events(session);
-
-        if (running && session.active()) {
-            application.tick();
-        } else if (running) {
-            context.delay(10);
+    while (SDL_PollEvent(&event)) {
+        switch (event.type) {
+            case SDL_EVENT_QUIT:
+            case SDL_EVENT_WINDOW_CLOSE_REQUESTED:
+                running = false;
+                break;
+            case SDL_EVENT_WINDOW_MINIMIZED:
+                this->suspend();
+                break;
+            case SDL_EVENT_WINDOW_RESTORED:
+                this->resume();
+                break;
+            case SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED:
+                static_cast<SDL3Window&>(window).resize(
+                    event.window.data1,
+                    event.window.data2);
+                break;
+            default:
+                break;
         }
     }
 
-    session.stop();
+    return running;
+}
+
+void SDL3Backend::delay(std::uint32_t milliseconds) const noexcept {
+    SDL_Delay(milliseconds);
 }
 
 }

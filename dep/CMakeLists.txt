@@ -16,3 +16,4 @@ endforeach()
 
 add_subdirectory(Flecs)
 add_subdirectory(GLM)
+add_subdirectory(StormLib)

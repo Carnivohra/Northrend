@@ -49,9 +49,10 @@ VulkanSwapchain::~VulkanSwapchain() {
 }
 
 void VulkanSwapchain::render(const RenderFrame& renderFrame) {
-    const WindowSize windowSize = this->window.size();
+    const int width = this->window.width();
+    const int height = this->window.height();
 
-    if (windowSize.width == 0 || windowSize.height == 0) {
+    if (width <= 0 || height <= 0) {
         return;
     }
 
@@ -120,6 +121,7 @@ void VulkanSwapchain::render(const RenderFrame& renderFrame) {
     this->pipeline->update_camera(
         imageIndex,
         renderFrame.camera,
+        renderFrame.view,
         renderFrame.cameraRevision,
         this->extent);
     this->commands->record(
@@ -226,9 +228,10 @@ void VulkanSwapchain::create_frame_resources() {
 }
 
 void VulkanSwapchain::create_swapchain_resources() {
-    const WindowSize windowSize = this->window.size();
+    const int width = this->window.width();
+    const int height = this->window.height();
 
-    if (windowSize.width == 0 || windowSize.height == 0) {
+    if (width <= 0 || height <= 0) {
         return;
     }
 
@@ -305,7 +308,8 @@ void VulkanSwapchain::create_swapchain_resources() {
     this->imageFormat = surfaceFormat.format;
     this->extent = choose_surface_extent(
         capabilities,
-        windowSize);
+        width,
+        height);
 
     std::uint32_t imageCount =
         std::max(capabilities.minImageCount, 3U);
@@ -401,9 +405,10 @@ void VulkanSwapchain::create_swapchain_resources() {
 }
 
 void VulkanSwapchain::recreate() {
-    const WindowSize windowSize = this->window.size();
+    const int width = this->window.width();
+    const int height = this->window.height();
 
-    if (windowSize.width == 0 || windowSize.height == 0) {
+    if (width <= 0 || height <= 0) {
         return;
     }
 
@@ -462,7 +467,8 @@ VkSurfaceFormatKHR VulkanSwapchain::choose_surface_format(
 
 VkExtent2D VulkanSwapchain::choose_surface_extent(
     const VkSurfaceCapabilitiesKHR& capabilities,
-    const WindowSize& windowSize) {
+    int width,
+    int height) {
     if (capabilities.currentExtent.width !=
         std::numeric_limits<std::uint32_t>::max()) {
         return capabilities.currentExtent;
@@ -470,11 +476,11 @@ VkExtent2D VulkanSwapchain::choose_surface_extent(
 
     return VkExtent2D{
         .width = std::clamp(
-            windowSize.width,
+            static_cast<std::uint32_t>(width),
             capabilities.minImageExtent.width,
             capabilities.maxImageExtent.width),
         .height = std::clamp(
-            windowSize.height,
+            static_cast<std::uint32_t>(height),
             capabilities.minImageExtent.height,
             capabilities.maxImageExtent.height)
     };

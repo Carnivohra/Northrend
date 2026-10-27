@@ -5,34 +5,35 @@ target_sources(Northrend
   PRIVATE
     App/app.cpp
     Asset/data.cpp
+    Asset/directory.cpp
     Asset/id.cpp
-    Asset/Filesystem/source.cpp
-    Backend/session.cpp
-    Backend/session.hpp
+    Asset/mpq.cpp
+    Asset/storage.cpp
+    Backend/backend.cpp
     ECS/registry.cpp
     Math/Glm/matrix.cpp
     Math/Glm/matrix.hpp
     Math/matrix.cpp
-    Presentation/presentation.cpp
-    Render/Mesh/registry.cpp
     Render/camera.cpp
-    World/Camera/extraction.cpp
-    World/simulation.cpp
+    Render/Mesh/allocator.cpp
+    Render/scene.cpp
+    Simulation/simulation.cpp
     World/world.cpp
   PUBLIC
     FILE_SET HEADERS
     BASE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}
     FILES
       App/app.hpp
-      App/launch.hpp
+      App/launcher.hpp
       Asset/data.hpp
+      Asset/directory.hpp
       Asset/id.hpp
-      Asset/Filesystem/source.hpp
+      Asset/mpq.hpp
       Asset/source.hpp
+      Asset/storage.hpp
       Backend/application.hpp
       Backend/backend.hpp
-      Backend/Window/handle.hpp
-      Backend/Window/size.hpp
+      Backend/Window/Handle/handle.hpp
       Backend/Window/window.hpp
       ECS/entity.hpp
       ECS/registry.hpp
@@ -41,21 +42,19 @@ target_sources(Northrend
       Math/matrix.hpp
       Math/quaternion.hpp
       Math/vector.hpp
+      Presentation/exchange.hpp
       Presentation/presentation.hpp
       Render/camera.hpp
-      Render/exchange.hpp
       Render/frame.hpp
       Render/instance.hpp
-      Render/mesh.hpp
-      Render/Mesh/registry.hpp
+      Render/Mesh/allocator.hpp
+      Render/Mesh/mesh.hpp
       Render/renderer.hpp
-      Render/snapshot.hpp
-      Thread/rate.hpp
+      Render/scene.hpp
+      Simulation/simulation.hpp
       Thread/runner.hpp
       Thread/task.hpp
-      World/camera.hpp
-      World/Camera/extraction.hpp
-      World/simulation.hpp
+      World/snapshot.hpp
       World/world.hpp
       ${NORTHREND_PLATFORM_HEADERS})
 
@@ -85,4 +84,5 @@ target_link_libraries(Northrend
     flecs::flecs_static
   PRIVATE
     glm::glm
+    StormLib::storm
     Northrend::CompileOptions)

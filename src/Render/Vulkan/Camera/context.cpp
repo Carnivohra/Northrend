@@ -33,7 +33,8 @@ VulkanCameraContext::~VulkanCameraContext() {
 
 void VulkanCameraContext::update(
     std::size_t imageIndex,
-    const RenderCamera& camera,
+    const Camera& camera,
+    const Matrix4& view,
     std::uint64_t revision,
     VkExtent2D extent) {
     const bool extentChanged =
@@ -50,7 +51,7 @@ void VulkanCameraContext::update(
         // Vulkan framebuffer coordinates use the opposite vertical direction.
         projection.values[5] *= -1.0F;
 
-        this->matrix = projection * camera.view;
+        this->matrix = projection * view;
         this->sourceExtent = extent;
         this->sourceRevision = revision;
         ++this->uploadRevision;

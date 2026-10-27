@@ -11,7 +11,7 @@
 
 namespace Northrend {
 
-struct RenderCamera;
+struct Camera;
 class VulkanDevice;
 
 class VulkanCameraContext final {
@@ -27,7 +27,8 @@ public:
 
     void update(
         std::size_t imageIndex,
-        const RenderCamera& camera,
+        const Camera& camera,
+        const Matrix4& view,
         std::uint64_t revision,
         VkExtent2D extent);
     void bind(

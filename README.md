@@ -33,7 +33,7 @@ for inclusion in Northrend is dual-licensed under the same terms, without
 additional terms or conditions.
 
 Third-party components remain subject to their respective license terms. See
-[Third-Party Notices](THIRD_PARTY_NOTICES.md) for details.
+[Third-Party Notices](dep/THIRD_PARTY_NOTICES.md) for details.
 
 ## Legal Notice
 

@@ -34,7 +34,7 @@ set(NORTHREND_ANDROID_BOOTSTRAP
   FORCE)
 
 if(NORTHREND_ANDROID_BOOTSTRAP)
-  include(cmake/functions/AddGame.cmake)
+  include(cmake/functions/game.cmake)
   return()
 endif()
 
@@ -99,11 +99,11 @@ add_library(northrend-compile-options INTERFACE)
 add_library(Northrend::CompileOptions ALIAS northrend-compile-options)
 
 if(MSVC)
-  include(cmake/compiler/msvc/settings.cmake)
+  include(cmake/compiler/msvc.cmake)
 elseif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-  include(cmake/compiler/clang/settings.cmake)
+  include(cmake/compiler/clang.cmake)
 elseif(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-  include(cmake/compiler/gcc/settings.cmake)
+  include(cmake/compiler/gcc.cmake)
 else()
   message(FATAL_ERROR "Unsupported compiler: ${CMAKE_CXX_COMPILER_ID}")
 endif()
@@ -132,7 +132,7 @@ endif()
 
 # Consumer projects receive the same target factory through FetchContent.
 
-include(cmake/functions/AddGame.cmake)
+include(cmake/functions/game.cmake)
 
 add_subdirectory(dep)
 add_subdirectory(src)

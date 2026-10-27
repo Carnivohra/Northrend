@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Math/matrix.hpp"
-#include "Render/mesh.hpp"
+#include "Render/Mesh/mesh.hpp"
 
 #include <type_traits>
 

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Backend/Window/handle.hpp"
+#include "Backend/Window/Handle/handle.hpp"
 
 namespace Northrend::VulkanPlatform {
 

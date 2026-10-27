@@ -1,7 +1,6 @@
 #pragma once
 
-#include "Backend/Window/handle.hpp"
-#include "Backend/Window/size.hpp"
+#include "Backend/Window/Handle/handle.hpp"
 
 namespace Northrend {
 
@@ -10,7 +9,8 @@ public:
     virtual ~Window() = default;
 
     virtual NativeWindowHandle native_handle() const = 0;
-    virtual WindowSize size() const = 0;
+    virtual int width() const = 0;
+    virtual int height() const = 0;
 };
 
 }
