@@ -106,12 +106,12 @@ public:
     }
 
 private:
-    GamePlan plan;
-    AssetStorage assets;
     PresentationExchange presentationExchange;
     PresentationType presentation{ this->presentationExchange };
     std::optional<TaskRunner<Simulation>> simulation;
     Fps fps;
+    GamePlan plan;
+    AssetStorage assets;
 };
 
 }

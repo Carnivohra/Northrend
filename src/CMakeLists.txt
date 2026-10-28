@@ -40,6 +40,7 @@ target_sources(Northrend
       Backend/Window/Handle/handle.hpp
       Backend/Window/window.hpp
       Config/config.hpp
+      Config/plan.hpp
       Config/wtf.hpp
       ECS/entity.hpp
       ECS/registry.hpp
