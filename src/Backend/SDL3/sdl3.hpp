@@ -2,6 +2,7 @@
 
 #include "Backend/backend.hpp"
 
+#include <filesystem>
 #include <string>
 
 namespace Northrend {
@@ -9,6 +10,8 @@ namespace Northrend {
 class SDL3Backend final : public Backend {
 public:
     SDL3Backend(std::string title, int width, int height);
+
+    [[nodiscard]] std::filesystem::path base_path() const override;
 
     void run(BackendApplication& application) override;
 

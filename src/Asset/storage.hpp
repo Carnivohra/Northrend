@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Asset/plan.hpp"
 #include "Asset/source.hpp"
 
 #include <memory>
@@ -10,6 +11,7 @@ namespace Northrend {
 class AssetStorage final {
 public:
     AssetStorage() = default;
+    explicit AssetStorage(const AssetPlan& plan);
 
     AssetStorage(const AssetStorage&) = delete;
     AssetStorage& operator=(const AssetStorage&) = delete;

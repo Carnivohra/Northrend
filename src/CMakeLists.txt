@@ -10,6 +10,8 @@ target_sources(Northrend
     Asset/mpq.cpp
     Asset/storage.cpp
     Backend/backend.cpp
+    Config/config.cpp
+    Config/wtf.cpp
     ECS/registry.cpp
     Math/Glm/matrix.cpp
     Math/Glm/matrix.hpp
@@ -28,17 +30,22 @@ target_sources(Northrend
       Asset/data.hpp
       Asset/directory.hpp
       Asset/id.hpp
+      Asset/mount.hpp
       Asset/mpq.hpp
+      Asset/plan.hpp
       Asset/source.hpp
       Asset/storage.hpp
       Backend/application.hpp
       Backend/backend.hpp
       Backend/Window/Handle/handle.hpp
       Backend/Window/window.hpp
+      Config/config.hpp
+      Config/wtf.hpp
       ECS/entity.hpp
       ECS/registry.hpp
       Engine/engine.hpp
       Engine/fps.hpp
+      Game/plan.hpp
       Math/matrix.hpp
       Math/quaternion.hpp
       Math/vector.hpp

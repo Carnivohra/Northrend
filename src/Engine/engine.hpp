@@ -1,7 +1,9 @@
 #pragma once
 
+#include "Asset/storage.hpp"
 #include "Backend/application.hpp"
 #include "Engine/fps.hpp"
+#include "Game/plan.hpp"
 #include "Presentation/exchange.hpp"
 #include "Simulation/simulation.hpp"
 #include "Thread/runner.hpp"
@@ -11,6 +13,7 @@
 #include <exception>
 #include <iostream>
 #include <optional>
+#include <utility>
 
 namespace Northrend {
 
@@ -29,7 +32,9 @@ concept EnginePresentation =
 template <EnginePresentation PresentationType>
 class Engine final : public BackendApplication {
 public:
-    Engine() = default;
+    explicit Engine(GamePlan plan)
+        : plan(std::move(plan)),
+          assets(this->plan.assets) {}
 
     void started(const Window& window) override {
         try {
@@ -101,6 +106,8 @@ public:
     }
 
 private:
+    GamePlan plan;
+    AssetStorage assets;
     PresentationExchange presentationExchange;
     PresentationType presentation{ this->presentationExchange };
     std::optional<TaskRunner<Simulation>> simulation;

@@ -20,6 +20,18 @@ SDL3Backend::SDL3Backend(std::string title, int width, int height)
     }
 }
 
+std::filesystem::path SDL3Backend::base_path() const {
+    const char* path = SDL_GetBasePath();
+
+    if (!path) {
+        throw std::runtime_error(
+            "SDL3 could not resolve the application base path: " +
+            std::string(SDL_GetError()));
+    }
+
+    return std::filesystem::path(path);
+}
+
 void SDL3Backend::run(BackendApplication& application) {
     SDL3Window window(this->title, this->width, this->height);
     this->execute(application, window);

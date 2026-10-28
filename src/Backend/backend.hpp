@@ -3,6 +3,7 @@
 #include "Backend/application.hpp"
 
 #include <cstdint>
+#include <filesystem>
 
 namespace Northrend {
 
@@ -10,6 +11,7 @@ class Backend {
 public:
     virtual ~Backend() = default;
 
+    [[nodiscard]] virtual std::filesystem::path base_path() const = 0;
     virtual void run(BackendApplication& application) = 0;
 
 protected:

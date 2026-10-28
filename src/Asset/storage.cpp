@@ -1,10 +1,28 @@
 #include "Asset/storage.hpp"
 
+#include "Asset/directory.hpp"
+#include "Asset/mpq.hpp"
+
 #include <stdexcept>
 #include <string>
 #include <utility>
 
 namespace Northrend {
+
+AssetStorage::AssetStorage(const AssetPlan& plan) {
+    this->sources.reserve(plan.mounts.size());
+
+    for (const AssetMount& mount : plan.mounts) {
+        switch (mount.type) {
+        case AssetMount::Type::directory:
+            this->mount(std::make_unique<AssetDirectory>(mount.path));
+            break;
+        case AssetMount::Type::mpq:
+            this->mount(std::make_unique<MpqArchive>(mount.path));
+            break;
+        }
+    }
+}
 
 void AssetStorage::mount(std::unique_ptr<AssetSource> source) {
     if (!source) {
