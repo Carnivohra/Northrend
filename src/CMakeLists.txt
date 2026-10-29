@@ -5,6 +5,10 @@ target_sources(Northrend
   PRIVATE
     App/app.cpp
     Asset/Chunk/reader.cpp
+    Asset/Stream/request.cpp
+    Asset/Stream/state.cpp
+    Asset/Stream/streamer.cpp
+    Asset/Stream/state.hpp
     Asset/data.cpp
     Asset/directory.cpp
     Asset/id.cpp
@@ -31,6 +35,9 @@ target_sources(Northrend
       Asset/Chunk/chunk.hpp
       Asset/Chunk/id.hpp
       Asset/Chunk/reader.hpp
+      Asset/Stream/priority.hpp
+      Asset/Stream/request.hpp
+      Asset/Stream/streamer.hpp
       Asset/data.hpp
       Asset/directory.hpp
       Asset/id.hpp
@@ -97,4 +104,5 @@ target_link_libraries(Northrend
   PRIVATE
     glm::glm
     StormLib::storm
+    Threads::Threads
     Northrend::CompileOptions)

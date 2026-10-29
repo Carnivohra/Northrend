@@ -134,5 +134,7 @@ endif()
 
 include(cmake/functions/game.cmake)
 
+find_package(Threads REQUIRED)
+
 add_subdirectory(dep)
 add_subdirectory(src)

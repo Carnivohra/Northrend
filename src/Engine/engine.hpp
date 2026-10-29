@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Asset/Stream/streamer.hpp"
 #include "Asset/storage.hpp"
 #include "Backend/application.hpp"
 #include "Engine/fps.hpp"
@@ -8,11 +9,14 @@
 #include "Simulation/simulation.hpp"
 #include "Thread/runner.hpp"
 
+#include <algorithm>
 #include <concepts>
+#include <cstddef>
 #include <cstdint>
 #include <exception>
 #include <iostream>
 #include <optional>
+#include <thread>
 
 namespace Northrend {
 
@@ -29,7 +33,7 @@ concept EnginePresentation =
 
 template <EnginePresentation PresentationType> class Engine final : public BackendApplication {
 public:
-    explicit Engine(const GamePlan& plan) : assets(plan.assets) {}
+    explicit Engine(const GamePlan& plan) : assets(plan.assets), assetStreamer(this->assets, asset_worker_count()) {}
 
     void started(const Window& window) override {
         try {
@@ -90,17 +94,25 @@ public:
             }
         }
 
+        this->assetStreamer.stop();
+
         if (failure) {
             std::rethrow_exception(failure);
         }
     }
 
 private:
+    [[nodiscard]] static std::size_t asset_worker_count() noexcept {
+        const std::size_t concurrency = std::thread::hardware_concurrency();
+        return std::clamp(concurrency / 4, std::size_t {1}, std::size_t {4});
+    }
+
     PresentationExchange presentationExchange;
     PresentationType presentation {this->presentationExchange};
     std::optional<TaskRunner<Simulation>> simulation;
     Fps fps;
     AssetStorage assets;
+    AssetStreamer assetStreamer;
 };
 
 }
