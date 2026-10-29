@@ -25,6 +25,7 @@ target_sources(Northrend
     Render/Mesh/allocator.cpp
     Render/scene.cpp
     Simulation/simulation.cpp
+    Thread/worker.cpp
     World/world.cpp
   PUBLIC
     FILE_SET HEADERS
@@ -73,6 +74,7 @@ target_sources(Northrend
       Simulation/simulation.hpp
       Thread/runner.hpp
       Thread/task.hpp
+      Thread/worker.hpp
       World/snapshot.hpp
       World/world.hpp
       ${NORTHREND_PLATFORM_HEADERS})

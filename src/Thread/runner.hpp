@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Thread/task.hpp"
+#include "Thread/worker.hpp"
 
 #include <atomic>
 #include <chrono>
@@ -9,7 +10,6 @@
 #include <exception>
 #include <mutex>
 #include <stdexcept>
-#include <thread>
 #include <utility>
 
 namespace Northrend {
@@ -19,7 +19,7 @@ public:
     explicit TaskRunner(Task task, int tickRate) :
         tickRate(tickRate),
         tickInterval(interval_for(tickRate)),
-        worker([this, task = std::move(task)]() mutable { this->run(task); }) {}
+        worker([this, task = std::move(task)](Worker&) mutable { this->run(task); }) {}
 
     ~TaskRunner() {
         this->stop_without_rethrow();
@@ -204,14 +204,14 @@ private:
         while (true) {
             std::unique_lock lock(this->mutex);
 
-            if (this->stopRequested) {
+            if (this->worker.stopping()) {
                 break;
             }
 
             if (this->isPaused) {
-                this->wake.wait(lock, [this] { return this->stopRequested || !this->isPaused; });
+                this->wake.wait(lock, [this] { return this->worker.stopping() || !this->isPaused; });
 
-                if (this->stopRequested) {
+                if (this->worker.stopping()) {
                     break;
                 }
 
@@ -228,7 +228,7 @@ private:
                 catchUpTicks = 0;
             }
 
-            if (this->stopRequested) {
+            if (this->worker.stopping()) {
                 break;
             }
 
@@ -247,7 +247,7 @@ private:
 
             if (now < deadline) {
                 const bool interrupted = this->wake.wait_until(lock, deadline, [this, observedRevision] {
-                    return this->stopRequested || this->isPaused || this->revision != observedRevision;
+                    return this->worker.stopping() || this->isPaused || this->revision != observedRevision;
                 });
 
                 if (interrupted) {
@@ -267,11 +267,7 @@ private:
             return;
         }
 
-        {
-            const std::scoped_lock lock(this->mutex);
-            this->stopRequested = true;
-        }
-
+        this->worker.request_stop();
         this->wake.notify_all();
         this->worker.join();
     }
@@ -285,8 +281,7 @@ private:
     ThreadDuration tickInterval;
     bool isPaused = false;
     bool isRunning = true;
-    bool stopRequested = false;
-    std::thread worker;
+    Worker worker;
 };
 
 }
