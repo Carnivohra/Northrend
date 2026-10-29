@@ -1,7 +1,7 @@
 #include "Backend/SDL3/sdl3.hpp"
 
 #include "Backend/SDL3/window.hpp"
-#include "Game/plan.hpp"
+#include "Backend/plan.hpp"
 
 #include <SDL3/SDL.h>
 
@@ -20,8 +20,8 @@ std::filesystem::path SDL3Backend::base_path() const {
     return std::filesystem::path(path);
 }
 
-void SDL3Backend::run(BackendApplication& application, const GamePlan& plan) {
-    SDL3Window window(plan.name);
+void SDL3Backend::run(BackendApplication& application, const BackendPlan& plan) {
+    SDL3Window window(plan.title);
     this->execute(application, window);
 }
 

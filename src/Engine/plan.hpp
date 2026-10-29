@@ -4,12 +4,10 @@
 #include "Config/plan.hpp"
 
 #include <optional>
-#include <string>
 
 namespace Northrend {
 
-struct GamePlan final {
-    std::string name;
+struct EnginePlan final {
     std::optional<ConfigPlan> config;
     AssetPlan assets;
 };

@@ -4,18 +4,18 @@ namespace Northrend {
 
 class Backend;
 class BackendApplication;
-struct GamePlan;
+struct AppPlan;
 
 class App final {
 public:
-    App(Backend& backend, BackendApplication& application, const GamePlan& plan) noexcept;
+    App(Backend& backend, BackendApplication& application, const AppPlan& plan) noexcept;
 
     void run();
 
 private:
     Backend& backend;
     BackendApplication& application;
-    const GamePlan& plan;
+    const AppPlan& plan;
 };
 
 }

@@ -7,14 +7,14 @@
 
 namespace Northrend {
 
-struct GamePlan;
+struct BackendPlan;
 
 class Backend {
 public:
     virtual ~Backend() = default;
 
     [[nodiscard]] virtual std::filesystem::path base_path() const = 0;
-    virtual void run(BackendApplication& application, const GamePlan& plan) = 0;
+    virtual void run(BackendApplication& application, const BackendPlan& plan) = 0;
 
 protected:
     void execute(BackendApplication& application, Window& window);

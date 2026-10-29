@@ -49,6 +49,7 @@ target_sources(Northrend
       Asset/storage.hpp
       Backend/application.hpp
       Backend/backend.hpp
+      Backend/plan.hpp
       Backend/Window/Handle/handle.hpp
       Backend/Window/window.hpp
       Config/config.hpp
@@ -58,7 +59,8 @@ target_sources(Northrend
       ECS/registry.hpp
       Engine/engine.hpp
       Engine/fps.hpp
-      Game/plan.hpp
+      Engine/plan.hpp
+      App/plan.hpp
       Math/matrix.hpp
       Math/quaternion.hpp
       Math/vector.hpp

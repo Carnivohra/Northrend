@@ -4,7 +4,7 @@
 #include "Asset/storage.hpp"
 #include "Backend/application.hpp"
 #include "Engine/fps.hpp"
-#include "Game/plan.hpp"
+#include "Engine/plan.hpp"
 #include "Presentation/exchange.hpp"
 #include "Simulation/simulation.hpp"
 #include "Thread/runner.hpp"
@@ -33,7 +33,7 @@ concept EnginePresentation =
 
 template <EnginePresentation PresentationType> class Engine final : public BackendApplication {
 public:
-    explicit Engine(const GamePlan& plan) : assets(plan.assets), assetStreamer(this->assets, asset_worker_count()) {}
+    explicit Engine(const EnginePlan& plan) : assets(plan.assets), assetStreamer(this->assets, asset_worker_count()) {}
 
     void started(const Window& window) override {
         try {

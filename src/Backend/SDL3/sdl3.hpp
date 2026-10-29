@@ -10,7 +10,7 @@ class SDL3Backend final : public Backend {
 public:
     [[nodiscard]] std::filesystem::path base_path() const override;
 
-    void run(BackendApplication& application, const GamePlan& plan) override;
+    void run(BackendApplication& application, const BackendPlan& plan) override;
 
 private:
     bool process_events(Window& window) override;
