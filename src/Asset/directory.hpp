@@ -11,7 +11,7 @@ public:
     explicit AssetDirectory(std::filesystem::path root);
 
     [[nodiscard]] bool contains(const AssetId& asset) const override;
-    [[nodiscard]] AssetData read(const AssetId& asset) const override;
+    [[nodiscard]] std::optional<AssetData> try_read(const AssetId& asset) const override;
 
 private:
     [[nodiscard]] std::filesystem::path resolve(const AssetId& asset) const;

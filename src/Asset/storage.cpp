@@ -3,6 +3,7 @@
 #include "Asset/directory.hpp"
 #include "Asset/mpq.hpp"
 
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <utility>
@@ -44,8 +45,10 @@ bool AssetStorage::contains(const AssetId& asset) const {
 
 AssetData AssetStorage::read(const AssetId& asset) const {
     for (auto source = this->sources.rbegin(); source != this->sources.rend(); ++source) {
-        if ((*source)->contains(asset)) {
-            return (*source)->read(asset);
+        std::optional<AssetData> data = (*source)->try_read(asset);
+
+        if (data) {
+            return std::move(*data);
         }
     }
 

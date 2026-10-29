@@ -4,6 +4,7 @@ add_library(Northrend::Northrend ALIAS Northrend)
 target_sources(Northrend
   PRIVATE
     App/app.cpp
+    Asset/Chunk/reader.cpp
     Asset/data.cpp
     Asset/directory.cpp
     Asset/id.cpp
@@ -27,6 +28,9 @@ target_sources(Northrend
     FILES
       App/app.hpp
       App/launcher.hpp
+      Asset/Chunk/chunk.hpp
+      Asset/Chunk/id.hpp
+      Asset/Chunk/reader.hpp
       Asset/data.hpp
       Asset/directory.hpp
       Asset/id.hpp

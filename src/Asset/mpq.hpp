@@ -19,7 +19,7 @@ public:
     MpqArchive& operator=(MpqArchive&&) = delete;
 
     [[nodiscard]] bool contains(const AssetId& asset) const override;
-    [[nodiscard]] AssetData read(const AssetId& asset) const override;
+    [[nodiscard]] std::optional<AssetData> try_read(const AssetId& asset) const override;
 
 private:
     [[nodiscard]] static std::string entry_name(const AssetId& asset);

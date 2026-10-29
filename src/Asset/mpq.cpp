@@ -38,14 +38,20 @@ bool MpqArchive::contains(const AssetId& asset) const {
     return SFileHasFile(this->handle, name.c_str());
 }
 
-AssetData MpqArchive::read(const AssetId& asset) const {
+std::optional<AssetData> MpqArchive::try_read(const AssetId& asset) const {
     const std::string name = entry_name(asset);
     const std::scoped_lock lock(this->access);
     HANDLE openedFile = nullptr;
 
     if (!SFileOpenFileEx(this->handle, name.c_str(), SFILE_OPEN_FROM_MPQ, &openedFile)) {
+        const DWORD error = SErrGetLastError();
+
+        if (error == ERROR_FILE_NOT_FOUND) {
+            return std::nullopt;
+        }
+
         throw std::runtime_error("Failed to open MPQ asset: " + std::string(asset.path()) + " in " +
-            this->path.string() + " (StormLib error " + std::to_string(SErrGetLastError()) + ')');
+            this->path.string() + " (StormLib error " + std::to_string(error) + ')');
     }
 
     const auto closeFile = [](void* file) noexcept { SFileCloseFile(file); };

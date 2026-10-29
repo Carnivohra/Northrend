@@ -24,11 +24,18 @@ bool AssetDirectory::contains(const AssetId& asset) const {
     return exists && !error;
 }
 
-AssetData AssetDirectory::read(const AssetId& asset) const {
+std::optional<AssetData> AssetDirectory::try_read(const AssetId& asset) const {
     const std::filesystem::path path = this->resolve(asset);
     std::ifstream stream(path, std::ios::binary | std::ios::ate);
 
     if (!stream) {
+        std::error_code error;
+        const bool exists = std::filesystem::exists(path, error);
+
+        if (!exists && !error) {
+            return std::nullopt;
+        }
+
         throw std::runtime_error("Failed to open asset: " + path.string());
     }
 
