@@ -2,41 +2,16 @@
 
 #include "Asset/Stream/state.hpp"
 #include "Asset/storage.hpp"
+#include "Thread/pool.hpp"
 
-#include <algorithm>
+#include <cstdint>
 #include <exception>
 #include <stdexcept>
 #include <utility>
 
 namespace Northrend {
 
-AssetStreamer::AssetStreamer(AssetStorage& storage, std::size_t workerCount) :
-    storage(storage), workerCount(workerCount) {
-    if (workerCount == 0) {
-        throw std::invalid_argument("Asset streamer requires at least one worker");
-    }
-
-    this->workers.reserve(workerCount);
-
-    try {
-        for (std::size_t index = 0; index < workerCount; ++index) {
-            this->workers.emplace_back([this] { this->work(); });
-        }
-    } catch (...) {
-        {
-            const std::scoped_lock lock(this->mutex);
-            this->stopping = true;
-        }
-
-        this->wake.notify_all();
-
-        for (std::thread& worker : this->workers) {
-            worker.join();
-        }
-
-        throw;
-    }
-}
+AssetStreamer::AssetStreamer(AssetStorage& storage, ThreadPool& pool) noexcept : storage(storage), pool(pool) {}
 
 AssetStreamer::~AssetStreamer() {
     this->stop();
@@ -50,29 +25,44 @@ AssetRequest AssetStreamer::request(AssetId asset, AssetPriority priority) {
         throw std::runtime_error("Asset streamer is stopped");
     }
 
+    this->prune();
+
     if (const auto position = this->active.find(key); position != this->active.end()) {
         if (std::shared_ptr<AssetState> state = position->second.lock()) {
-            if (state->queued() && static_cast<std::uint8_t>(priority) > static_cast<std::uint8_t>(state->priority())) {
-                this->promote(state, priority);
+            const auto workPosition = this->work.find(key);
+
+            if (state->queued() && workPosition != this->work.end() &&
+                static_cast<std::uint8_t>(priority) > static_cast<std::uint8_t>(state->priority()) &&
+                this->pool.promote(workPosition->second, priority)) {
+                state->set_priority(priority);
             }
 
             return AssetRequest(std::move(state));
         }
 
         this->active.erase(position);
+        this->work.erase(key);
     }
 
     auto state = std::make_shared<AssetState>(std::move(asset), priority);
     this->active.emplace(key, state);
-    this->queues[priority_index(priority)].push_back(state);
-    lock.unlock();
-    this->wake.notify_one();
+
+    try {
+        this->work.emplace(key, nullptr);
+    } catch (...) {
+        this->active.erase(key);
+        throw;
+    }
+
+    try {
+        this->work.at(key) = this->pool.submit(priority, [this, state] { this->load(state); });
+    } catch (...) {
+        this->work.erase(key);
+        this->active.erase(key);
+        throw;
+    }
 
     return AssetRequest(std::move(state));
-}
-
-std::size_t AssetStreamer::worker_count() const noexcept {
-    return this->workerCount;
 }
 
 void AssetStreamer::stop() noexcept {
@@ -85,103 +75,74 @@ void AssetStreamer::stop() noexcept {
 
         this->stopping = true;
 
-        for (auto& queue : this->queues) {
-            for (const std::shared_ptr<AssetState>& state : queue) {
-                state->cancel();
+        for (const auto& entry : this->active) {
+            if (const std::shared_ptr<AssetState> currentState = entry.second.lock()) {
+                currentState->cancel();
             }
-
-            queue.clear();
         }
 
-        this->active.clear();
-    }
-
-    this->wake.notify_all();
-
-    for (std::thread& worker : this->workers) {
-        worker.join();
-    }
-
-    this->workers.clear();
-}
-
-std::size_t AssetStreamer::priority_index(AssetPriority priority) {
-    const std::size_t index = static_cast<std::size_t>(priority);
-
-    if (index >= PriorityCount) {
-        throw std::invalid_argument("Invalid asset priority");
-    }
-
-    return index;
-}
-
-bool AssetStreamer::has_requests() const noexcept {
-    return std::ranges::any_of(this->queues, [](const auto& queue) { return !queue.empty(); });
-}
-
-std::shared_ptr<AssetState> AssetStreamer::next_request() {
-    for (std::size_t index = PriorityCount; index > 0; --index) {
-        auto& queue = this->queues[index - 1];
-
-        if (!queue.empty()) {
-            std::shared_ptr<AssetState> state = std::move(queue.front());
-            queue.pop_front();
-            return state;
+        for (const auto& entry : this->work) {
+            entry.second->cancel();
         }
     }
 
-    return nullptr;
-}
-
-void AssetStreamer::promote(const std::shared_ptr<AssetState>& state, AssetPriority priority) {
-    auto& queue = this->queues[priority_index(state->priority())];
-    const auto position = std::ranges::find(queue, state);
-
-    if (position != queue.end()) {
-        queue.erase(position);
-    }
-
-    state->set_priority(priority);
-    this->queues[priority_index(priority)].push_back(state);
-}
-
-void AssetStreamer::work() {
     while (true) {
-        std::shared_ptr<AssetState> state;
+        std::shared_ptr<Work> currentWork;
 
         {
-            std::unique_lock lock(this->mutex);
-            this->wake.wait(lock, [this] { return this->stopping || this->has_requests(); });
+            const std::scoped_lock lock(this->mutex);
 
-            if (this->stopping) {
+            if (this->work.empty()) {
+                this->active.clear();
                 return;
             }
 
-            state = this->next_request();
-
-            if (!state || !state->begin()) {
-                continue;
-            }
+            currentWork = this->work.begin()->second;
         }
 
         try {
-            auto data = std::make_shared<AssetData>(this->storage.read(state->asset()));
-            state->complete(std::move(data));
+            currentWork->wait();
         } catch (...) {
-            state->fail(std::current_exception());
         }
 
-        this->remove(state);
+        const std::scoped_lock lock(this->mutex);
+
+        for (auto position = this->work.begin(); position != this->work.end(); ++position) {
+            if (position->second == currentWork) {
+                this->active.erase(position->first);
+                this->work.erase(position);
+                break;
+            }
+        }
     }
 }
 
-void AssetStreamer::remove(const std::shared_ptr<AssetState>& state) {
-    const std::string key(state->asset().path());
-    const std::scoped_lock lock(this->mutex);
-    const auto position = this->active.find(key);
+void AssetStreamer::load(const std::shared_ptr<AssetState>& state) noexcept {
+    if (!state->begin()) {
+        return;
+    }
 
-    if (position != this->active.end() && position->second.lock() == state) {
-        this->active.erase(position);
+    try {
+        auto data = std::make_shared<AssetData>(this->storage.read(state->asset()));
+        state->complete(std::move(data));
+    } catch (...) {
+        state->fail(std::current_exception());
+    }
+}
+
+void AssetStreamer::prune() noexcept {
+    for (auto position = this->work.begin(); position != this->work.end();) {
+        const auto statePosition = this->active.find(position->first);
+
+        if (position->second->ready() && (statePosition == this->active.end() || statePosition->second.expired())) {
+            if (statePosition != this->active.end()) {
+                this->active.erase(statePosition);
+            }
+
+            position = this->work.erase(position);
+        } else {
+            ++position;
+        }
     }
 }
 

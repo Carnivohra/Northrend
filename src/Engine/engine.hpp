@@ -7,6 +7,7 @@
 #include "Engine/plan.hpp"
 #include "Presentation/exchange.hpp"
 #include "Simulation/simulation.hpp"
+#include "Thread/pool.hpp"
 #include "Thread/runner.hpp"
 
 #include <algorithm>
@@ -33,7 +34,8 @@ concept EnginePresentation =
 
 template <EnginePresentation PresentationType> class Engine final : public BackendApplication {
 public:
-    explicit Engine(const EnginePlan& plan) : assets(plan.assets), assetStreamer(this->assets, asset_worker_count()) {}
+    explicit Engine(const EnginePlan& plan) :
+        threadPool(worker_count()), assets(plan.assets), assetStreamer(this->assets, this->threadPool) {}
 
     void started(const Window& window) override {
         try {
@@ -95,6 +97,7 @@ public:
         }
 
         this->assetStreamer.stop();
+        this->threadPool.stop();
 
         if (failure) {
             std::rethrow_exception(failure);
@@ -102,7 +105,7 @@ public:
     }
 
 private:
-    [[nodiscard]] static std::size_t asset_worker_count() noexcept {
+    [[nodiscard]] static std::size_t worker_count() noexcept {
         const std::size_t concurrency = std::thread::hardware_concurrency();
         return std::clamp(concurrency / 4, std::size_t {1}, std::size_t {4});
     }
@@ -111,6 +114,7 @@ private:
     PresentationType presentation {this->presentationExchange};
     std::optional<TaskRunner<Simulation>> simulation;
     Fps fps;
+    ThreadPool threadPool;
     AssetStorage assets;
     AssetStreamer assetStreamer;
 };

@@ -1,9 +1,9 @@
 #pragma once
 
-#include <cstdint>
+#include "Thread/work.hpp"
 
 namespace Northrend {
 
-enum class AssetPriority : std::uint8_t { background, normal, critical };
+using AssetPriority = WorkPriority;
 
 }
