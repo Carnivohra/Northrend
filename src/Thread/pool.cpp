@@ -29,6 +29,14 @@ ThreadPool::~ThreadPool() {
     this->stop();
 }
 
+std::shared_ptr<Work> ThreadPool::submit(WorkPriority priority, Work::SimpleFunction function) {
+    if (!function) {
+        throw std::invalid_argument("Thread pool work must contain a function");
+    }
+
+    return this->submit(priority, [function = std::move(function)](std::stop_token) { function(); });
+}
+
 std::shared_ptr<Work> ThreadPool::submit(WorkPriority priority, Work::Function function) {
     const std::size_t index = priority_index(priority);
 

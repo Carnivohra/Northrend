@@ -5,6 +5,7 @@
 #include <exception>
 #include <functional>
 #include <mutex>
+#include <stop_token>
 
 namespace Northrend {
 
@@ -14,7 +15,8 @@ class ThreadPool;
 
 class Work final {
 public:
-    using Function = std::function<void()>;
+    using Function = std::function<void(std::stop_token)>;
+    using SimpleFunction = std::function<void()>;
 
     Work(const Work&) = delete;
     Work& operator=(const Work&) = delete;
@@ -41,6 +43,7 @@ private:
     mutable std::mutex mutex;
     mutable std::condition_variable wake;
     Status status = Status::queued;
+    std::stop_source stopSource;
     std::exception_ptr failure;
 };
 

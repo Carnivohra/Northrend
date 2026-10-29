@@ -4,6 +4,7 @@
 #include "Asset/source.hpp"
 
 #include <memory>
+#include <stop_token>
 #include <vector>
 
 namespace Northrend {
@@ -12,6 +13,7 @@ class AssetStorage final {
 public:
     AssetStorage() = default;
     explicit AssetStorage(const AssetPlan& plan);
+    AssetStorage(const AssetPlan& plan, std::stop_token stopToken);
 
     AssetStorage(const AssetStorage&) = delete;
     AssetStorage& operator=(const AssetStorage&) = delete;

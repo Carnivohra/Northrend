@@ -17,7 +17,9 @@ MpqArchive::MpqArchive(const std::filesystem::path& path) : path(path) {
     const std::string archivePath = this->path.string();
     HANDLE archive = nullptr;
 
-    if (!SFileOpenArchive(archivePath.c_str(), 0, MPQ_OPEN_READ_ONLY, &archive)) {
+    constexpr DWORD flags = MPQ_OPEN_READ_ONLY | MPQ_OPEN_NO_LISTFILE | MPQ_OPEN_NO_ATTRIBUTES;
+
+    if (!SFileOpenArchive(archivePath.c_str(), 0, flags, &archive)) {
         throw std::runtime_error("Failed to open MPQ archive: " + archivePath + " (StormLib error " +
             std::to_string(SErrGetLastError()) + ')');
     }

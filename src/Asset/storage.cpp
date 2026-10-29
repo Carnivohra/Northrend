@@ -10,10 +10,16 @@
 
 namespace Northrend {
 
-AssetStorage::AssetStorage(const AssetPlan& plan) {
+AssetStorage::AssetStorage(const AssetPlan& plan) : AssetStorage(plan, {}) {}
+
+AssetStorage::AssetStorage(const AssetPlan& plan, const std::stop_token stopToken) {
     this->sources.reserve(plan.mounts.size());
 
     for (const AssetMount& mount : plan.mounts) {
+        if (stopToken.stop_requested()) {
+            return;
+        }
+
         switch (mount.type) {
         case AssetMount::Type::directory:
             this->mount(std::make_unique<AssetDirectory>(mount.path));

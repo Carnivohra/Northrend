@@ -25,6 +25,7 @@ public:
     ThreadPool& operator=(ThreadPool&&) = delete;
 
     [[nodiscard]] std::shared_ptr<Work> submit(WorkPriority priority, Work::Function function);
+    [[nodiscard]] std::shared_ptr<Work> submit(WorkPriority priority, Work::SimpleFunction function);
     [[nodiscard]] bool promote(const std::shared_ptr<Work>& work, WorkPriority priority);
     [[nodiscard]] std::size_t worker_count() const noexcept;
 

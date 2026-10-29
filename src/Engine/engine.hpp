@@ -16,8 +16,11 @@
 #include <cstdint>
 #include <exception>
 #include <iostream>
+#include <memory>
 #include <optional>
+#include <stop_token>
 #include <thread>
+#include <utility>
 
 namespace Northrend {
 
@@ -35,11 +38,18 @@ concept EnginePresentation =
 template <EnginePresentation PresentationType> class Engine final : public BackendApplication {
 public:
     explicit Engine(const EnginePlan& plan) :
-        threadPool(worker_count()), assets(plan.assets), assetStreamer(this->assets, this->threadPool) {}
+        assetPlan(plan.assets), threadPool(worker_count()), assetStreamer(this->assets, this->threadPool) {}
 
     void started(const Window& window) override {
         try {
             this->presentation.start(window);
+            this->assetStartup = this->threadPool.submit(WorkPriority::critical, [this](std::stop_token stopToken) {
+                AssetStorage storage(this->assetPlan, stopToken);
+
+                if (!stopToken.stop_requested()) {
+                    this->assets = std::move(storage);
+                }
+            });
             this->simulation.emplace(Simulation {this->presentationExchange}, 128);
         } catch (...) {
             // Roll back before the backend releases the window.
@@ -67,6 +77,7 @@ public:
     }
 
     void tick() override {
+        this->finish_asset_startup();
         this->simulation->rethrow_if_failed();
         this->presentation.tick();
 
@@ -77,6 +88,10 @@ public:
 
     void stopped() override {
         std::exception_ptr failure;
+
+        if (this->assetStartup) {
+            this->assetStartup->cancel();
+        }
 
         if (this->simulation) {
             try {
@@ -97,6 +112,19 @@ public:
         }
 
         this->assetStreamer.stop();
+
+        if (this->assetStartup) {
+            try {
+                this->assetStartup->wait();
+            } catch (...) {
+                if (!failure) {
+                    failure = std::current_exception();
+                }
+            }
+
+            this->assetStartup.reset();
+        }
+
         this->threadPool.stop();
 
         if (failure) {
@@ -105,11 +133,21 @@ public:
     }
 
 private:
+    void finish_asset_startup() {
+        if (!this->assetStartup || !this->assetStartup->ready()) {
+            return;
+        }
+
+        std::shared_ptr<Work> startup = std::move(this->assetStartup);
+        startup->wait();
+    }
+
     [[nodiscard]] static std::size_t worker_count() noexcept {
         const std::size_t concurrency = std::thread::hardware_concurrency();
         return std::clamp(concurrency / 4, std::size_t {1}, std::size_t {4});
     }
 
+    AssetPlan assetPlan;
     PresentationExchange presentationExchange;
     PresentationType presentation {this->presentationExchange};
     std::optional<TaskRunner<Simulation>> simulation;
@@ -117,6 +155,7 @@ private:
     ThreadPool threadPool;
     AssetStorage assets;
     AssetStreamer assetStreamer;
+    std::shared_ptr<Work> assetStartup;
 };
 
 }

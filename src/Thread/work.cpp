@@ -12,6 +12,13 @@ void Work::cancel() noexcept {
     {
         const std::scoped_lock lock(this->mutex);
 
+        if (this->status == Status::complete || this->status == Status::failed ||
+            this->status == Status::cancelled) {
+            return;
+        }
+
+        this->stopSource.request_stop();
+
         if (this->status != Status::queued) {
             return;
         }
@@ -68,7 +75,7 @@ void Work::execute() noexcept {
     std::exception_ptr currentFailure;
 
     try {
-        currentFunction();
+        currentFunction(this->stopSource.get_token());
     } catch (...) {
         currentFailure = std::current_exception();
     }
@@ -78,7 +85,14 @@ void Work::execute() noexcept {
     {
         const std::scoped_lock lock(this->mutex);
         this->failure = currentFailure;
-        this->status = currentFailure ? Status::failed : Status::complete;
+
+        if (currentFailure) {
+            this->status = Status::failed;
+        } else if (this->stopSource.stop_requested()) {
+            this->status = Status::cancelled;
+        } else {
+            this->status = Status::complete;
+        }
     }
 
     this->wake.notify_all();
