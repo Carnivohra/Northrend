@@ -14,6 +14,7 @@ target_sources(Northrend
     Asset/id.cpp
     Asset/mpq.cpp
     Asset/storage.cpp
+    Asset/system.cpp
     Backend/backend.cpp
     Config/config.cpp
     Config/wtf.cpp
@@ -49,6 +50,7 @@ target_sources(Northrend
       Asset/plan.hpp
       Asset/source.hpp
       Asset/storage.hpp
+      Asset/system.hpp
       Backend/application.hpp
       Backend/backend.hpp
       Backend/plan.hpp
