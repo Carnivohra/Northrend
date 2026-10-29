@@ -10,9 +10,7 @@ class VulkanInstance;
 
 class VulkanSurface final {
 public:
-    VulkanSurface(
-        VulkanInstance& instance,
-        const NativeWindowHandle& windowHandle);
+    VulkanSurface(VulkanInstance& instance, const NativeWindowHandle& windowHandle);
     ~VulkanSurface();
 
     VulkanSurface(const VulkanSurface&) = delete;

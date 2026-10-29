@@ -25,8 +25,7 @@ public:
 private:
     friend class MeshHandleAllocator;
 
-    explicit constexpr MeshHandle(std::uint64_t value) noexcept
-        : value(value) {}
+    explicit constexpr MeshHandle(std::uint64_t value) noexcept : value(value) {}
 
     std::uint64_t value = 0;
 };

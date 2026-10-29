@@ -14,16 +14,12 @@
 
 namespace Northrend {
 
-template <ThreadTask Task>
-class TaskRunner final {
+template <ThreadTask Task> class TaskRunner final {
 public:
-    explicit TaskRunner(Task task, int tickRate)
-        : tickRate(tickRate),
-          tickInterval(interval_for(tickRate)),
-          worker(
-              [this, task = std::move(task)]() mutable {
-                  this->run(task);
-              }) {}
+    explicit TaskRunner(Task task, int tickRate) :
+        tickRate(tickRate),
+        tickInterval(interval_for(tickRate)),
+        worker([this, task = std::move(task)]() mutable { this->run(task); }) {}
 
     ~TaskRunner() {
         this->stop_without_rethrow();
@@ -126,29 +122,21 @@ private:
 
     static ThreadDuration interval_for(int tickRate) {
         if (tickRate < 0) {
-            throw std::invalid_argument(
-                "Tick rate must not be negative");
+            throw std::invalid_argument("Tick rate must not be negative");
         }
 
         if (tickRate == 0) {
             return ThreadDuration::zero();
         }
 
-        const ThreadDuration interval =
-            std::chrono::duration_cast<ThreadDuration>(
-                std::chrono::seconds(1)) / tickRate;
+        const ThreadDuration interval = std::chrono::duration_cast<ThreadDuration>(std::chrono::seconds(1)) / tickRate;
 
         // A positive rate must remain paced at the clock resolution.
-        return interval > ThreadDuration::zero()
-            ? interval
-            : ThreadDuration(1);
+        return interval > ThreadDuration::zero() ? interval : ThreadDuration(1);
     }
 
-    static Clock::time_point advance_deadline(
-        Clock::time_point deadline,
-        Clock::time_point finished,
-        ThreadDuration interval,
-        std::uint32_t& catchUpTicks) noexcept {
+    static Clock::time_point advance_deadline(Clock::time_point deadline, Clock::time_point finished,
+        ThreadDuration interval, std::uint32_t& catchUpTicks) noexcept {
         const Clock::time_point nextDeadline = deadline + interval;
 
         if (nextDeadline > finished) {
@@ -164,15 +152,10 @@ private:
         return nextDeadline;
     }
 
-    static ThreadDuration elapsed_since(
-        Clock::time_point previous,
-        Clock::time_point current) noexcept {
-        const ThreadDuration elapsed =
-            std::chrono::duration_cast<ThreadDuration>(current - previous);
+    static ThreadDuration elapsed_since(Clock::time_point previous, Clock::time_point current) noexcept {
+        const ThreadDuration elapsed = std::chrono::duration_cast<ThreadDuration>(current - previous);
 
-        return elapsed > ThreadDuration::zero()
-            ? elapsed
-            : ThreadDuration(1);
+        return elapsed > ThreadDuration::zero() ? elapsed : ThreadDuration(1);
     }
 
     void run(Task& task) noexcept {
@@ -202,9 +185,7 @@ private:
             this->failure = currentFailure;
 
             if (currentFailure) {
-                this->failureAvailable.store(
-                    true,
-                    std::memory_order_release);
+                this->failureAvailable.store(true, std::memory_order_release);
             }
 
             this->isRunning = false;
@@ -228,12 +209,7 @@ private:
             }
 
             if (this->isPaused) {
-                this->wake.wait(
-                    lock,
-                    [this] {
-                        return this->stopRequested ||
-                            !this->isPaused;
-                    });
+                this->wake.wait(lock, [this] { return this->stopRequested || !this->isPaused; });
 
                 if (this->stopRequested) {
                     break;
@@ -270,14 +246,9 @@ private:
             const Clock::time_point now = Clock::now();
 
             if (now < deadline) {
-                const bool interrupted = this->wake.wait_until(
-                    lock,
-                    deadline,
-                    [this, observedRevision] {
-                        return this->stopRequested ||
-                            this->isPaused ||
-                            this->revision != observedRevision;
-                    });
+                const bool interrupted = this->wake.wait_until(lock, deadline, [this, observedRevision] {
+                    return this->stopRequested || this->isPaused || this->revision != observedRevision;
+                });
 
                 if (interrupted) {
                     continue;
@@ -287,11 +258,7 @@ private:
             lock.unlock();
             task.tick(interval);
 
-            deadline = advance_deadline(
-                deadline,
-                Clock::now(),
-                interval,
-                catchUpTicks);
+            deadline = advance_deadline(deadline, Clock::now(), interval, catchUpTicks);
         }
     }
 

@@ -25,18 +25,13 @@ public:
     template <typename Callback>
         requires std::invocable<Callback, Camera&>
     void modify_active_camera(Callback&& callback) {
-        const bool modified = this->state.modify<Camera>(
-            this->cameraEntity,
-            [&callback](Camera& camera) {
-                std::invoke(
-                    std::forward<Callback>(callback),
-                    camera);
-                ++camera.revision;
-            });
+        const bool modified = this->state.modify<Camera>(this->cameraEntity, [&callback](Camera& camera) {
+            std::invoke(std::forward<Callback>(callback), camera);
+            ++camera.revision;
+        });
 
         if (!modified) {
-            throw std::runtime_error(
-                "Render scene has no active camera");
+            throw std::runtime_error("Render scene has no active camera");
         }
     }
 

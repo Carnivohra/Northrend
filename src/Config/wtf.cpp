@@ -14,6 +14,7 @@ void Wtf::load(const std::filesystem::path& path) {
     this->content.clear();
 
     std::ifstream file(path);
+
     if (!file) {
         if (!std::filesystem::exists(path)) {
             return;
@@ -30,13 +31,13 @@ void Wtf::load(const std::filesystem::path& path) {
 
         try {
             Command command = Wtf::parse(line);
+
             if (!command.empty()) {
                 this->content.emplace_back(std::move(command));
             }
         } catch (const std::invalid_argument& error) {
-            throw std::runtime_error(
-                "Could not parse WTF file " + path.string() +
-                " at line " + std::to_string(number) + ": " + error.what());
+            throw std::runtime_error("Could not parse WTF file " + path.string() + " at line " +
+                std::to_string(number) + ": " + error.what());
         }
     }
 
@@ -51,9 +52,9 @@ void Wtf::save(const std::filesystem::path& path) const {
     }
 
     std::ofstream file(path, std::ios::trunc);
+
     if (!file) {
-        throw std::runtime_error(
-            "Could not open WTF file for writing: " + path.string());
+        throw std::runtime_error("Could not open WTF file for writing: " + path.string());
     }
 
     for (const Command& command : this->content) {
@@ -78,8 +79,7 @@ Wtf::Command Wtf::parse(std::string_view line) {
     std::size_t position = 0;
 
     while (position < line.size()) {
-        while (position < line.size() &&
-               std::isspace(static_cast<unsigned char>(line[position]))) {
+        while (position < line.size() && std::isspace(static_cast<unsigned char>(line[position]))) {
             ++position;
         }
 
@@ -91,8 +91,8 @@ Wtf::Command Wtf::parse(std::string_view line) {
 
         if (line[position] != '"') {
             const std::size_t begin = position;
-            while (position < line.size() &&
-                   !std::isspace(static_cast<unsigned char>(line[position]))) {
+
+            while (position < line.size() && !std::isspace(static_cast<unsigned char>(line[position]))) {
                 ++position;
             }
 
@@ -111,8 +111,7 @@ Wtf::Command Wtf::parse(std::string_view line) {
                 break;
             }
 
-            if (character == '\\' && position < line.size() &&
-                (line[position] == '\\' || line[position] == '"')) {
+            if (character == '\\' && position < line.size() && (line[position] == '\\' || line[position] == '"')) {
                 argument.push_back(line[position++]);
                 continue;
             }
@@ -124,10 +123,8 @@ Wtf::Command Wtf::parse(std::string_view line) {
             throw std::invalid_argument("unterminated quoted argument");
         }
 
-        if (position < line.size() &&
-            !std::isspace(static_cast<unsigned char>(line[position]))) {
-            throw std::invalid_argument(
-                "quoted arguments must be separated by whitespace");
+        if (position < line.size() && !std::isspace(static_cast<unsigned char>(line[position]))) {
+            throw std::invalid_argument("quoted arguments must be separated by whitespace");
         }
 
         command.emplace_back(std::move(argument));
@@ -143,8 +140,7 @@ void Wtf::write(std::ostream& stream, const Command& command) {
         }
 
         const std::string& argument = command[index];
-        const bool quoted = argument.empty() ||
-            argument.find_first_of(" \t\r\n\"") != std::string::npos;
+        const bool quoted = argument.empty() || argument.find_first_of(" \t\r\n\"") != std::string::npos;
 
         if (!quoted) {
             stream << argument;

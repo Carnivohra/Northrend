@@ -14,12 +14,8 @@ class VulkanDevice;
 
 class VulkanMesh final {
 public:
-    VulkanMesh(
-        VulkanDevice& device,
-        std::span<const std::byte> vertices,
-        std::span<const std::byte> indices,
-        std::uint32_t indexCount,
-        VkIndexType indexType);
+    VulkanMesh(VulkanDevice& device, std::span<const std::byte> vertices, std::span<const std::byte> indices,
+        std::uint32_t indexCount, VkIndexType indexType);
     ~VulkanMesh();
 
     VulkanMesh(const VulkanMesh&) = delete;

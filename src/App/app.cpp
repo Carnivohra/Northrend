@@ -4,11 +4,11 @@
 
 namespace Northrend {
 
-App::App(Backend& backend, BackendApplication& application) noexcept
-    : backend(backend), application(application) {}
+App::App(Backend& backend, BackendApplication& application, const GamePlan& plan) noexcept :
+    backend(backend), application(application), plan(plan) {}
 
 void App::run() {
-    this->backend.run(this->application);
+    this->backend.run(this->application, this->plan);
 }
 
 }

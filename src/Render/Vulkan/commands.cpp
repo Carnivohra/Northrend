@@ -16,25 +16,17 @@
 
 namespace Northrend {
 
-VulkanCommandContext::VulkanCommandContext(
-    VulkanDevice& device)
-    : device(device) {
-    const VkCommandPoolCreateInfo createInfo{
+VulkanCommandContext::VulkanCommandContext(VulkanDevice& device) : device(device) {
+    const VkCommandPoolCreateInfo createInfo {
         .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
         .pNext = nullptr,
         .flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
         .queueFamilyIndex = this->device.graphics_family()
     };
-    const VkResult result = vkCreateCommandPool(
-        this->device.handle(),
-        &createInfo,
-        nullptr,
-        &this->pool);
+    const VkResult result = vkCreateCommandPool(this->device.handle(), &createInfo, nullptr, &this->pool);
 
     if (result != VK_SUCCESS) {
-        throw std::runtime_error(
-            "Failed to create the Vulkan command pool: " +
-            std::to_string(result));
+        throw std::runtime_error("Failed to create the Vulkan command pool: " + std::to_string(result));
     }
 }
 
@@ -42,10 +34,7 @@ VulkanCommandContext::~VulkanCommandContext() {
     this->release();
 
     if (this->pool != VK_NULL_HANDLE) {
-        vkDestroyCommandPool(
-            this->device.handle(),
-            this->pool,
-            nullptr);
+        vkDestroyCommandPool(this->device.handle(), this->pool, nullptr);
     }
 }
 
@@ -53,23 +42,17 @@ void VulkanCommandContext::allocate(std::size_t count) {
     this->release();
 
     std::vector<VkCommandBuffer> allocated(count);
-    const VkCommandBufferAllocateInfo allocateInfo{
+    const VkCommandBufferAllocateInfo allocateInfo {
         .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
         .pNext = nullptr,
         .commandPool = this->pool,
         .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
-        .commandBufferCount =
-            static_cast<std::uint32_t>(allocated.size())
+        .commandBufferCount = static_cast<std::uint32_t>(allocated.size())
     };
-    const VkResult result = vkAllocateCommandBuffers(
-        this->device.handle(),
-        &allocateInfo,
-        allocated.data());
+    const VkResult result = vkAllocateCommandBuffers(this->device.handle(), &allocateInfo, allocated.data());
 
     if (result != VK_SUCCESS) {
-        throw std::runtime_error(
-            "Failed to allocate Vulkan command buffers: " +
-            std::to_string(result));
+        throw std::runtime_error("Failed to allocate Vulkan command buffers: " + std::to_string(result));
     }
 
     this->buffers = std::move(allocated);
@@ -88,79 +71,51 @@ void VulkanCommandContext::release() noexcept {
     }
 
     vkFreeCommandBuffers(
-        this->device.handle(),
-        this->pool,
-        static_cast<std::uint32_t>(this->buffers.size()),
-        this->buffers.data());
+        this->device.handle(), this->pool, static_cast<std::uint32_t>(this->buffers.size()), this->buffers.data());
     this->buffers.clear();
 }
 
-void VulkanCommandContext::record(
-    std::size_t imageIndex,
-    const RenderFrame& renderFrame,
-    const VulkanRenderTarget& target,
-    VulkanMeshPipeline& pipeline,
-    const VulkanMeshStore& meshes,
+void VulkanCommandContext::record(std::size_t imageIndex, const RenderFrame& renderFrame,
+    const VulkanRenderTarget& target, VulkanMeshPipeline& pipeline, const VulkanMeshStore& meshes,
     const VkClearColorValue& clearColor) {
     const std::uint64_t meshRevision = meshes.revision();
 
-    if (this->recorded[imageIndex] &&
-        this->recordedInstanceRevisions[imageIndex] ==
-            renderFrame.instancesRevision &&
-        this->recordedMeshRevisions[imageIndex] ==
-            meshRevision) {
+    if (this->recorded[imageIndex] && this->recordedInstanceRevisions[imageIndex] == renderFrame.instancesRevision &&
+        this->recordedMeshRevisions[imageIndex] == meshRevision) {
         return;
     }
 
-    const VkCommandBuffer commandBuffer =
-        this->buffers[imageIndex];
+    const VkCommandBuffer commandBuffer = this->buffers[imageIndex];
     VkResult result = vkResetCommandBuffer(commandBuffer, 0);
 
     if (result != VK_SUCCESS) {
-        throw std::runtime_error(
-            "Failed to reset a Vulkan command buffer: " +
-            std::to_string(result));
+        throw std::runtime_error("Failed to reset a Vulkan command buffer: " + std::to_string(result));
     }
 
-    const VkCommandBufferBeginInfo beginInfo{
-        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
-        .pNext = nullptr,
-        .flags = 0,
-        .pInheritanceInfo = nullptr
+    const VkCommandBufferBeginInfo beginInfo {
+        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO, .pNext = nullptr, .flags = 0, .pInheritanceInfo = nullptr
     };
     result = vkBeginCommandBuffer(commandBuffer, &beginInfo);
 
     if (result != VK_SUCCESS) {
-        throw std::runtime_error(
-            "Failed to begin a Vulkan command buffer: " +
-            std::to_string(result));
+        throw std::runtime_error("Failed to begin a Vulkan command buffer: " + std::to_string(result));
     }
 
-    std::array<VkClearValue, 2> clearValues{};
+    std::array<VkClearValue, 2> clearValues {};
     clearValues[0].color = clearColor;
-    clearValues[1].depthStencil = VkClearDepthStencilValue{
-        .depth = 1.0F,
-        .stencil = 0
-    };
+    clearValues[1].depthStencil = VkClearDepthStencilValue {.depth = 1.0F, .stencil = 0};
 
-    const VkRenderPassBeginInfo renderPassInfo{
+    const VkRenderPassBeginInfo renderPassInfo {
         .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
         .pNext = nullptr,
         .renderPass = target.render_pass(),
         .framebuffer = target.framebuffer(imageIndex),
-        .renderArea = VkRect2D{
-            .offset = VkOffset2D{ .x = 0, .y = 0 },
-            .extent = target.extent()
-        },
-        .clearValueCount =
-            static_cast<std::uint32_t>(clearValues.size()),
+        .renderArea = VkRect2D {.offset = VkOffset2D {.x = 0, .y = 0}, .extent = target.extent()},
+        .clearValueCount = static_cast<std::uint32_t>(clearValues.size()),
         .pClearValues = clearValues.data()
     };
 
-    vkCmdBeginRenderPass(
-        commandBuffer,
-        &renderPassInfo,
-        VK_SUBPASS_CONTENTS_INLINE);
+    vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
     pipeline.bind(commandBuffer, imageIndex);
 
     for (const RenderInstance& instance : renderFrame.instances) {
@@ -170,9 +125,7 @@ void VulkanCommandContext::record(
             continue;
         }
 
-        pipeline.push_transform(
-            commandBuffer,
-            instance.transform);
+        pipeline.push_transform(commandBuffer, instance.transform);
         mesh->draw(commandBuffer);
     }
 
@@ -180,20 +133,15 @@ void VulkanCommandContext::record(
     result = vkEndCommandBuffer(commandBuffer);
 
     if (result != VK_SUCCESS) {
-        throw std::runtime_error(
-            "Failed to record a Vulkan command buffer: " +
-            std::to_string(result));
+        throw std::runtime_error("Failed to record a Vulkan command buffer: " + std::to_string(result));
     }
 
-    this->recordedInstanceRevisions[imageIndex] =
-        renderFrame.instancesRevision;
-    this->recordedMeshRevisions[imageIndex] =
-        meshRevision;
+    this->recordedInstanceRevisions[imageIndex] = renderFrame.instancesRevision;
+    this->recordedMeshRevisions[imageIndex] = meshRevision;
     this->recorded[imageIndex] = true;
 }
 
-VkCommandBuffer VulkanCommandContext::handle(
-    std::size_t imageIndex) const noexcept {
+VkCommandBuffer VulkanCommandContext::handle(std::size_t imageIndex) const noexcept {
     return this->buffers[imageIndex];
 }
 

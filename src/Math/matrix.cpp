@@ -12,8 +12,7 @@ Matrix4 Matrix4::operator*(const Matrix4& right) const noexcept {
             float value = 0.0F;
 
             for (std::size_t index = 0; index < 4; ++index) {
-                value += this->values[index * 4 + row] *
-                    right.values[column * 4 + index];
+                value += this->values[index * 4 + row] * right.values[column * 4 + index];
             }
 
             result.values[column * 4 + row] = value;

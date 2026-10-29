@@ -12,7 +12,7 @@ struct Camera final {
     [[nodiscard]] Matrix4 view() const noexcept;
     [[nodiscard]] Matrix4 projection(float aspectRatio) const;
 
-    Vector3 position{ 0.0F, 0.0F, 5.0F };
+    Vector3 position {0.0F, 0.0F, 5.0F};
     Quaternion orientation;
     float verticalFieldOfView = 1.0471975512F;
     float nearPlane = 0.1F;

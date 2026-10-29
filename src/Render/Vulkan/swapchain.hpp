@@ -20,11 +20,7 @@ class Window;
 
 class VulkanSwapchain final {
 public:
-    VulkanSwapchain(
-        VulkanDevice& device,
-        VulkanMeshStore& meshes,
-        VkSurfaceKHR surface,
-        const Window& window,
+    VulkanSwapchain(VulkanDevice& device, VulkanMeshStore& meshes, VkSurfaceKHR surface, const Window& window,
         const VkClearColorValue& clearColor);
     ~VulkanSwapchain();
 
@@ -37,17 +33,11 @@ public:
 private:
     static constexpr std::size_t FramesInFlight = 2;
 
-    [[nodiscard]] static VkSurfaceFormatKHR choose_surface_format(
-        const std::vector<VkSurfaceFormatKHR>& formats);
+    [[nodiscard]] static VkSurfaceFormatKHR choose_surface_format(const std::vector<VkSurfaceFormatKHR>& formats);
     [[nodiscard]] static VkExtent2D choose_surface_extent(
-        const VkSurfaceCapabilitiesKHR& capabilities,
-        int width,
-        int height);
-    [[nodiscard]] static VkPresentModeKHR choose_present_mode(
-        const std::vector<VkPresentModeKHR>& presentModes);
-    [[nodiscard]] static VkCompositeAlphaFlagBitsKHR
-        choose_composite_alpha(
-            VkCompositeAlphaFlagsKHR supported);
+        const VkSurfaceCapabilitiesKHR& capabilities, int width, int height);
+    [[nodiscard]] static VkPresentModeKHR choose_present_mode(const std::vector<VkPresentModeKHR>& presentModes);
+    [[nodiscard]] static VkCompositeAlphaFlagBitsKHR choose_composite_alpha(VkCompositeAlphaFlagsKHR supported);
 
     void create_frame_resources();
     void create_swapchain_resources();
@@ -62,7 +52,7 @@ private:
     VkClearColorValue clearColor;
     VkSwapchainKHR swapchain = VK_NULL_HANDLE;
     VkFormat imageFormat = VK_FORMAT_UNDEFINED;
-    VkExtent2D extent{};
+    VkExtent2D extent {};
     std::vector<VkImage> images;
     std::vector<std::unique_ptr<VulkanFrame>> frames;
     std::vector<VkFence> imagesInFlight;

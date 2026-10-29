@@ -8,17 +8,12 @@
 
 namespace Northrend {
 
-VulkanMeshStore::VulkanMeshStore(VulkanDevice& device) noexcept
-    : device(device) {}
+VulkanMeshStore::VulkanMeshStore(VulkanDevice& device) noexcept : device(device) {}
 
 VulkanMeshStore::~VulkanMeshStore() = default;
 
-void VulkanMeshStore::store(
-    MeshHandle handle,
-    std::span<const std::byte> vertices,
-    std::span<const std::byte> indices,
-    std::uint32_t indexCount,
-    VkIndexType indexType) {
+void VulkanMeshStore::store(MeshHandle handle, std::span<const std::byte> vertices, std::span<const std::byte> indices,
+    std::uint32_t indexCount, VkIndexType indexType) {
     if (!handle) {
         throw std::invalid_argument("Cannot store a Vulkan mesh without a handle");
     }
@@ -39,12 +34,7 @@ void VulkanMeshStore::store(
         throw std::invalid_argument("A Vulkan mesh already exists for this handle");
     }
 
-    this->meshes[index] = std::make_unique<VulkanMesh>(
-        this->device,
-        vertices,
-        indices,
-        indexCount,
-        indexType);
+    this->meshes[index] = std::make_unique<VulkanMesh>(this->device, vertices, indices, indexCount, indexType);
     ++this->currentRevision;
 }
 

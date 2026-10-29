@@ -12,20 +12,14 @@ class VulkanDevice;
 
 class VulkanBuffer final {
 public:
-    VulkanBuffer(
-        VulkanDevice& device,
-        VkDeviceSize size,
-        VkBufferUsageFlags usage,
-        VkMemoryPropertyFlags properties);
+    VulkanBuffer(VulkanDevice& device, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties);
     ~VulkanBuffer();
 
     VulkanBuffer(const VulkanBuffer&) = delete;
     VulkanBuffer& operator=(const VulkanBuffer&) = delete;
 
     [[nodiscard]] static std::unique_ptr<VulkanBuffer> upload(
-        VulkanDevice& device,
-        std::span<const std::byte> data,
-        VkBufferUsageFlags usage);
+        VulkanDevice& device, std::span<const std::byte> data, VkBufferUsageFlags usage);
 
     [[nodiscard]] VkBuffer handle() const noexcept;
     [[nodiscard]] VkDeviceSize size() const noexcept;

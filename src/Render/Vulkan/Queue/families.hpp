@@ -10,8 +10,7 @@ struct VulkanQueueFamilies final {
     std::optional<std::uint32_t> present;
 
     [[nodiscard]] bool complete() const noexcept {
-        return this->graphics.has_value() &&
-            this->present.has_value();
+        return this->graphics.has_value() && this->present.has_value();
     }
 };
 

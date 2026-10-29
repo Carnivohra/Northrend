@@ -7,17 +7,26 @@
 
 namespace Northrend {
 
-SDL3Window::SDL3Window(const std::string& title, int width, int height)
-    : window(nullptr) {
+SDL3Window::SDL3Window(const std::string& title) : window(nullptr) {
+    if (title.empty()) {
+        throw std::invalid_argument("SDL3 window title must not be empty");
+    }
+
     if (!SDL_Init(SDL_INIT_VIDEO)) {
         throw std::runtime_error(std::string("Failed to initialize SDL3: ") + SDL_GetError());
     }
 
-    this->window = SDL_CreateWindow(
-        title.c_str(),
-        width,
-        height,
-        SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY);
+    const SDL_DisplayID display = SDL_GetPrimaryDisplay();
+    SDL_Rect bounds;
+
+    if (display == 0 || !SDL_GetDisplayUsableBounds(display, &bounds)) {
+        const std::string error = std::string("Failed to get the primary display size: ") + SDL_GetError();
+        SDL_Quit();
+        throw std::runtime_error(error);
+    }
+
+    this->window =
+        SDL_CreateWindow(title.c_str(), bounds.w, bounds.h, SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY);
 
     if (!this->window) {
         const std::string error = std::string("Failed to create SDL3 window: ") + SDL_GetError();
@@ -26,13 +35,11 @@ SDL3Window::SDL3Window(const std::string& title, int width, int height)
     }
 
     if (!SDL_GetWindowSizeInPixels(this->window, &this->pixelWidth, &this->pixelHeight)) {
-        const std::string error =
-            std::string("Failed to get SDL3 window size: ") + SDL_GetError();
+        const std::string error = std::string("Failed to get SDL3 window size: ") + SDL_GetError();
         SDL_DestroyWindow(this->window);
         SDL_Quit();
         throw std::runtime_error(error);
     }
-
 }
 
 SDL3Window::~SDL3Window() {
@@ -55,47 +62,26 @@ NativeWindowHandle SDL3Window::native_handle() const {
 #endif
 
 #if defined(__ANDROID__)
-    void* nativeWindow = SDL_GetPointerProperty(
-        properties,
-        SDL_PROP_WINDOW_ANDROID_WINDOW_POINTER,
-        nullptr);
+    void* nativeWindow = SDL_GetPointerProperty(properties, SDL_PROP_WINDOW_ANDROID_WINDOW_POINTER, nullptr);
 
     if (nativeWindow) {
-        return AndroidWindowHandle{ .window = nativeWindow };
+        return AndroidWindowHandle {.window = nativeWindow};
     }
 
     throw std::runtime_error("SDL3 did not provide an Android native window");
 #elif defined(__linux__)
-    void* waylandDisplay = SDL_GetPointerProperty(
-        properties,
-        SDL_PROP_WINDOW_WAYLAND_DISPLAY_POINTER,
-        nullptr);
-    void* waylandSurface = SDL_GetPointerProperty(
-        properties,
-        SDL_PROP_WINDOW_WAYLAND_SURFACE_POINTER,
-        nullptr);
+    void* waylandDisplay = SDL_GetPointerProperty(properties, SDL_PROP_WINDOW_WAYLAND_DISPLAY_POINTER, nullptr);
+    void* waylandSurface = SDL_GetPointerProperty(properties, SDL_PROP_WINDOW_WAYLAND_SURFACE_POINTER, nullptr);
 
     if (waylandDisplay && waylandSurface) {
-        return WaylandWindowHandle{
-            .display = waylandDisplay,
-            .surface = waylandSurface
-        };
+        return WaylandWindowHandle {.display = waylandDisplay, .surface = waylandSurface};
     }
 
-    void* x11Display = SDL_GetPointerProperty(
-        properties,
-        SDL_PROP_WINDOW_X11_DISPLAY_POINTER,
-        nullptr);
-    const Sint64 x11Window = SDL_GetNumberProperty(
-        properties,
-        SDL_PROP_WINDOW_X11_WINDOW_NUMBER,
-        0);
+    void* x11Display = SDL_GetPointerProperty(properties, SDL_PROP_WINDOW_X11_DISPLAY_POINTER, nullptr);
+    const Sint64 x11Window = SDL_GetNumberProperty(properties, SDL_PROP_WINDOW_X11_WINDOW_NUMBER, 0);
 
     if (x11Display && x11Window != 0) {
-        return X11WindowHandle{
-            .display = x11Display,
-            .window = static_cast<std::uint64_t>(x11Window)
-        };
+        return X11WindowHandle {.display = x11Display, .window = static_cast<std::uint64_t>(x11Window)};
     }
 
     throw std::runtime_error("SDL3 did not provide a Wayland or X11 window handle");

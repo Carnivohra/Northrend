@@ -10,10 +10,7 @@ MeshHandle MeshHandleAllocator::allocate() {
 
     while (value != std::numeric_limits<std::uint64_t>::max()) {
         if (this->nextValue.compare_exchange_weak(
-                value,
-                value + 1,
-                std::memory_order_relaxed,
-                std::memory_order_relaxed)) {
+                value, value + 1, std::memory_order_relaxed, std::memory_order_relaxed)) {
             return MeshHandle(value);
         }
     }

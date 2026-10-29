@@ -10,7 +10,7 @@ namespace Northrend {
 
 class SDL3Window final : public Window {
 public:
-    SDL3Window(const std::string& title, int width, int height);
+    explicit SDL3Window(const std::string& title);
     ~SDL3Window();
 
     SDL3Window(const SDL3Window&) = delete;

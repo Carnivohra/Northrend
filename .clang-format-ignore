@@ -1,0 +1,2 @@
+cmake/renderer/shader.hpp.in
+cmake/templates/game.cpp.in

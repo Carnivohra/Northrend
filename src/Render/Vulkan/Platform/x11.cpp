@@ -6,7 +6,7 @@
 namespace Northrend::VulkanPlatform {
 
 VkSurfaceKHR create_x11_surface(VkInstance instance, const X11WindowHandle& handle) {
-    const VkXlibSurfaceCreateInfoKHR createInfo{
+    const VkXlibSurfaceCreateInfoKHR createInfo {
         .sType = VK_STRUCTURE_TYPE_XLIB_SURFACE_CREATE_INFO_KHR,
         .pNext = nullptr,
         .flags = 0,
@@ -18,8 +18,7 @@ VkSurfaceKHR create_x11_surface(VkInstance instance, const X11WindowHandle& hand
     const VkResult result = vkCreateXlibSurfaceKHR(instance, &createInfo, nullptr, &surface);
 
     if (result != VK_SUCCESS) {
-        throw std::runtime_error(
-            "Failed to create Vulkan X11 surface: " + std::to_string(result));
+        throw std::runtime_error("Failed to create Vulkan X11 surface: " + std::to_string(result));
     }
 
     return surface;

@@ -23,19 +23,12 @@ public:
     [[nodiscard]] VkDevice handle() const noexcept;
     [[nodiscard]] VkQueue graphics_queue() const noexcept;
     [[nodiscard]] VkQueue present_queue() const noexcept;
-    [[nodiscard]] std::uint32_t
-        graphics_family() const noexcept;
-    [[nodiscard]] std::uint32_t
-        present_family() const noexcept;
+    [[nodiscard]] std::uint32_t graphics_family() const noexcept;
+    [[nodiscard]] std::uint32_t present_family() const noexcept;
     [[nodiscard]] VkFormat depth_format() const;
-    [[nodiscard]] std::uint32_t memory_type(
-        std::uint32_t typeBits,
-        VkMemoryPropertyFlags properties) const;
+    [[nodiscard]] std::uint32_t memory_type(std::uint32_t typeBits, VkMemoryPropertyFlags properties) const;
 
-    void copy_buffer(
-        VkBuffer source,
-        VkBuffer destination,
-        VkDeviceSize size);
+    void copy_buffer(VkBuffer source, VkBuffer destination, VkDeviceSize size);
     void wait_idle() const noexcept;
 
 private:

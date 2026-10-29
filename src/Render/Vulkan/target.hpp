@@ -14,19 +14,14 @@ class VulkanDevice;
 
 class VulkanRenderTarget final {
 public:
-    VulkanRenderTarget(
-        VulkanDevice& device,
-        std::span<const VkImage> images,
-        VkFormat imageFormat,
-        VkExtent2D extent);
+    VulkanRenderTarget(VulkanDevice& device, std::span<const VkImage> images, VkFormat imageFormat, VkExtent2D extent);
     ~VulkanRenderTarget();
 
     VulkanRenderTarget(const VulkanRenderTarget&) = delete;
     VulkanRenderTarget& operator=(const VulkanRenderTarget&) = delete;
 
     [[nodiscard]] VkRenderPass render_pass() const noexcept;
-    [[nodiscard]] VkFramebuffer framebuffer(
-        std::size_t imageIndex) const noexcept;
+    [[nodiscard]] VkFramebuffer framebuffer(std::size_t imageIndex) const noexcept;
     [[nodiscard]] VkExtent2D extent() const noexcept;
 
 private:

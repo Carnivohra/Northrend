@@ -5,20 +5,12 @@
 
 namespace Northrend {
 
-VulkanSurface::VulkanSurface(
-    VulkanInstance& instance,
-    const NativeWindowHandle& windowHandle)
-    : instance(instance),
-      surface(VulkanPlatform::create_surface(
-          instance.handle(),
-          windowHandle)) {}
+VulkanSurface::VulkanSurface(VulkanInstance& instance, const NativeWindowHandle& windowHandle) :
+    instance(instance), surface(VulkanPlatform::create_surface(instance.handle(), windowHandle)) {}
 
 VulkanSurface::~VulkanSurface() {
     if (this->surface != VK_NULL_HANDLE) {
-        vkDestroySurfaceKHR(
-            this->instance.handle(),
-            this->surface,
-            nullptr);
+        vkDestroySurfaceKHR(this->instance.handle(), this->surface, nullptr);
     }
 }
 

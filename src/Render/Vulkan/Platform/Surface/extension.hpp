@@ -4,7 +4,6 @@
 
 namespace Northrend::VulkanPlatform {
 
-[[nodiscard]] const char* surface_extension(
-    const NativeWindowHandle& handle);
+[[nodiscard]] const char* surface_extension(const NativeWindowHandle& handle);
 
 }

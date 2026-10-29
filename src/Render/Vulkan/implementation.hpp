@@ -19,18 +19,14 @@ public:
     explicit VulkanRendererImplementation(const Window& window);
     ~VulkanRendererImplementation();
 
-    VulkanRendererImplementation(
-        const VulkanRendererImplementation&) = delete;
-    VulkanRendererImplementation& operator=(
-        const VulkanRendererImplementation&) = delete;
+    VulkanRendererImplementation(const VulkanRendererImplementation&) = delete;
+    VulkanRendererImplementation& operator=(const VulkanRendererImplementation&) = delete;
 
     void frame(const RenderFrame& frame);
     void suspend() noexcept;
 
 private:
-    static constexpr VkClearColorValue ClearColor{
-        .float32 = { 0.015F, 0.035F, 0.080F, 1.000F }
-    };
+    static constexpr VkClearColorValue ClearColor {.float32 = {0.015F, 0.035F, 0.080F, 1.000F}};
 
     std::unique_ptr<VulkanInstance> instance;
     std::unique_ptr<VulkanSurface> surface;

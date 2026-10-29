@@ -7,14 +7,11 @@
 namespace Northrend {
 
 template <typename Type>
-concept GameApplication =
-    std::default_initializable<Type> &&
-    requires(Type application) {
-        { application.run() } -> std::same_as<void>;
-    };
+concept GameApplication = std::default_initializable<Type> && requires(Type application) {
+    { application.run() } -> std::same_as<void>;
+};
 
-template <GameApplication ApplicationType>
-int launch() {
+template <GameApplication ApplicationType> int launch() {
     try {
         ApplicationType application;
         application.run();

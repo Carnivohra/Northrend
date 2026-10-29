@@ -16,28 +16,17 @@ class VulkanDevice;
 
 class VulkanCameraContext final {
 public:
-    VulkanCameraContext(
-        VulkanDevice& device,
-        std::size_t imageCount);
+    VulkanCameraContext(VulkanDevice& device, std::size_t imageCount);
     ~VulkanCameraContext();
 
     VulkanCameraContext(const VulkanCameraContext&) = delete;
-    VulkanCameraContext& operator=(
-        const VulkanCameraContext&) = delete;
+    VulkanCameraContext& operator=(const VulkanCameraContext&) = delete;
 
     void update(
-        std::size_t imageIndex,
-        const Camera& camera,
-        const Matrix4& view,
-        std::uint64_t revision,
-        VkExtent2D extent);
-    void bind(
-        VkCommandBuffer commandBuffer,
-        VkPipelineLayout pipelineLayout,
-        std::size_t imageIndex) const noexcept;
+        std::size_t imageIndex, const Camera& camera, const Matrix4& view, std::uint64_t revision, VkExtent2D extent);
+    void bind(VkCommandBuffer commandBuffer, VkPipelineLayout pipelineLayout, std::size_t imageIndex) const noexcept;
 
-    [[nodiscard]] VkDescriptorSetLayout
-        descriptor_layout() const noexcept;
+    [[nodiscard]] VkDescriptorSetLayout descriptor_layout() const noexcept;
 
 private:
     void create_layout();
@@ -51,7 +40,7 @@ private:
     std::vector<VulkanCameraBuffer> buffers;
     std::vector<VkDescriptorSet> descriptorSets;
     Matrix4 matrix;
-    VkExtent2D sourceExtent{};
+    VkExtent2D sourceExtent {};
     std::uint64_t sourceRevision = 0;
     std::uint64_t uploadRevision = 0;
     bool initialized = false;

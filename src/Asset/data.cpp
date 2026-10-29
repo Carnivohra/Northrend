@@ -4,8 +4,7 @@
 
 namespace Northrend {
 
-AssetData::AssetData(std::vector<std::byte> bytes) noexcept
-    : storage(std::move(bytes)) {}
+AssetData::AssetData(std::vector<std::byte> bytes) noexcept : storage(std::move(bytes)) {}
 
 std::span<const std::byte> AssetData::bytes() const noexcept {
     return this->storage;

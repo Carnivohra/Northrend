@@ -24,8 +24,7 @@ public:
 private:
     friend Registry;
 
-    explicit constexpr Entity(std::uint64_t value) noexcept
-        : value(value) {}
+    explicit constexpr Entity(std::uint64_t value) noexcept : value(value) {}
 
     std::uint64_t value = 0;
 };

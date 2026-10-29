@@ -26,18 +26,12 @@ public:
     [[nodiscard]] bool alive(Entity entity) const noexcept;
     void progress(std::chrono::duration<float> delta);
 
-    template <typename... Components, typename Callback>
-    void add_system(Callback&& callback) {
-        this->world.system<Components...>().each(
-            std::forward<Callback>(callback));
+    template <typename... Components, typename Callback> void add_system(Callback&& callback) {
+        this->world.system<Components...>().each(std::forward<Callback>(callback));
     }
 
-    template <typename... Components>
-    [[nodiscard]] flecs::query<Components...> tracked_query() {
-        return this->world.query_builder<Components...>()
-            .cached()
-            .detect_changes()
-            .build();
+    template <typename... Components> [[nodiscard]] flecs::query<Components...> tracked_query() {
+        return this->world.query_builder<Components...>().cached().detect_changes().build();
     }
 
     template <typename Component, typename... Arguments>
@@ -48,18 +42,15 @@ public:
         return handle.get_mut<Component>();
     }
 
-    template <typename Component>
-    void remove(Entity entity) {
+    template <typename Component> void remove(Entity entity) {
         this->world.entity(entity.id()).remove<Component>();
     }
 
-    template <typename Component>
-    [[nodiscard]] bool contains(Entity entity) const {
+    template <typename Component> [[nodiscard]] bool contains(Entity entity) const {
         return this->world.entity(entity.id()).has<Component>();
     }
 
-    template <typename Component>
-    [[nodiscard]] const Component* get(Entity entity) const {
+    template <typename Component> [[nodiscard]] const Component* get(Entity entity) const {
         return this->world.entity(entity.id()).try_get<Component>();
     }
 
@@ -74,9 +65,7 @@ public:
         }
 
         try {
-            std::invoke(
-                std::forward<Callback>(callback),
-                *component);
+            std::invoke(std::forward<Callback>(callback), *component);
         } catch (...) {
             handle.modified<Component>();
             throw;

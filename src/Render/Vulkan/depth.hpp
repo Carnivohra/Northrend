@@ -6,13 +6,9 @@ namespace Northrend {
 
 class VulkanDevice;
 
-
 class VulkanDepthImage final {
 public:
-    VulkanDepthImage(
-        VulkanDevice& device,
-        VkExtent2D extent,
-        VkFormat format);
+    VulkanDepthImage(VulkanDevice& device, VkExtent2D extent, VkFormat format);
     ~VulkanDepthImage();
 
     VulkanDepthImage(const VulkanDepthImage&) = delete;

@@ -25,16 +25,10 @@ public:
     void allocate(std::size_t count);
     void release() noexcept;
 
-    void record(
-        std::size_t imageIndex,
-        const RenderFrame& frame,
-        const VulkanRenderTarget& target,
-        VulkanMeshPipeline& pipeline,
-        const VulkanMeshStore& meshes,
-        const VkClearColorValue& clearColor);
+    void record(std::size_t imageIndex, const RenderFrame& frame, const VulkanRenderTarget& target,
+        VulkanMeshPipeline& pipeline, const VulkanMeshStore& meshes, const VkClearColorValue& clearColor);
 
-    [[nodiscard]] VkCommandBuffer handle(
-        std::size_t imageIndex) const noexcept;
+    [[nodiscard]] VkCommandBuffer handle(std::size_t imageIndex) const noexcept;
 
 private:
     VulkanDevice& device;

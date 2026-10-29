@@ -12,26 +12,16 @@
 
 namespace Northrend {
 
-VulkanRendererImplementation::VulkanRendererImplementation(
-    const Window& window) {
+VulkanRendererImplementation::VulkanRendererImplementation(const Window& window) {
     const NativeWindowHandle nativeHandle = window.native_handle();
-    const char* platformExtension =
-        VulkanPlatform::surface_extension(nativeHandle);
+    const char* platformExtension = VulkanPlatform::surface_extension(nativeHandle);
 
     this->instance = std::make_unique<VulkanInstance>(platformExtension);
-    this->surface = std::make_unique<VulkanSurface>(
-        *this->instance,
-        nativeHandle);
-    this->device = std::make_unique<VulkanDevice>(
-        this->instance->handle(),
-        this->surface->handle());
+    this->surface = std::make_unique<VulkanSurface>(*this->instance, nativeHandle);
+    this->device = std::make_unique<VulkanDevice>(this->instance->handle(), this->surface->handle());
     this->meshes = std::make_unique<VulkanMeshStore>(*this->device);
-    this->swapchain = std::make_unique<VulkanSwapchain>(
-        *this->device,
-        *this->meshes,
-        this->surface->handle(),
-        window,
-        ClearColor);
+    this->swapchain =
+        std::make_unique<VulkanSwapchain>(*this->device, *this->meshes, this->surface->handle(), window, ClearColor);
 }
 
 VulkanRendererImplementation::~VulkanRendererImplementation() = default;

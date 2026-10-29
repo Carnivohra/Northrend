@@ -6,8 +6,6 @@
 
 namespace Northrend::VulkanPlatform {
 
-[[nodiscard]] VkSurfaceKHR create_surface(
-    VkInstance instance,
-    const NativeWindowHandle& handle);
+[[nodiscard]] VkSurfaceKHR create_surface(VkInstance instance, const NativeWindowHandle& handle);
 
 }

@@ -49,9 +49,7 @@ using NativeWindowHandle = CocoaWindowHandle;
 
 namespace Northrend {
 
-using NativeWindowHandle = std::variant<
-    WaylandWindowHandle,
-    X11WindowHandle>;
+using NativeWindowHandle = std::variant<WaylandWindowHandle, X11WindowHandle>;
 
 }
 

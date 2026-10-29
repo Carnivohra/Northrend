@@ -6,15 +6,11 @@
 
 namespace Northrend {
 
-AssetId::AssetId(std::string_view path)
-    : value(path) {
+AssetId::AssetId(std::string_view path) : value(path) {
     std::ranges::replace(this->value, '\\', '/');
-
     std::filesystem::path normalized(this->value);
 
-    if (normalized.empty() ||
-        normalized.is_absolute() ||
-        normalized.has_root_path()) {
+    if (normalized.empty() || normalized.is_absolute() || normalized.has_root_path()) {
         throw std::invalid_argument("Asset path must be relative");
     }
 

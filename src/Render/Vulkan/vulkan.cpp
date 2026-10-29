@@ -6,9 +6,8 @@
 
 namespace Northrend {
 
-VulkanRenderer::VulkanRenderer(const Window& window)
-    : implementation(
-          std::make_unique<VulkanRendererImplementation>(window)) {}
+VulkanRenderer::VulkanRenderer(const Window& window) :
+    implementation(std::make_unique<VulkanRendererImplementation>(window)) {}
 
 VulkanRenderer::~VulkanRenderer() = default;
 

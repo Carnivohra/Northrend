@@ -4,12 +4,10 @@
 
 namespace Northrend {
 
-RenderScene::RenderScene()
-    : instanceQuery(this->state.tracked_query<const RenderInstance>()) {
+RenderScene::RenderScene() : instanceQuery(this->state.tracked_query<const RenderInstance>()) {
     this->cameraEntity = this->state.create();
 
-    const Camera& camera =
-        this->state.emplace<Camera>(this->cameraEntity);
+    const Camera& camera = this->state.emplace<Camera>(this->cameraEntity);
     this->cachedCamera = camera;
     this->cachedView = camera.view();
     this->cachedCameraRevision = camera.revision;
@@ -24,12 +22,10 @@ const Registry& RenderScene::registry() const noexcept {
 }
 
 const Camera& RenderScene::active_camera() const {
-    const Camera* camera =
-        this->state.get<Camera>(this->cameraEntity);
+    const Camera* camera = this->state.get<Camera>(this->cameraEntity);
 
     if (!camera) {
-        throw std::runtime_error(
-            "Render scene has no active camera");
+        throw std::runtime_error("Render scene has no active camera");
     }
 
     return *camera;
@@ -62,8 +58,7 @@ void RenderScene::refresh_instances() {
 
     this->instances.clear();
 
-    const std::size_t instanceCount =
-        static_cast<std::size_t>(this->instanceQuery.count());
+    const std::size_t instanceCount = static_cast<std::size_t>(this->instanceQuery.count());
 
     if (this->instances.capacity() < instanceCount) {
         this->instances.reserve(instanceCount);
@@ -79,10 +74,7 @@ void RenderScene::refresh_instances() {
             }
 
             const RenderInstance* begin = &field[0];
-            this->instances.insert(
-                this->instances.end(),
-                begin,
-                begin + count);
+            this->instances.insert(this->instances.end(), begin, begin + count);
         }
     });
 

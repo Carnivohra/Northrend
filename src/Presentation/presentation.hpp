@@ -13,15 +13,11 @@ namespace Northrend {
 class Window;
 
 template <typename Type>
-concept PresentationRenderer =
-    std::derived_from<Type, Renderer> &&
-    std::constructible_from<Type, const Window&>;
+concept PresentationRenderer = std::derived_from<Type, Renderer> && std::constructible_from<Type, const Window&>;
 
-template <PresentationRenderer RendererType>
-class Presentation final {
+template <PresentationRenderer RendererType> class Presentation final {
 public:
-    explicit Presentation(PresentationExchange& presentationExchange)
-        : presentationExchange(presentationExchange) {}
+    explicit Presentation(PresentationExchange& presentationExchange) : presentationExchange(presentationExchange) {}
 
     void start(const Window& window) {
         this->renderer.emplace(window);

@@ -5,45 +5,27 @@
 
 namespace Northrend {
 
-VulkanFrame::VulkanFrame(VkDevice device)
-    : device(device) {
-    const VkSemaphoreCreateInfo semaphoreInfo{
-        .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
-        .pNext = nullptr,
-        .flags = 0
+VulkanFrame::VulkanFrame(VkDevice device) : device(device) {
+    const VkSemaphoreCreateInfo semaphoreInfo {
+        .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO, .pNext = nullptr, .flags = 0
     };
-    const VkFenceCreateInfo fenceInfo{
-        .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
-        .pNext = nullptr,
-        .flags = VK_FENCE_CREATE_SIGNALED_BIT
+    const VkFenceCreateInfo fenceInfo {
+        .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO, .pNext = nullptr, .flags = VK_FENCE_CREATE_SIGNALED_BIT
     };
 
-    VkResult result = vkCreateSemaphore(
-        this->device,
-        &semaphoreInfo,
-        nullptr,
-        &this->imageAvailable);
+    VkResult result = vkCreateSemaphore(this->device, &semaphoreInfo, nullptr, &this->imageAvailable);
 
     if (result == VK_SUCCESS) {
-        result = vkCreateSemaphore(
-            this->device,
-            &semaphoreInfo,
-            nullptr,
-            &this->renderFinished);
+        result = vkCreateSemaphore(this->device, &semaphoreInfo, nullptr, &this->renderFinished);
     }
 
     if (result == VK_SUCCESS) {
-        result = vkCreateFence(
-            this->device,
-            &fenceInfo,
-            nullptr,
-            &this->renderFence);
+        result = vkCreateFence(this->device, &fenceInfo, nullptr, &this->renderFence);
     }
 
     if (result != VK_SUCCESS) {
         this->destroy();
-        throw std::runtime_error(
-            "Failed to create Vulkan frame synchronization: " + std::to_string(result));
+        throw std::runtime_error("Failed to create Vulkan frame synchronization: " + std::to_string(result));
     }
 }
 

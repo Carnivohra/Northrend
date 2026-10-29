@@ -16,8 +16,7 @@ const char* surface_extension(const NativeWindowHandle& handle) {
         return VK_KHR_XLIB_SURFACE_EXTENSION_NAME;
     }
 
-    throw std::runtime_error(
-        "Unsupported Linux window handle for Vulkan");
+    throw std::runtime_error("Unsupported Linux window handle for Vulkan");
 }
 
 }

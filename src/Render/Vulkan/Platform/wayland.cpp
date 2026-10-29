@@ -6,7 +6,7 @@
 namespace Northrend::VulkanPlatform {
 
 VkSurfaceKHR create_wayland_surface(VkInstance instance, const WaylandWindowHandle& handle) {
-    const VkWaylandSurfaceCreateInfoKHR createInfo{
+    const VkWaylandSurfaceCreateInfoKHR createInfo {
         .sType = VK_STRUCTURE_TYPE_WAYLAND_SURFACE_CREATE_INFO_KHR,
         .pNext = nullptr,
         .flags = 0,
@@ -18,8 +18,7 @@ VkSurfaceKHR create_wayland_surface(VkInstance instance, const WaylandWindowHand
     const VkResult result = vkCreateWaylandSurfaceKHR(instance, &createInfo, nullptr, &surface);
 
     if (result != VK_SUCCESS) {
-        throw std::runtime_error(
-            "Failed to create Vulkan Wayland surface: " + std::to_string(result));
+        throw std::runtime_error("Failed to create Vulkan Wayland surface: " + std::to_string(result));
     }
 
     return surface;
