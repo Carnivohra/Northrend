@@ -9,6 +9,7 @@
 #include <memory>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace Northrend {
@@ -33,6 +34,41 @@ MpqArchive::~MpqArchive() {
     }
 }
 
+std::vector<AssetId> MpqArchive::entries(const std::stop_token stopToken) const {
+    const std::scoped_lock lock(this->access);
+
+    if (stopToken.stop_requested()) {
+        return {};
+    }
+
+    std::optional<AssetData> listfile = this->read_entry(std::string("(listfile)"));
+
+    if (!listfile) {
+        return {};
+    }
+
+    const std::span<const std::byte> bytes = listfile->bytes();
+    const char* text = reinterpret_cast<const char*>(bytes.data());
+    std::vector<AssetId> entries;
+    std::size_t begin = 0;
+
+    while (begin < bytes.size() && !stopToken.stop_requested()) {
+        std::size_t end = begin;
+
+        while (end < bytes.size() && text[end] != '\r' && text[end] != '\n' && text[end] != '\0') {
+            ++end;
+        }
+
+        if (end != begin) {
+            entries.emplace_back(std::string_view(text + begin, end - begin));
+        }
+
+        begin = end + 1;
+    }
+
+    return entries;
+}
+
 bool MpqArchive::contains(const AssetId& asset) const {
     const std::string name = entry_name(asset);
     const std::scoped_lock lock(this->access);
@@ -43,6 +79,10 @@ bool MpqArchive::contains(const AssetId& asset) const {
 std::optional<AssetData> MpqArchive::try_read(const AssetId& asset) const {
     const std::string name = entry_name(asset);
     const std::scoped_lock lock(this->access);
+    return this->read_entry(name);
+}
+
+std::optional<AssetData> MpqArchive::read_entry(const std::string& name) const {
     HANDLE openedFile = nullptr;
 
     if (!SFileOpenFileEx(this->handle, name.c_str(), SFILE_OPEN_FROM_MPQ, &openedFile)) {
@@ -52,8 +92,8 @@ std::optional<AssetData> MpqArchive::try_read(const AssetId& asset) const {
             return std::nullopt;
         }
 
-        throw std::runtime_error("Failed to open MPQ asset: " + std::string(asset.path()) + " in " +
-            this->path.string() + " (StormLib error " + std::to_string(error) + ')');
+        throw std::runtime_error("Failed to open MPQ asset: " + name + " in " + this->path.string() +
+            " (StormLib error " + std::to_string(error) + ')');
     }
 
     const auto closeFile = [](void* file) noexcept { SFileCloseFile(file); };
@@ -63,14 +103,14 @@ std::optional<AssetData> MpqArchive::try_read(const AssetId& asset) const {
     const DWORD sizeLow = SFileGetFileSize(file.get(), &sizeHigh);
 
     if (sizeLow == SFILE_INVALID_SIZE && SErrGetLastError() != ERROR_SUCCESS) {
-        throw std::runtime_error("Failed to determine MPQ asset size: " + std::string(asset.path()) +
-            " (StormLib error " + std::to_string(SErrGetLastError()) + ')');
+        throw std::runtime_error("Failed to determine MPQ asset size: " + name + " (StormLib error " +
+            std::to_string(SErrGetLastError()) + ')');
     }
 
     const std::uint64_t size = (static_cast<std::uint64_t>(sizeHigh) << 32U) | sizeLow;
 
     if (size > std::numeric_limits<std::size_t>::max()) {
-        throw std::length_error("MPQ asset exceeds the platform address space: " + std::string(asset.path()));
+        throw std::length_error("MPQ asset exceeds the platform address space: " + name);
     }
 
     std::vector<std::byte> bytes(static_cast<std::size_t>(size));
@@ -83,7 +123,7 @@ std::optional<AssetData> MpqArchive::try_read(const AssetId& asset) const {
 
         if (!SFileReadFile(file.get(), bytes.data() + offset, requested, &bytesRead, nullptr) ||
             bytesRead != requested) {
-            throw std::runtime_error("Failed to read MPQ asset: " + std::string(asset.path()) + " (StormLib error " +
+            throw std::runtime_error("Failed to read MPQ asset: " + name + " (StormLib error " +
                 std::to_string(SErrGetLastError()) + ')');
         }
 

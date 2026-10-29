@@ -5,6 +5,9 @@ target_sources(Northrend
   PRIVATE
     App/app.cpp
     Asset/Chunk/reader.cpp
+    Asset/Dbc/format.cpp
+    Asset/Dbc/storage.cpp
+    Asset/Dbc/table.cpp
     Asset/Stream/request.cpp
     Asset/Stream/state.cpp
     Asset/Stream/streamer.cpp
@@ -39,6 +42,9 @@ target_sources(Northrend
       Asset/Chunk/chunk.hpp
       Asset/Chunk/id.hpp
       Asset/Chunk/reader.hpp
+      Asset/Dbc/format.hpp
+      Asset/Dbc/storage.hpp
+      Asset/Dbc/table.hpp
       Asset/Stream/priority.hpp
       Asset/Stream/request.hpp
       Asset/Stream/streamer.hpp

@@ -28,6 +28,7 @@ public:
 
     [[nodiscard]] AssetRequest request(AssetId asset, AssetPriority priority = AssetPriority::normal);
 
+    void tick() noexcept;
     void stop() noexcept;
 
 private:

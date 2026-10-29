@@ -22,6 +22,7 @@ public:
 
     void mount(std::unique_ptr<AssetSource> source);
 
+    [[nodiscard]] std::vector<AssetId> database_assets(std::stop_token stopToken = {}) const;
     [[nodiscard]] bool contains(const AssetId& asset) const;
     [[nodiscard]] AssetData read(const AssetId& asset) const;
 

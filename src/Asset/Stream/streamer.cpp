@@ -25,8 +25,6 @@ AssetRequest AssetStreamer::request(AssetId asset, AssetPriority priority) {
         throw std::runtime_error("Asset streamer is stopped");
     }
 
-    this->prune();
-
     if (const auto position = this->active.find(key); position != this->active.end()) {
         if (std::shared_ptr<AssetState> state = position->second.lock()) {
             const auto workPosition = this->work.find(key);
@@ -63,6 +61,11 @@ AssetRequest AssetStreamer::request(AssetId asset, AssetPriority priority) {
     }
 
     return AssetRequest(std::move(state));
+}
+
+void AssetStreamer::tick() noexcept {
+    const std::scoped_lock lock(this->mutex);
+    this->prune();
 }
 
 void AssetStreamer::stop() noexcept {

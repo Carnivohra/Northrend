@@ -18,6 +18,34 @@ AssetDirectory::AssetDirectory(std::filesystem::path root) {
     }
 }
 
+std::vector<AssetId> AssetDirectory::entries(const std::stop_token stopToken) const {
+    std::vector<AssetId> entries;
+    std::error_code error;
+    std::filesystem::recursive_directory_iterator position(
+        this->root, std::filesystem::directory_options::skip_permission_denied, error);
+    const std::filesystem::recursive_directory_iterator end;
+
+    while (!stopToken.stop_requested() && !error && position != end) {
+        const std::filesystem::directory_entry& entry = *position;
+
+        if (!entry.is_symlink(error) && entry.is_regular_file(error)) {
+            const std::filesystem::path relative = std::filesystem::relative(entry.path(), this->root, error);
+
+            if (!error) {
+                entries.emplace_back(relative.generic_string());
+            }
+        }
+
+        position.increment(error);
+    }
+
+    if (error) {
+        throw std::runtime_error("Failed to enumerate asset directory: " + this->root.string());
+    }
+
+    return entries;
+}
+
 bool AssetDirectory::contains(const AssetId& asset) const {
     std::error_code error;
     const bool exists = std::filesystem::is_regular_file(this->resolve(asset), error);

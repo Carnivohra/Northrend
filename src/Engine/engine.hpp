@@ -66,7 +66,7 @@ public:
     }
 
     void tick() override {
-        this->assets.rethrow_if_failed();
+        this->assets.tick();
         this->simulation->rethrow_if_failed();
         this->presentation.tick();
 

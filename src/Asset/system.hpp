@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Asset/Dbc/storage.hpp"
 #include "Asset/Stream/streamer.hpp"
 #include "Asset/plan.hpp"
 #include "Asset/storage.hpp"
@@ -22,21 +23,25 @@ public:
     AssetSystem& operator=(AssetSystem&&) = delete;
 
     void start();
+    void tick();
 
     [[nodiscard]] bool ready() const noexcept;
     [[nodiscard]] AssetRequest request(AssetId asset, AssetPriority priority = AssetPriority::normal);
+    [[nodiscard]] const DbcStorage& databases() const noexcept;
 
     void request_stop() noexcept;
-    void rethrow_if_failed();
     void stop();
 
 private:
     enum class State { idle, starting, ready, stopped };
 
+    void finish_startup();
+
     AssetPlan plan;
     ThreadPool& threadPool;
     AssetStorage storage;
     AssetStreamer streamer;
+    DbcStorage dbcStorage;
     std::shared_ptr<Work> startup;
     State state = State::idle;
 };
