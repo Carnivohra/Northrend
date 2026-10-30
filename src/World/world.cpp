@@ -2,12 +2,20 @@
 
 namespace Northrend {
 
-Registry& World::registry() noexcept {
-    return this->ecs;
+WorldRegistry& World::registry() noexcept {
+    return this->worldRegistry;
 }
 
-const Registry& World::registry() const noexcept {
-    return this->ecs;
+const WorldRegistry& World::registry() const noexcept {
+    return this->worldRegistry;
+}
+
+Map& World::map() noexcept {
+    return this->worldMap;
+}
+
+const Map& World::map() const noexcept {
+    return this->worldMap;
 }
 
 }

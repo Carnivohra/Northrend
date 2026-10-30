@@ -18,6 +18,7 @@ target_sources(Northrend
     Asset/mpq.cpp
     Asset/storage.cpp
     Asset/system.cpp
+    Asset/wdt.cpp
     Backend/backend.cpp
     Config/config.cpp
     Config/wtf.cpp
@@ -32,6 +33,9 @@ target_sources(Northrend
     Thread/pool.cpp
     Thread/worker.cpp
     Thread/work.cpp
+    World/Map/catalog.cpp
+    World/Map/entry.cpp
+    World/Map/map.cpp
     World/world.cpp
   PUBLIC
     FILE_SET HEADERS
@@ -57,6 +61,7 @@ target_sources(Northrend
       Asset/source.hpp
       Asset/storage.hpp
       Asset/system.hpp
+      Asset/wdt.hpp
       Backend/application.hpp
       Backend/backend.hpp
       Backend/plan.hpp
@@ -89,6 +94,10 @@ target_sources(Northrend
       Thread/task.hpp
       Thread/worker.hpp
       Thread/work.hpp
+      World/Map/catalog.hpp
+      World/Map/entry.hpp
+      World/Map/map.hpp
+      World/registry.hpp
       World/snapshot.hpp
       World/world.hpp
       ${NORTHREND_PLATFORM_HEADERS})

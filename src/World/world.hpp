@@ -1,6 +1,7 @@
 #pragma once
 
-#include "ECS/registry.hpp"
+#include "World/Map/map.hpp"
+#include "World/registry.hpp"
 
 namespace Northrend {
 
@@ -13,11 +14,14 @@ public:
     World(World&&) = default;
     World& operator=(World&&) = default;
 
-    [[nodiscard]] Registry& registry() noexcept;
-    [[nodiscard]] const Registry& registry() const noexcept;
+    [[nodiscard]] WorldRegistry& registry() noexcept;
+    [[nodiscard]] const WorldRegistry& registry() const noexcept;
+    [[nodiscard]] Map& map() noexcept;
+    [[nodiscard]] const Map& map() const noexcept;
 
 private:
-    Registry ecs;
+    WorldRegistry worldRegistry;
+    Map worldMap;
 };
 
 }

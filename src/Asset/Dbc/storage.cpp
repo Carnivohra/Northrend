@@ -75,6 +75,33 @@ const DbcTable* DbcStorage::find(const std::string_view path) const {
     return &position->second;
 }
 
+const DbcTable* DbcStorage::find_file(const std::string_view name) const {
+    if (!this->ready()) {
+        return nullptr;
+    }
+
+    const std::string filename = key(name);
+    const DbcTable* result = nullptr;
+
+    for (const auto& [path, table] : this->tables) {
+        const std::size_t separator = path.find_last_of('/');
+        const std::string_view current(path.data() + (separator == std::string::npos ? 0 : separator + 1),
+            path.size() - (separator == std::string::npos ? 0 : separator + 1));
+
+        if (current != filename) {
+            continue;
+        }
+
+        if (result) {
+            throw std::runtime_error("Database filename is ambiguous: " + filename);
+        }
+
+        result = &table;
+    }
+
+    return result;
+}
+
 void DbcStorage::request_stop() noexcept {
     if (this->discovery) {
         this->discovery->cancel();

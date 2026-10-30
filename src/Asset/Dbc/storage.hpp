@@ -34,6 +34,7 @@ public:
     [[nodiscard]] bool ready() const noexcept;
     [[nodiscard]] std::size_t size() const noexcept;
     [[nodiscard]] const DbcTable* find(std::string_view path) const;
+    [[nodiscard]] const DbcTable* find_file(std::string_view name) const;
 
     void request_stop() noexcept;
     void stop();
