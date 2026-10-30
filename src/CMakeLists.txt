@@ -27,8 +27,10 @@ target_sources(Northrend
     Math/Glm/matrix.cpp
     Math/Glm/matrix.hpp
     Math/matrix.cpp
+    Presentation/Map/terrain.cpp
     Presentation/map.cpp
     Render/camera.cpp
+    Render/Mesh/data.cpp
     Render/Mesh/allocator.cpp
     Render/scene.cpp
     Simulation/runtime.cpp
@@ -96,6 +98,7 @@ target_sources(Northrend
       Math/matrix.hpp
       Math/quaternion.hpp
       Math/vector.hpp
+      Presentation/Map/terrain.hpp
       Presentation/exchange.hpp
       Presentation/presentation.hpp
       Presentation/runtime.hpp
@@ -103,6 +106,7 @@ target_sources(Northrend
       Render/camera.hpp
       Render/frame.hpp
       Render/instance.hpp
+      Render/Mesh/data.hpp
       Render/Mesh/allocator.hpp
       Render/Mesh/mesh.hpp
       Render/renderer.hpp

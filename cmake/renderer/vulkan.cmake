@@ -44,12 +44,10 @@ target_sources(Northrend
     Render/Vulkan/device.hpp
     Render/Vulkan/frame.cpp
     Render/Vulkan/frame.hpp
-    Render/Vulkan/implementation.cpp
-    Render/Vulkan/implementation.hpp
     Render/Vulkan/instance.cpp
     Render/Vulkan/instance.hpp
-    Render/Vulkan/mesh.cpp
-    Render/Vulkan/mesh.hpp
+    Render/Vulkan/Mesh/mesh.cpp
+    Render/Vulkan/Mesh/mesh.hpp
     Render/Vulkan/Mesh/store.cpp
     Render/Vulkan/Mesh/store.hpp
     Render/Vulkan/Pipeline/mesh.cpp
@@ -69,7 +67,6 @@ target_sources(Northrend
     Render/Vulkan/Shader/Mesh/vertex.vert
     Render/Vulkan/swapchain.cpp
     Render/Vulkan/swapchain.hpp
-    Render/Vulkan/Mesh/vertex.hpp
     Render/Vulkan/vulkan.cpp
     ${NORTHREND_VULKAN_PLATFORM_SOURCES}
   PUBLIC

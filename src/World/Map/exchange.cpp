@@ -4,6 +4,10 @@
 
 namespace Northrend {
 
+bool MapExchange::request_map(const std::uint32_t map) {
+    return this->mapRequests.try_push(map);
+}
+
 bool MapExchange::submit(const std::string_view map, const MapSelection& selection) {
     if (this->selections.full()) {
         return false;
@@ -36,6 +40,10 @@ std::optional<std::pair<MapSelection, std::string>> MapExchange::next_selection(
     return this->selections.try_pop();
 }
 
+std::optional<std::uint32_t> MapExchange::next_map_request() {
+    return this->mapRequests.try_pop();
+}
+
 std::optional<TileRequest> MapExchange::next_tile_request() {
     return this->tileRequests.try_pop();
 }
@@ -61,6 +69,7 @@ bool MapExchange::tiles_full() const noexcept {
 }
 
 void MapExchange::clear() {
+    this->mapRequests.clear();
     this->selections.clear();
     this->tileRequests.clear();
     this->catalogs.clear();

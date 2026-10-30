@@ -1,7 +1,7 @@
 #include "Render/Vulkan/Mesh/store.hpp"
 
 #include "Render/Vulkan/device.hpp"
-#include "Render/Vulkan/mesh.hpp"
+#include "Render/Vulkan/Mesh/mesh.hpp"
 
 #include <limits>
 #include <stdexcept>
@@ -12,8 +12,7 @@ VulkanMeshStore::VulkanMeshStore(VulkanDevice& device) noexcept : device(device)
 
 VulkanMeshStore::~VulkanMeshStore() = default;
 
-void VulkanMeshStore::store(MeshHandle handle, std::span<const std::byte> vertices, std::span<const std::byte> indices,
-    std::uint32_t indexCount, VkIndexType indexType) {
+void VulkanMeshStore::store(const MeshHandle handle, const MeshData& data) {
     if (!handle) {
         throw std::invalid_argument("Cannot store a Vulkan mesh without a handle");
     }
@@ -34,7 +33,23 @@ void VulkanMeshStore::store(MeshHandle handle, std::span<const std::byte> vertic
         throw std::invalid_argument("A Vulkan mesh already exists for this handle");
     }
 
-    this->meshes[index] = std::make_unique<VulkanMesh>(this->device, vertices, indices, indexCount, indexType);
+    this->meshes[index] = std::make_unique<VulkanMesh>(this->device, data);
+    ++this->currentRevision;
+}
+
+void VulkanMeshStore::erase(const MeshHandle handle) noexcept {
+    if (!handle) {
+        return;
+    }
+
+    const std::uint64_t index = handle.id() - 1;
+
+    if (index >= this->meshes.size() || !this->meshes[static_cast<std::size_t>(index)]) {
+        return;
+    }
+
+    this->device.wait_idle();
+    this->meshes[static_cast<std::size_t>(index)].reset();
     ++this->currentRevision;
 }
 

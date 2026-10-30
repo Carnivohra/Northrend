@@ -4,6 +4,8 @@
 #include "Presentation/exchange.hpp"
 #include "Thread/pool.hpp"
 
+#include <stdexcept>
+
 namespace Northrend {
 
 SimulationRuntime::SimulationRuntime(
@@ -25,6 +27,12 @@ void SimulationRuntime::resume() noexcept {
 void SimulationRuntime::pause() noexcept {
     if (this->runner) {
         this->runner->pause();
+    }
+}
+
+void SimulationRuntime::request_map(const std::uint32_t map) {
+    if (!this->exchange.request_map(map)) {
+        throw std::overflow_error("Map request mailbox is full");
     }
 }
 

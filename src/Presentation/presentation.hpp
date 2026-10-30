@@ -2,6 +2,7 @@
 
 #include "Presentation/exchange.hpp"
 #include "Presentation/map.hpp"
+#include "Render/Mesh/allocator.hpp"
 #include "Render/renderer.hpp"
 #include "Render/scene.hpp"
 #include "World/snapshot.hpp"
@@ -40,7 +41,7 @@ public:
                 break;
             }
 
-            this->map.apply(std::move(*change));
+            this->map.apply(std::move(*change), this->meshHandles, *this->renderer, this->scene);
         }
 
         const WorldSnapshot& snapshot = this->presentationExchange.read_latest();
@@ -53,6 +54,10 @@ public:
     }
 
     void stop() {
+        if (this->renderer) {
+            this->map.clear(*this->renderer, this->scene);
+        }
+
         this->renderer.reset();
     }
 
@@ -61,6 +66,7 @@ private:
 
     PresentationExchange& presentationExchange;
     WorldSnapshot latestSnapshot;
+    MeshHandleAllocator meshHandles;
     PresentationMap map;
     RenderScene scene;
     std::optional<RendererType> renderer;

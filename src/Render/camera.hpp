@@ -11,6 +11,7 @@ namespace Northrend {
 struct Camera final {
     [[nodiscard]] Matrix4 view() const noexcept;
     [[nodiscard]] Matrix4 projection(float aspectRatio) const;
+    void look_at(Vector3 target, Vector3 up = Vector3 {.z = 1.0F});
 
     Vector3 position {0.0F, 0.0F, 5.0F};
     Quaternion orientation;

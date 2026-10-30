@@ -18,8 +18,10 @@ namespace Northrend {
 class MapExchange final {
 public:
     static constexpr std::size_t SelectionCapacity = 8;
+    static constexpr std::size_t RequestCapacity = 8;
     static constexpr std::size_t TileCapacity = 4096;
 
+    [[nodiscard]] bool request_map(std::uint32_t map);
     [[nodiscard]] bool submit(std::string_view map, const MapSelection& selection);
     [[nodiscard]] bool submit(const TileRequest& request);
 
@@ -28,6 +30,7 @@ public:
     [[nodiscard]] std::optional<TileResult> tile();
 
     [[nodiscard]] std::optional<std::pair<MapSelection, std::string>> next_selection();
+    [[nodiscard]] std::optional<std::uint32_t> next_map_request();
     [[nodiscard]] std::optional<TileRequest> next_tile_request();
 
     [[nodiscard]] bool publish(MapCatalog catalog);
@@ -39,6 +42,7 @@ public:
     void clear();
 
 private:
+    Mailbox<std::uint32_t, RequestCapacity> mapRequests;
     Mailbox<std::pair<MapSelection, std::string>, SelectionCapacity> selections;
     Mailbox<TileRequest, TileCapacity> tileRequests;
     Mailbox<MapCatalog, 1> catalogs;

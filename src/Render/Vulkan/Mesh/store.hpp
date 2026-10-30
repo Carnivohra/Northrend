@@ -1,13 +1,11 @@
 #pragma once
 
+#include "Render/Mesh/data.hpp"
 #include "Render/Mesh/mesh.hpp"
-
-#include <volk.h>
 
 #include <cstddef>
 #include <cstdint>
 #include <memory>
-#include <span>
 #include <vector>
 
 namespace Northrend {
@@ -23,8 +21,8 @@ public:
     VulkanMeshStore(const VulkanMeshStore&) = delete;
     VulkanMeshStore& operator=(const VulkanMeshStore&) = delete;
 
-    void store(MeshHandle handle, std::span<const std::byte> vertices, std::span<const std::byte> indices,
-        std::uint32_t indexCount, VkIndexType indexType);
+    void store(MeshHandle handle, const MeshData& data);
+    void erase(MeshHandle handle) noexcept;
     [[nodiscard]] const VulkanMesh* find(MeshHandle handle) const noexcept;
     [[nodiscard]] std::uint64_t revision() const noexcept;
 

@@ -2,7 +2,7 @@
 
 #include "Render/Vulkan/Shader/Mesh/fragment.hpp"
 #include "Render/Vulkan/Shader/Mesh/vertex.hpp"
-#include "Render/Vulkan/Mesh/vertex.hpp"
+#include "Math/vector.hpp"
 #include "Render/Vulkan/device.hpp"
 
 #include <array>
@@ -96,20 +96,14 @@ void VulkanMeshPipeline::create_graphics_pipeline(VkRenderPass renderPass, VkExt
         }
     };
     const VkVertexInputBindingDescription vertexBinding {
-        .binding = 0, .stride = sizeof(VulkanMeshVertex), .inputRate = VK_VERTEX_INPUT_RATE_VERTEX
+        .binding = 0, .stride = sizeof(Vector3), .inputRate = VK_VERTEX_INPUT_RATE_VERTEX
     };
-    const std::array<VkVertexInputAttributeDescription, 2> vertexAttributes {
+    const std::array<VkVertexInputAttributeDescription, 1> vertexAttributes {
         VkVertexInputAttributeDescription {
             .location = 0,
             .binding = 0,
             .format = VK_FORMAT_R32G32B32_SFLOAT,
-            .offset = offsetof(VulkanMeshVertex, position)
-        },
-        VkVertexInputAttributeDescription {
-            .location = 1,
-            .binding = 0,
-            .format = VK_FORMAT_R32G32B32_SFLOAT,
-            .offset = offsetof(VulkanMeshVertex, color)
+            .offset = 0
         }
     };
     const VkPipelineVertexInputStateCreateInfo vertexInput {

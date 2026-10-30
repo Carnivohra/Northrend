@@ -51,6 +51,10 @@ public:
         this->presentation.suspend();
     }
 
+    void request_map(const std::uint32_t map) {
+        this->simulation.request_map(map);
+    }
+
     void tick() override {
         this->assets.tick();
         this->simulation.tick();

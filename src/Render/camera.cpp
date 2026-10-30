@@ -44,4 +44,23 @@ Matrix4 Camera::projection(float aspectRatio) const {
     return from_glm(glm::perspectiveRH_ZO(this->verticalFieldOfView, aspectRatio, this->nearPlane, this->farPlane));
 }
 
+void Camera::look_at(const Vector3 target, const Vector3 up) {
+    const glm::vec3 position(this->position.x, this->position.y, this->position.z);
+    const glm::vec3 direction = glm::vec3(target.x, target.y, target.z) - position;
+    const glm::vec3 upward(up.x, up.y, up.z);
+
+    if (glm::dot(direction, direction) <= 0.0F || glm::dot(upward, upward) <= 0.0F ||
+        glm::dot(glm::cross(direction, upward), glm::cross(direction, upward)) <= 0.0F) {
+        throw std::invalid_argument("Camera look-at vectors must define a valid orientation");
+    }
+
+    const glm::quat orientation = glm::quatLookAtRH(glm::normalize(direction), glm::normalize(upward));
+    this->orientation = Quaternion {
+        .x = orientation.x,
+        .y = orientation.y,
+        .z = orientation.z,
+        .w = orientation.w
+    };
+}
+
 }

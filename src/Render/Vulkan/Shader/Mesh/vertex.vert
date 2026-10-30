@@ -9,7 +9,6 @@ layout(push_constant) uniform Instance {
 } instance;
 
 layout(location = 0) in vec3 position;
-layout(location = 1) in vec3 vertexColor;
 
 layout(location = 0) out vec3 color;
 
@@ -18,5 +17,9 @@ void main() {
         camera.viewProjection *
         instance.transform *
         vec4(position, 1.0);
-    color = vertexColor;
+
+    const vec3 low = vec3(0.08, 0.24, 0.10);
+    const vec3 high = vec3(0.68, 0.70, 0.66);
+    const float height = clamp((position.z + 100.0) / 1200.0, 0.0, 1.0);
+    color = mix(low, high, height);
 }

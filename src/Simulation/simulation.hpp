@@ -6,6 +6,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <optional>
 
 namespace Northrend {
 
@@ -30,8 +31,12 @@ public:
 private:
     static constexpr std::size_t TileChangesPerTick = 32;
 
+    void receive_map_request();
+
     PresentationExchange& presentationExchange;
+    MapExchange& mapExchange;
     World state;
+    std::optional<std::uint32_t> requestedMap;
     std::uint64_t sequence = 0;
 };
 

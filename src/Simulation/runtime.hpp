@@ -5,6 +5,7 @@
 #include "World/Map/exchange.hpp"
 #include "World/Map/loader.hpp"
 
+#include <cstdint>
 #include <optional>
 
 namespace Northrend {
@@ -26,6 +27,7 @@ public:
     void start();
     void resume() noexcept;
     void pause() noexcept;
+    void request_map(std::uint32_t map);
     void tick();
     void stop();
 
