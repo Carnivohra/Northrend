@@ -1,0 +1,47 @@
+#pragma once
+
+#include "World/Map/request.hpp"
+
+#include <array>
+#include <cstddef>
+#include <cstdint>
+#include <optional>
+
+namespace Northrend {
+
+enum class TerrainTileState : std::uint8_t { missing, requested, loading, ready, active, failed };
+
+class Terrain final {
+public:
+    static constexpr std::size_t Size = 64;
+    static constexpr std::size_t TileCount = Size * Size;
+
+    void focus(std::size_t x, std::size_t y, std::size_t radius);
+    [[nodiscard]] std::optional<TerrainRequest> next_request() noexcept;
+
+    [[nodiscard]] bool complete(const TerrainRequest& request) noexcept;
+    [[nodiscard]] bool fail(const TerrainRequest& request) noexcept;
+    [[nodiscard]] bool activate(std::size_t x, std::size_t y) noexcept;
+    [[nodiscard]] bool deactivate(std::size_t x, std::size_t y) noexcept;
+    void release(std::size_t x, std::size_t y) noexcept;
+    void reset() noexcept;
+
+    [[nodiscard]] TerrainTileState state(std::size_t x, std::size_t y) const noexcept;
+    [[nodiscard]] std::size_t pending() const noexcept;
+
+private:
+    [[nodiscard]] static constexpr std::uint16_t index(const std::size_t x, const std::size_t y) noexcept {
+        return static_cast<std::uint16_t>(y * Size + x);
+    }
+
+    void enqueue(std::size_t x, std::size_t y, std::size_t distance) noexcept;
+
+    std::array<TerrainTileState, TileCount> states {};
+    std::array<std::uint16_t, TileCount> requests {};
+    std::array<std::uint8_t, TileCount> requestDistances {};
+    std::size_t requestPosition = 0;
+    std::size_t requestCount = 0;
+    std::uint32_t currentGeneration = 1;
+};
+
+}

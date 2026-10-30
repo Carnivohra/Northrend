@@ -36,6 +36,8 @@ target_sources(Northrend
     World/Map/catalog.cpp
     World/Map/entry.cpp
     World/Map/map.cpp
+    World/Map/request.cpp
+    World/Map/terrain.cpp
     World/world.cpp
   PUBLIC
     FILE_SET HEADERS
@@ -90,6 +92,7 @@ target_sources(Northrend
       Render/scene.hpp
       Simulation/simulation.hpp
       Thread/pool.hpp
+      Thread/mailbox.hpp
       Thread/runner.hpp
       Thread/task.hpp
       Thread/worker.hpp
@@ -97,6 +100,8 @@ target_sources(Northrend
       World/Map/catalog.hpp
       World/Map/entry.hpp
       World/Map/map.hpp
+      World/Map/request.hpp
+      World/Map/terrain.hpp
       World/registry.hpp
       World/snapshot.hpp
       World/world.hpp
