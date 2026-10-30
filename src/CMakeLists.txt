@@ -39,10 +39,12 @@ target_sources(Northrend
     World/Map/definition.cpp
     World/Map/entry.cpp
     World/Map/map.cpp
-    World/Map/request.cpp
-    World/Map/result.cpp
     World/Map/selection.cpp
-    World/Map/terrain.cpp
+    World/Map/Terrain/geometry.cpp
+    World/Map/Terrain/request.cpp
+    World/Map/Terrain/result.cpp
+    World/Map/Terrain/terrain.cpp
+    World/Map/Terrain/tile.cpp
     World/exchange.cpp
     World/loader.cpp
     World/world.cpp
@@ -111,10 +113,12 @@ target_sources(Northrend
       World/Map/definition.hpp
       World/Map/entry.hpp
       World/Map/map.hpp
-      World/Map/request.hpp
-      World/Map/result.hpp
       World/Map/selection.hpp
-      World/Map/terrain.hpp
+      World/Map/Terrain/geometry.hpp
+      World/Map/Terrain/request.hpp
+      World/Map/Terrain/result.hpp
+      World/Map/Terrain/terrain.hpp
+      World/Map/Terrain/tile.hpp
       World/exchange.hpp
       World/loader.hpp
       World/registry.hpp

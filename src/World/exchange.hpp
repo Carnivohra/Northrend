@@ -3,8 +3,8 @@
 #include "Thread/mailbox.hpp"
 #include "World/Map/catalog.hpp"
 #include "World/Map/definition.hpp"
-#include "World/Map/request.hpp"
-#include "World/Map/result.hpp"
+#include "World/Map/Terrain/request.hpp"
+#include "World/Map/Terrain/result.hpp"
 #include "World/Map/selection.hpp"
 
 #include <cstddef>

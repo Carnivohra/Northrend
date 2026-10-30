@@ -2,7 +2,7 @@
 
 #include "Asset/Stream/request.hpp"
 #include "Asset/id.hpp"
-#include "World/Map/request.hpp"
+#include "World/Map/Terrain/request.hpp"
 #include "World/Map/selection.hpp"
 
 #include <cstddef>

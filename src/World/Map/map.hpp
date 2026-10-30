@@ -3,7 +3,7 @@
 #include "World/Map/catalog.hpp"
 #include "World/Map/definition.hpp"
 #include "World/Map/selection.hpp"
-#include "World/Map/terrain.hpp"
+#include "World/Map/Terrain/terrain.hpp"
 
 #include <cstdint>
 #include <optional>

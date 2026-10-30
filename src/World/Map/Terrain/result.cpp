@@ -1,11 +1,11 @@
-#include "World/Map/result.hpp"
+#include "World/Map/Terrain/result.hpp"
 
 #include <utility>
 
 namespace Northrend {
 
-TerrainResult::TerrainResult(TerrainRequest request, std::shared_ptr<const Adt> adt) noexcept :
-    terrainRequest(request), terrainData(std::move(adt)) {}
+TerrainResult::TerrainResult(TerrainRequest request, std::shared_ptr<const TerrainTile> tile) noexcept :
+    terrainRequest(request), terrainData(std::move(tile)) {}
 
 TerrainResult::TerrainResult(TerrainRequest request, std::exception_ptr failure) noexcept :
     terrainRequest(request), terrainFailure(std::move(failure)) {}
@@ -18,7 +18,7 @@ bool TerrainResult::succeeded() const noexcept {
     return static_cast<bool>(this->terrainData);
 }
 
-std::shared_ptr<const Adt> TerrainResult::data() && noexcept {
+std::shared_ptr<const TerrainTile> TerrainResult::data() && noexcept {
     return std::move(this->terrainData);
 }
 

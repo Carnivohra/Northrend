@@ -2,15 +2,15 @@
 
 #include "Asset/Dbc/table.hpp"
 #include "Asset/Stream/priority.hpp"
-#include "Asset/adt.hpp"
 #include "Asset/system.hpp"
 #include "Asset/wdt.hpp"
 #include "Thread/pool.hpp"
 #include "Thread/work.hpp"
 #include "World/Map/catalog.hpp"
 #include "World/Map/definition.hpp"
-#include "World/Map/request.hpp"
-#include "World/Map/result.hpp"
+#include "World/Map/Terrain/request.hpp"
+#include "World/Map/Terrain/result.hpp"
+#include "World/Map/Terrain/tile.hpp"
 #include "World/exchange.hpp"
 
 #include <algorithm>
@@ -281,7 +281,7 @@ void WorldLoader::start_parse() {
             this->threadPool.submit(WorkPriority::normal, [this, request, assetRequest = std::move(assetRequest)] {
                 TerrainResult result = [&] {
                     try {
-                        return TerrainResult(request, std::make_shared<Adt>(assetRequest.data()));
+                        return TerrainResult(request, std::make_shared<TerrainTile>(assetRequest.data()));
                     } catch (...) {
                         return TerrainResult(request, std::current_exception());
                     }

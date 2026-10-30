@@ -1,7 +1,7 @@
-#include "World/Map/terrain.hpp"
+#include "World/Map/Terrain/terrain.hpp"
 
 #include "Asset/wdt.hpp"
-#include "World/Map/result.hpp"
+#include "World/Map/Terrain/result.hpp"
 
 #include <algorithm>
 #include <limits>
@@ -172,7 +172,7 @@ TerrainTileState Terrain::state(const std::size_t x, const std::size_t y) const 
     return x < Size && y < Size ? this->states[index(x, y)] : TerrainTileState::missing;
 }
 
-const Adt* Terrain::tile(const std::size_t x, const std::size_t y) const noexcept {
+const TerrainTile* Terrain::tile(const std::size_t x, const std::size_t y) const noexcept {
     return x < Size && y < Size ? this->tiles[index(x, y)].get() : nullptr;
 }
 

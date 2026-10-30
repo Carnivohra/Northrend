@@ -1,6 +1,6 @@
 #pragma once
 
-#include "World/Map/request.hpp"
+#include "World/Map/Terrain/request.hpp"
 
 #include <array>
 #include <cstddef>
@@ -10,9 +10,9 @@
 
 namespace Northrend {
 
-class Adt;
 class Map;
 class TerrainResult;
+class TerrainTile;
 class Wdt;
 
 enum class TerrainTileState : std::uint8_t { missing, requested, loading, ready, active, failed };
@@ -37,7 +37,7 @@ public:
     void reset() noexcept;
 
     [[nodiscard]] TerrainTileState state(std::size_t x, std::size_t y) const noexcept;
-    [[nodiscard]] const Adt* tile(std::size_t x, std::size_t y) const noexcept;
+    [[nodiscard]] const TerrainTile* tile(std::size_t x, std::size_t y) const noexcept;
     [[nodiscard]] std::size_t pending() const noexcept;
 
 private:
@@ -53,7 +53,7 @@ private:
     std::array<TerrainTileState, TileCount> states {};
     std::array<std::uint16_t, TileCount> requests {};
     std::array<std::uint8_t, TileCount> requestDistances {};
-    std::array<std::shared_ptr<const Adt>, TileCount> tiles;
+    std::array<std::shared_ptr<const TerrainTile>, TileCount> tiles;
     std::shared_ptr<const Wdt> definition;
     std::size_t requestPosition = 0;
     std::size_t requestCount = 0;
