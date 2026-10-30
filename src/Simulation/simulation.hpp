@@ -8,9 +8,11 @@
 
 namespace Northrend {
 
+class WorldExchange;
+
 class Simulation final {
 public:
-    explicit Simulation(PresentationExchange& presentationExchange) noexcept;
+    Simulation(PresentationExchange& presentationExchange, WorldExchange& worldExchange) noexcept;
 
     Simulation(const Simulation&) = delete;
     Simulation& operator=(const Simulation&) = delete;

@@ -8,11 +8,12 @@
 
 namespace Northrend {
 
-class DbcStorage;
+class DbcTable;
 
 class MapCatalog final {
 public:
-    void tick(const DbcStorage& databases);
+    MapCatalog() = default;
+    explicit MapCatalog(const DbcTable& table);
 
     [[nodiscard]] bool ready() const noexcept;
     [[nodiscard]] std::size_t size() const noexcept;

@@ -12,6 +12,7 @@ target_sources(Northrend
     Asset/Stream/state.cpp
     Asset/Stream/streamer.cpp
     Asset/Stream/state.hpp
+    Asset/adt.cpp
     Asset/data.cpp
     Asset/directory.cpp
     Asset/id.cpp
@@ -29,15 +30,21 @@ target_sources(Northrend
     Render/camera.cpp
     Render/Mesh/allocator.cpp
     Render/scene.cpp
+    Simulation/runtime.cpp
     Simulation/simulation.cpp
     Thread/pool.cpp
     Thread/worker.cpp
     Thread/work.cpp
     World/Map/catalog.cpp
+    World/Map/definition.cpp
     World/Map/entry.cpp
     World/Map/map.cpp
     World/Map/request.cpp
+    World/Map/result.cpp
+    World/Map/selection.cpp
     World/Map/terrain.cpp
+    World/exchange.cpp
+    World/loader.cpp
     World/world.cpp
   PUBLIC
     FILE_SET HEADERS
@@ -54,6 +61,7 @@ target_sources(Northrend
       Asset/Stream/priority.hpp
       Asset/Stream/request.hpp
       Asset/Stream/streamer.hpp
+      Asset/adt.hpp
       Asset/data.hpp
       Asset/directory.hpp
       Asset/id.hpp
@@ -83,6 +91,7 @@ target_sources(Northrend
       Math/vector.hpp
       Presentation/exchange.hpp
       Presentation/presentation.hpp
+      Presentation/runtime.hpp
       Render/camera.hpp
       Render/frame.hpp
       Render/instance.hpp
@@ -90,6 +99,7 @@ target_sources(Northrend
       Render/Mesh/mesh.hpp
       Render/renderer.hpp
       Render/scene.hpp
+      Simulation/runtime.hpp
       Simulation/simulation.hpp
       Thread/pool.hpp
       Thread/mailbox.hpp
@@ -98,10 +108,15 @@ target_sources(Northrend
       Thread/worker.hpp
       Thread/work.hpp
       World/Map/catalog.hpp
+      World/Map/definition.hpp
       World/Map/entry.hpp
       World/Map/map.hpp
       World/Map/request.hpp
+      World/Map/result.hpp
+      World/Map/selection.hpp
       World/Map/terrain.hpp
+      World/exchange.hpp
+      World/loader.hpp
       World/registry.hpp
       World/snapshot.hpp
       World/world.hpp

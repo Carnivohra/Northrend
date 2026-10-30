@@ -4,42 +4,31 @@
 #include "Backend/application.hpp"
 #include "Engine/fps.hpp"
 #include "Engine/plan.hpp"
-#include "Presentation/exchange.hpp"
-#include "Simulation/simulation.hpp"
+#include "Presentation/runtime.hpp"
+#include "Simulation/runtime.hpp"
 #include "Thread/pool.hpp"
-#include "Thread/runner.hpp"
 
 #include <algorithm>
-#include <concepts>
 #include <cstddef>
 #include <cstdint>
 #include <exception>
 #include <iostream>
-#include <optional>
 #include <thread>
 
 namespace Northrend {
 
-class Window;
-
-template <typename Type>
-concept EnginePresentation =
-    std::constructible_from<Type, PresentationExchange&> && requires(Type presentation, const Window& window) {
-        { presentation.start(window) } -> std::same_as<void>;
-        { presentation.suspend() } -> std::same_as<void>;
-        { presentation.tick() } -> std::same_as<void>;
-        { presentation.stop() } -> std::same_as<void>;
-    };
-
-template <EnginePresentation PresentationType> class Engine final : public BackendApplication {
+template <PresentationModule PresentationType> class Engine final : public BackendApplication {
 public:
-    explicit Engine(const EnginePlan& plan) : threadPool(worker_count()), assets(plan.assets, this->threadPool) {}
+    explicit Engine(const EnginePlan& plan) :
+        threadPool(worker_count()),
+        assets(plan.assets, this->threadPool),
+        simulation(this->presentation.exchange(), this->assets, this->threadPool) {}
 
     void started(const Window& window) override {
         try {
             this->presentation.start(window);
             this->assets.start();
-            this->simulation.emplace(Simulation {this->presentationExchange}, 128);
+            this->simulation.start();
         } catch (...) {
             // Roll back before the backend releases the window.
             try {
@@ -53,21 +42,18 @@ public:
     }
 
     void resumed() override {
-        this->simulation->resume();
+        this->simulation.resume();
         this->fps.reset();
     }
 
     void suspended() override {
-        if (this->simulation) {
-            this->simulation->pause();
-        }
-
+        this->simulation.pause();
         this->presentation.suspend();
     }
 
     void tick() override {
         this->assets.tick();
-        this->simulation->rethrow_if_failed();
+        this->simulation.tick();
         this->presentation.tick();
 
         if (const auto currentFps = this->fps.record_frame()) {
@@ -80,14 +66,10 @@ public:
 
         this->assets.request_stop();
 
-        if (this->simulation) {
-            try {
-                this->simulation->stop();
-            } catch (...) {
-                failure = std::current_exception();
-            }
-
-            this->simulation.reset();
+        try {
+            this->simulation.stop();
+        } catch (...) {
+            failure = std::current_exception();
         }
 
         try {
@@ -119,12 +101,11 @@ private:
         return std::clamp(concurrency / 4, std::size_t {1}, std::size_t {4});
     }
 
-    PresentationExchange presentationExchange;
-    PresentationType presentation {this->presentationExchange};
-    std::optional<TaskRunner<Simulation>> simulation;
+    PresentationRuntime<PresentationType> presentation;
     Fps fps;
     ThreadPool threadPool;
     AssetSystem assets;
+    SimulationRuntime simulation;
 };
 
 }

@@ -1,6 +1,5 @@
 #include "World/Map/catalog.hpp"
 
-#include "Asset/Dbc/storage.hpp"
 #include "Asset/Dbc/table.hpp"
 
 #include <algorithm>
@@ -9,27 +8,17 @@
 
 namespace Northrend {
 
-void MapCatalog::tick(const DbcStorage& databases) {
-    if (this->loaded || !databases.ready()) {
-        return;
-    }
-
-    const DbcTable* table = databases.find_file("Map.dbc");
-
-    if (!table) {
-        throw std::runtime_error("Map.dbc was not found in the mounted assets");
-    }
-
-    if (table->field_count() < 2) {
+MapCatalog::MapCatalog(const DbcTable& table) {
+    if (table.field_count() < 2) {
         throw std::runtime_error("Map.dbc does not contain the required fields");
     }
 
     std::vector<MapEntry> maps;
-    maps.reserve(table->record_count());
+    maps.reserve(table.record_count());
 
-    for (std::size_t record = 0; record < table->record_count(); ++record) {
-        const std::uint32_t id = table->field(record, 0);
-        const std::string_view directory = table->string(table->field(record, 1));
+    for (std::size_t record = 0; record < table.record_count(); ++record) {
+        const std::uint32_t id = table.field(record, 0);
+        const std::string_view directory = table.string(table.field(record, 1));
 
         if (directory.empty()) {
             throw std::runtime_error("Map.dbc contains an empty map directory");
