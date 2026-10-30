@@ -1,7 +1,5 @@
 #include "World/Map/map.hpp"
 
-#include "Asset/wdt.hpp"
-
 #include <limits>
 #include <stdexcept>
 #include <utility>
@@ -23,13 +21,13 @@ void Map::select(const std::uint32_t map) {
         throw std::out_of_range("Map is not present in the map catalog");
     }
 
-    if (this->mapTerrain) {
-        this->nextTerrainGeneration = next_generation(this->mapTerrain->generation());
+    if (this->mapTiles) {
+        this->nextTileGeneration = next_generation(this->mapTiles->generation());
     }
 
-    const std::uint32_t generation = this->nextTerrainGeneration;
-    this->nextTerrainGeneration = next_generation(generation);
-    this->mapTerrain.reset();
+    const std::uint32_t generation = this->nextTileGeneration;
+    this->nextTileGeneration = next_generation(generation);
+    this->mapTiles.reset();
     this->mapDirectory = entry->directory();
     this->activeGeneration = generation;
     this->activeIdentifier = map;
@@ -55,30 +53,30 @@ bool Map::defer(const MapSelection& selection) noexcept {
     return true;
 }
 
-bool Map::complete(MapDefinition definition) noexcept {
-    const MapSelection& selection = definition.selection();
+bool Map::complete(MapResult result) noexcept {
+    const MapSelection& selection = result.selection();
 
     if (this->mapState != MapState::loading || selection.id() != this->activeIdentifier ||
         selection.generation() != this->activeGeneration) {
         return false;
     }
 
-    if (!definition.succeeded()) {
+    if (!result.succeeded()) {
         this->mapState = MapState::failed;
         return true;
     }
 
-    this->mapTerrain.emplace(this->activeGeneration, std::move(definition).data());
+    this->mapTiles.emplace(this->activeGeneration, std::move(result).data());
     this->mapState = MapState::ready;
     return true;
 }
 
-Terrain* Map::terrain() noexcept {
-    return this->mapTerrain ? &*this->mapTerrain : nullptr;
+TileGrid* Map::tiles() noexcept {
+    return this->mapTiles ? &*this->mapTiles : nullptr;
 }
 
-const Terrain* Map::terrain() const noexcept {
-    return this->mapTerrain ? &*this->mapTerrain : nullptr;
+const TileGrid* Map::tiles() const noexcept {
+    return this->mapTiles ? &*this->mapTiles : nullptr;
 }
 
 std::string_view Map::directory() const noexcept {
@@ -94,11 +92,11 @@ std::uint32_t Map::id() const noexcept {
 }
 
 void Map::clear() noexcept {
-    if (this->mapTerrain) {
-        this->nextTerrainGeneration = next_generation(this->mapTerrain->generation());
+    if (this->mapTiles) {
+        this->nextTileGeneration = next_generation(this->mapTiles->generation());
     }
 
-    this->mapTerrain.reset();
+    this->mapTiles.reset();
     this->mapDirectory.clear();
     this->activeGeneration = 0;
     this->activeIdentifier = 0;

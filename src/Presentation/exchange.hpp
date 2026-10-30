@@ -1,16 +1,22 @@
 #pragma once
 
+#include "Thread/mailbox.hpp"
+#include "World/Map/Tile/change.hpp"
 #include "World/snapshot.hpp"
 
 #include <array>
 #include <atomic>
 #include <cstddef>
 #include <cstdint>
+#include <optional>
+#include <utility>
 
 namespace Northrend {
 
 class PresentationExchange final {
 public:
+    static constexpr std::size_t TileCapacity = 4096;
+
     PresentationExchange() = default;
 
     PresentationExchange(const PresentationExchange&) = delete;
@@ -38,6 +44,18 @@ public:
         return this->snapshots[this->consumerIndex];
     }
 
+    [[nodiscard]] bool publish(TileChange change) {
+        return this->tileChanges.try_push(std::move(change));
+    }
+
+    [[nodiscard]] std::optional<TileChange> next_tile() {
+        return this->tileChanges.try_pop();
+    }
+
+    [[nodiscard]] bool tiles_full() const noexcept {
+        return this->tileChanges.full();
+    }
+
 private:
     static constexpr std::uint8_t PendingBit = 0x80;
     static constexpr std::uint8_t IndexMask = 0x03;
@@ -55,6 +73,7 @@ private:
     }
 
     std::array<WorldSnapshot, 3> snapshots {};
+    Mailbox<TileChange, TileCapacity> tileChanges;
     std::atomic<std::uint8_t> available = encode(1, false);
     std::size_t consumerIndex = 0;
     std::size_t producerIndex = 2;

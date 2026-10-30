@@ -1,12 +1,15 @@
 #pragma once
 
 #include "Presentation/exchange.hpp"
+#include "Presentation/map.hpp"
 #include "Render/renderer.hpp"
 #include "Render/scene.hpp"
 #include "World/snapshot.hpp"
 
 #include <concepts>
+#include <cstddef>
 #include <optional>
+#include <utility>
 
 namespace Northrend {
 
@@ -30,6 +33,16 @@ public:
     }
 
     void tick() {
+        for (std::size_t count = 0; count < TileChangesPerFrame; ++count) {
+            std::optional<TileChange> change = this->presentationExchange.next_tile();
+
+            if (!change) {
+                break;
+            }
+
+            this->map.apply(std::move(*change));
+        }
+
         const WorldSnapshot& snapshot = this->presentationExchange.read_latest();
 
         if (snapshot.sequence != this->latestSnapshot.sequence) {
@@ -44,8 +57,11 @@ public:
     }
 
 private:
+    static constexpr std::size_t TileChangesPerFrame = 32;
+
     PresentationExchange& presentationExchange;
     WorldSnapshot latestSnapshot;
+    PresentationMap map;
     RenderScene scene;
     std::optional<RendererType> renderer;
 };

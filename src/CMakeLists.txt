@@ -27,6 +27,7 @@ target_sources(Northrend
     Math/Glm/matrix.cpp
     Math/Glm/matrix.hpp
     Math/matrix.cpp
+    Presentation/map.cpp
     Render/camera.cpp
     Render/Mesh/allocator.cpp
     Render/scene.cpp
@@ -36,17 +37,21 @@ target_sources(Northrend
     Thread/worker.cpp
     Thread/work.cpp
     World/Map/catalog.cpp
-    World/Map/definition.cpp
     World/Map/entry.cpp
+    World/Map/exchange.cpp
+    World/Map/layout.cpp
+    World/Map/loader.cpp
     World/Map/map.cpp
+    World/Map/result.cpp
     World/Map/selection.cpp
     World/Map/Terrain/geometry.cpp
-    World/Map/Terrain/request.cpp
-    World/Map/Terrain/result.cpp
-    World/Map/Terrain/terrain.cpp
     World/Map/Terrain/tile.cpp
-    World/exchange.cpp
-    World/loader.cpp
+    World/Map/Tile/change.cpp
+    World/Map/Tile/grid.cpp
+    World/Map/Tile/job.cpp
+    World/Map/Tile/request.cpp
+    World/Map/Tile/result.cpp
+    World/Map/Tile/tile.cpp
     World/world.cpp
   PUBLIC
     FILE_SET HEADERS
@@ -94,6 +99,7 @@ target_sources(Northrend
       Presentation/exchange.hpp
       Presentation/presentation.hpp
       Presentation/runtime.hpp
+      Presentation/map.hpp
       Render/camera.hpp
       Render/frame.hpp
       Render/instance.hpp
@@ -110,17 +116,21 @@ target_sources(Northrend
       Thread/worker.hpp
       Thread/work.hpp
       World/Map/catalog.hpp
-      World/Map/definition.hpp
       World/Map/entry.hpp
+      World/Map/exchange.hpp
+      World/Map/layout.hpp
+      World/Map/loader.hpp
       World/Map/map.hpp
+      World/Map/result.hpp
       World/Map/selection.hpp
       World/Map/Terrain/geometry.hpp
-      World/Map/Terrain/request.hpp
-      World/Map/Terrain/result.hpp
-      World/Map/Terrain/terrain.hpp
       World/Map/Terrain/tile.hpp
-      World/exchange.hpp
-      World/loader.hpp
+      World/Map/Tile/change.hpp
+      World/Map/Tile/grid.hpp
+      World/Map/Tile/job.hpp
+      World/Map/Tile/request.hpp
+      World/Map/Tile/result.hpp
+      World/Map/Tile/tile.hpp
       World/registry.hpp
       World/snapshot.hpp
       World/world.hpp

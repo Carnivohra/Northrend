@@ -1,9 +1,9 @@
 #pragma once
 
 #include "World/Map/catalog.hpp"
-#include "World/Map/definition.hpp"
+#include "World/Map/result.hpp"
 #include "World/Map/selection.hpp"
-#include "World/Map/Terrain/terrain.hpp"
+#include "World/Map/Tile/grid.hpp"
 
 #include <cstdint>
 #include <optional>
@@ -22,10 +22,10 @@ public:
     void select(std::uint32_t map);
     [[nodiscard]] std::optional<MapSelection> next_selection() noexcept;
     [[nodiscard]] bool defer(const MapSelection& selection) noexcept;
-    [[nodiscard]] bool complete(MapDefinition definition) noexcept;
+    [[nodiscard]] bool complete(MapResult result) noexcept;
 
-    [[nodiscard]] Terrain* terrain() noexcept;
-    [[nodiscard]] const Terrain* terrain() const noexcept;
+    [[nodiscard]] TileGrid* tiles() noexcept;
+    [[nodiscard]] const TileGrid* tiles() const noexcept;
     [[nodiscard]] std::string_view directory() const noexcept;
     [[nodiscard]] MapState state() const noexcept;
     [[nodiscard]] std::uint32_t id() const noexcept;
@@ -35,9 +35,9 @@ private:
     [[nodiscard]] static std::uint32_t next_generation(std::uint32_t generation) noexcept;
 
     MapCatalog mapCatalog;
-    std::optional<Terrain> mapTerrain;
+    std::optional<TileGrid> mapTiles;
     std::string mapDirectory;
-    std::uint32_t nextTerrainGeneration = 1;
+    std::uint32_t nextTileGeneration = 1;
     std::uint32_t activeGeneration = 0;
     std::uint32_t activeIdentifier = 0;
     MapState mapState = MapState::empty;

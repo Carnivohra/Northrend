@@ -4,15 +4,16 @@
 #include "Thread/task.hpp"
 #include "World/world.hpp"
 
+#include <cstddef>
 #include <cstdint>
 
 namespace Northrend {
 
-class WorldExchange;
+class MapExchange;
 
 class Simulation final {
 public:
-    Simulation(PresentationExchange& presentationExchange, WorldExchange& worldExchange) noexcept;
+    Simulation(PresentationExchange& presentationExchange, MapExchange& mapExchange) noexcept;
 
     Simulation(const Simulation&) = delete;
     Simulation& operator=(const Simulation&) = delete;
@@ -27,6 +28,8 @@ public:
     [[nodiscard]] const World& world() const noexcept;
 
 private:
+    static constexpr std::size_t TileChangesPerTick = 32;
+
     PresentationExchange& presentationExchange;
     World state;
     std::uint64_t sequence = 0;

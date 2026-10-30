@@ -2,17 +2,20 @@
 
 #include "Thread/task.hpp"
 #include "World/Map/map.hpp"
+#include "World/Map/Tile/change.hpp"
 #include "World/registry.hpp"
 
 #include <cstddef>
+#include <optional>
+#include <vector>
 
 namespace Northrend {
 
-class WorldExchange;
+class MapExchange;
 
 class World final {
 public:
-    explicit World(WorldExchange& exchange) noexcept;
+    explicit World(MapExchange& exchange) noexcept;
 
     World(const World&) = delete;
     World& operator=(const World&) = delete;
@@ -20,6 +23,7 @@ public:
     World& operator=(World&&) = delete;
 
     void tick(ThreadDuration delta);
+    [[nodiscard]] std::optional<TileChange> next_tile_change();
 
     [[nodiscard]] WorldRegistry& registry() noexcept;
     [[nodiscard]] const WorldRegistry& registry() const noexcept;
@@ -28,16 +32,18 @@ public:
 
 private:
     void receive_catalog();
-    void receive_definition();
-    void receive_terrain();
+    void receive_map();
+    void receive_tiles();
     void request_selection();
-    void request_terrain();
+    void request_tiles();
 
-    static constexpr std::size_t TerrainTransfersPerTick = 16;
+    static constexpr std::size_t TileChangesPerTick = 16;
 
-    WorldExchange& exchange;
+    MapExchange& exchange;
     WorldRegistry worldRegistry;
     Map worldMap;
+    std::vector<TileChange> tileChanges;
+    std::size_t tileChangePosition = 0;
 };
 
 }

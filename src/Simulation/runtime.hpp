@@ -2,8 +2,8 @@
 
 #include "Simulation/simulation.hpp"
 #include "Thread/runner.hpp"
-#include "World/exchange.hpp"
-#include "World/loader.hpp"
+#include "World/Map/exchange.hpp"
+#include "World/Map/loader.hpp"
 
 #include <optional>
 
@@ -35,8 +35,8 @@ private:
     void stop_without_rethrow() noexcept;
 
     PresentationExchange& presentationExchange;
-    WorldExchange exchange;
-    WorldLoader loader;
+    MapExchange exchange;
+    MapLoader loader;
     std::optional<TaskRunner<Simulation>> runner;
 };
 

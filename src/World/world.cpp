@@ -1,23 +1,43 @@
 #include "World/world.hpp"
 
-#include "World/exchange.hpp"
+#include "World/Map/exchange.hpp"
 
 #include <chrono>
+#include <memory>
 #include <optional>
 #include <stdexcept>
 #include <utility>
 
 namespace Northrend {
 
-World::World(WorldExchange& exchange) noexcept : exchange(exchange) {}
+World::World(MapExchange& exchange) noexcept : exchange(exchange) {
+    this->tileChanges.reserve(TileChangesPerTick);
+}
 
 void World::tick(const ThreadDuration delta) {
     this->receive_catalog();
-    this->receive_definition();
-    this->receive_terrain();
+    this->receive_map();
+    this->receive_tiles();
     this->worldRegistry.progress(std::chrono::duration<float>(delta));
     this->request_selection();
-    this->request_terrain();
+    this->request_tiles();
+}
+
+std::optional<TileChange> World::next_tile_change() {
+    if (this->tileChangePosition >= this->tileChanges.size()) {
+        this->tileChanges.clear();
+        this->tileChangePosition = 0;
+        return std::nullopt;
+    }
+
+    TileChange change = std::move(this->tileChanges[this->tileChangePosition++]);
+
+    if (this->tileChangePosition == this->tileChanges.size()) {
+        this->tileChanges.clear();
+        this->tileChangePosition = 0;
+    }
+
+    return change;
 }
 
 WorldRegistry& World::registry() noexcept {
@@ -44,26 +64,37 @@ void World::receive_catalog() {
     }
 }
 
-void World::receive_definition() {
-    std::optional<MapDefinition> definition = this->exchange.definition();
+void World::receive_map() {
+    std::optional<MapResult> result = this->exchange.map();
 
-    if (definition) {
-        static_cast<void>(this->worldMap.complete(std::move(*definition)));
+    if (!result || !this->worldMap.complete(std::move(*result))) {
+        return;
+    }
+
+    TileGrid* tiles = this->worldMap.tiles();
+
+    if (tiles) {
+        tiles->load_all();
     }
 }
 
-void World::receive_terrain() {
-    Terrain* terrain = this->worldMap.terrain();
+void World::receive_tiles() {
+    TileGrid* tiles = this->worldMap.tiles();
 
-    for (std::size_t count = 0; count < TerrainTransfersPerTick; ++count) {
-        std::optional<TerrainResult> result = this->exchange.result();
+    for (std::size_t count = 0; count < TileChangesPerTick; ++count) {
+        std::optional<TileResult> result = this->exchange.tile();
 
         if (!result) {
             return;
         }
 
-        if (terrain) {
-            static_cast<void>(terrain->complete(std::move(*result)));
+        if (tiles) {
+            const TileRequest request = result->request();
+            std::shared_ptr<const MapTile> tile = result->data();
+
+            if (tiles->complete(std::move(*result)) && tile) {
+                this->tileChanges.emplace_back(request, std::move(tile));
+            }
         }
     }
 }
@@ -76,6 +107,7 @@ void World::request_selection() {
     }
 
     if (this->exchange.submit(this->worldMap.directory(), *selection)) {
+        this->tileChanges.emplace_back(selection->generation());
         return;
     }
 
@@ -84,15 +116,15 @@ void World::request_selection() {
     }
 }
 
-void World::request_terrain() {
-    Terrain* terrain = this->worldMap.terrain();
+void World::request_tiles() {
+    TileGrid* tiles = this->worldMap.tiles();
 
-    if (!terrain) {
+    if (!tiles) {
         return;
     }
 
-    for (std::size_t count = 0; count < TerrainTransfersPerTick; ++count) {
-        const std::optional<TerrainRequest> request = terrain->next_request();
+    for (std::size_t count = 0; count < TileChangesPerTick; ++count) {
+        const std::optional<TileRequest> request = tiles->next_request();
 
         if (!request) {
             return;
@@ -102,8 +134,8 @@ void World::request_terrain() {
             continue;
         }
 
-        if (!terrain->defer(*request)) {
-            throw std::logic_error("Terrain request could not be deferred");
+        if (!tiles->defer(*request)) {
+            throw std::logic_error("Map tile request could not be deferred");
         }
 
         return;
