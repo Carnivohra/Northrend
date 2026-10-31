@@ -3,7 +3,6 @@
 #include <volk.h>
 
 #include <cstddef>
-#include <memory>
 #include <span>
 
 namespace Northrend {
@@ -18,13 +17,10 @@ public:
     VulkanBuffer(const VulkanBuffer&) = delete;
     VulkanBuffer& operator=(const VulkanBuffer&) = delete;
 
-    [[nodiscard]] static std::unique_ptr<VulkanBuffer> upload(
-        VulkanDevice& device, std::span<const std::byte> data, VkBufferUsageFlags usage);
-
     [[nodiscard]] VkBuffer handle() const noexcept;
     [[nodiscard]] VkDeviceSize size() const noexcept;
     [[nodiscard]] void* map();
-    void write(std::span<const std::byte> data);
+    void write(std::span<const std::byte> data, VkDeviceSize offset = 0);
 
 private:
     void destroy() noexcept;

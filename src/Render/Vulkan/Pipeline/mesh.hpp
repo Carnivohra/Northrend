@@ -25,7 +25,6 @@ public:
     void update_camera(
         std::size_t imageIndex, const Camera& camera, const Matrix4& view, std::uint64_t revision, VkExtent2D extent);
     void bind(VkCommandBuffer commandBuffer, std::size_t imageIndex) const noexcept;
-    void push_transform(VkCommandBuffer commandBuffer, const Matrix4& transform) const noexcept;
 
 private:
     [[nodiscard]] VkShaderModule create_shader_module(std::span<const unsigned char> code) const;

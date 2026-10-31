@@ -58,7 +58,8 @@ VulkanTransferContext::~VulkanTransferContext() {
     this->destroy();
 }
 
-void VulkanTransferContext::copy_buffer(VkBuffer source, VkBuffer destination, VkDeviceSize size) {
+void VulkanTransferContext::copy_buffer(VkBuffer source, VkBuffer destination, VkDeviceSize size,
+    const VkDeviceSize sourceOffset, const VkDeviceSize destinationOffset) {
     VkResult result = vkResetFences(this->device.handle(), 1, &this->fence);
 
     if (result != VK_SUCCESS) {
@@ -83,7 +84,7 @@ void VulkanTransferContext::copy_buffer(VkBuffer source, VkBuffer destination, V
         throw std::runtime_error("Failed to begin the Vulkan transfer command buffer: " + std::to_string(result));
     }
 
-    const VkBufferCopy region {.srcOffset = 0, .dstOffset = 0, .size = size};
+    const VkBufferCopy region {.srcOffset = sourceOffset, .dstOffset = destinationOffset, .size = size};
     vkCmdCopyBuffer(this->commandBuffer, source, destination, 1, &region);
     result = vkEndCommandBuffer(this->commandBuffer);
 

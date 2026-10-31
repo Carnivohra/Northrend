@@ -14,7 +14,8 @@ public:
     VulkanTransferContext(const VulkanTransferContext&) = delete;
     VulkanTransferContext& operator=(const VulkanTransferContext&) = delete;
 
-    void copy_buffer(VkBuffer source, VkBuffer destination, VkDeviceSize size);
+    void copy_buffer(VkBuffer source, VkBuffer destination, VkDeviceSize size, VkDeviceSize sourceOffset,
+        VkDeviceSize destinationOffset);
 
 private:
     void destroy() noexcept;

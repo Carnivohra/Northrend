@@ -53,6 +53,8 @@ private:
     VkSwapchainKHR swapchain = VK_NULL_HANDLE;
     VkFormat imageFormat = VK_FORMAT_UNDEFINED;
     VkExtent2D extent {};
+    int pixelWidth = 0;
+    int pixelHeight = 0;
     std::vector<VkImage> images;
     std::vector<std::unique_ptr<VulkanFrame>> frames;
     std::vector<VkFence> imagesInFlight;

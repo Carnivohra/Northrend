@@ -42,10 +42,15 @@ target_sources(Northrend
     Render/Vulkan/depth.hpp
     Render/Vulkan/device.cpp
     Render/Vulkan/device.hpp
+    Render/Vulkan/Draw/batch.cpp
+    Render/Vulkan/Draw/batch.hpp
+    Render/Vulkan/Draw/draw.hpp
     Render/Vulkan/frame.cpp
     Render/Vulkan/frame.hpp
     Render/Vulkan/instance.cpp
     Render/Vulkan/instance.hpp
+    Render/Vulkan/Mesh/arena.cpp
+    Render/Vulkan/Mesh/arena.hpp
     Render/Vulkan/Mesh/mesh.cpp
     Render/Vulkan/Mesh/mesh.hpp
     Render/Vulkan/Mesh/store.cpp

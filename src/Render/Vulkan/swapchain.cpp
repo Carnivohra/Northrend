@@ -47,7 +47,7 @@ void VulkanSwapchain::render(const RenderFrame& renderFrame) {
         return;
     }
 
-    if (this->swapchain == VK_NULL_HANDLE) {
+    if (this->swapchain == VK_NULL_HANDLE || width != this->pixelWidth || height != this->pixelHeight) {
         this->recreate();
 
         if (this->swapchain == VK_NULL_HANDLE) {
@@ -264,6 +264,8 @@ void VulkanSwapchain::create_swapchain_resources() {
     this->pipeline = std::make_unique<VulkanMeshPipeline>(
         this->device, this->target->render_pass(), this->extent, this->images.size());
     this->commands->allocate(this->images.size());
+    this->pixelWidth = width;
+    this->pixelHeight = height;
 }
 
 void VulkanSwapchain::recreate() {
@@ -287,6 +289,8 @@ void VulkanSwapchain::destroy_swapchain_resources() noexcept {
 
     this->pipeline.reset();
     this->target.reset();
+    this->pixelWidth = 0;
+    this->pixelHeight = 0;
     this->images.clear();
     this->imagesInFlight.clear();
 

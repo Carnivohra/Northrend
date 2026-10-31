@@ -8,7 +8,7 @@
 
 namespace Northrend {
 
-VulkanMeshStore::VulkanMeshStore(VulkanDevice& device) noexcept : device(device) {}
+VulkanMeshStore::VulkanMeshStore(VulkanDevice& device) noexcept : device(device), arena(device) {}
 
 VulkanMeshStore::~VulkanMeshStore() = default;
 
@@ -33,7 +33,7 @@ void VulkanMeshStore::store(const MeshHandle handle, const MeshData& data) {
         throw std::invalid_argument("A Vulkan mesh already exists for this handle");
     }
 
-    this->meshes[index] = std::make_unique<VulkanMesh>(this->device, data);
+    this->meshes[index] = std::make_unique<VulkanMesh>(this->arena, data);
     ++this->currentRevision;
 }
 
@@ -67,8 +67,12 @@ const VulkanMesh* VulkanMeshStore::find(MeshHandle handle) const noexcept {
     return this->meshes[static_cast<std::size_t>(index)].get();
 }
 
+VkBuffer VulkanMeshStore::buffer() const noexcept {
+    return this->arena.handle();
+}
+
 std::uint64_t VulkanMeshStore::revision() const noexcept {
-    return this->currentRevision;
+    return this->currentRevision + this->arena.revision();
 }
 
 }

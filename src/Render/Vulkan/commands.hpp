@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Render/Vulkan/Draw/batch.hpp"
+
 #include <volk.h>
 
 #include <cstddef>
@@ -32,6 +34,7 @@ public:
 
 private:
     VulkanDevice& device;
+    VulkanDrawBatch batch;
     VkCommandPool pool = VK_NULL_HANDLE;
     std::vector<VkCommandBuffer> buffers;
     std::vector<std::uint64_t> recordedInstanceRevisions;

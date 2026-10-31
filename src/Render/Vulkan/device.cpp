@@ -96,12 +96,13 @@ std::uint32_t VulkanDevice::memory_type(std::uint32_t typeBits, VkMemoryProperty
     return this->physicalDevice.memory_type(typeBits, properties);
 }
 
-void VulkanDevice::copy_buffer(VkBuffer source, VkBuffer destination, VkDeviceSize size) {
+void VulkanDevice::copy_buffer(VkBuffer source, VkBuffer destination, VkDeviceSize size,
+    const VkDeviceSize sourceOffset, const VkDeviceSize destinationOffset) {
     if (!this->transfer) {
         this->transfer = std::make_unique<VulkanTransferContext>(*this);
     }
 
-    this->transfer->copy_buffer(source, destination, size);
+    this->transfer->copy_buffer(source, destination, size, sourceOffset, destinationOffset);
 }
 
 void VulkanDevice::wait_idle() const noexcept {

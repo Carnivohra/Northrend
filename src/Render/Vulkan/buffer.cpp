@@ -62,22 +62,6 @@ VulkanBuffer::~VulkanBuffer() {
     this->destroy();
 }
 
-std::unique_ptr<VulkanBuffer> VulkanBuffer::upload(
-    VulkanDevice& device, std::span<const std::byte> data, VkBufferUsageFlags usage) {
-    if (data.empty()) {
-        throw std::invalid_argument("Vulkan upload data must not be empty");
-    }
-
-    VulkanBuffer staging(device, data.size_bytes(), VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-    staging.write(data);
-
-    auto destination = std::make_unique<VulkanBuffer>(
-        device, data.size_bytes(), usage | VK_BUFFER_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-    device.copy_buffer(staging.handle(), destination->handle(), data.size_bytes());
-    return destination;
-}
-
 VkBuffer VulkanBuffer::handle() const noexcept {
     return this->buffer;
 }
@@ -100,12 +84,13 @@ void* VulkanBuffer::map() {
     return this->mapped;
 }
 
-void VulkanBuffer::write(std::span<const std::byte> data) {
-    if (data.size_bytes() > this->byteSize) {
+void VulkanBuffer::write(const std::span<const std::byte> data, const VkDeviceSize offset) {
+    if (offset > this->byteSize || data.size_bytes() > this->byteSize - offset) {
         throw std::out_of_range("Vulkan buffer upload exceeds its capacity");
     }
 
-    std::memcpy(this->map(), data.data(), data.size_bytes());
+    auto* destination = static_cast<std::byte*>(this->map()) + offset;
+    std::memcpy(destination, data.data(), data.size_bytes());
 }
 
 void VulkanBuffer::destroy() noexcept {

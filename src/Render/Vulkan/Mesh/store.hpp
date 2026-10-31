@@ -2,6 +2,7 @@
 
 #include "Render/Mesh/data.hpp"
 #include "Render/Mesh/mesh.hpp"
+#include "Render/Vulkan/Mesh/arena.hpp"
 
 #include <cstddef>
 #include <cstdint>
@@ -24,10 +25,12 @@ public:
     void store(MeshHandle handle, const MeshData& data);
     void erase(MeshHandle handle) noexcept;
     [[nodiscard]] const VulkanMesh* find(MeshHandle handle) const noexcept;
+    [[nodiscard]] VkBuffer buffer() const noexcept;
     [[nodiscard]] std::uint64_t revision() const noexcept;
 
 private:
     VulkanDevice& device;
+    VulkanMeshArena arena;
     std::vector<std::unique_ptr<VulkanMesh>> meshes;
     std::uint64_t currentRevision = 0;
 };

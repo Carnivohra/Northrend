@@ -28,7 +28,8 @@ public:
     [[nodiscard]] VkFormat depth_format() const;
     [[nodiscard]] std::uint32_t memory_type(std::uint32_t typeBits, VkMemoryPropertyFlags properties) const;
 
-    void copy_buffer(VkBuffer source, VkBuffer destination, VkDeviceSize size);
+    void copy_buffer(VkBuffer source, VkBuffer destination, VkDeviceSize size, VkDeviceSize sourceOffset = 0,
+        VkDeviceSize destinationOffset = 0);
     void wait_idle() const noexcept;
 
 private:

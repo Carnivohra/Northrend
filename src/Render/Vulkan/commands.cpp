@@ -3,7 +3,6 @@
 #include "Render/Vulkan/Mesh/store.hpp"
 #include "Render/Vulkan/target.hpp"
 #include "Render/Vulkan/device.hpp"
-#include "Render/Vulkan/Mesh/mesh.hpp"
 #include "Render/Vulkan/Pipeline/mesh.hpp"
 #include "Render/frame.hpp"
 
@@ -16,7 +15,7 @@
 
 namespace Northrend {
 
-VulkanCommandContext::VulkanCommandContext(VulkanDevice& device) : device(device) {
+VulkanCommandContext::VulkanCommandContext(VulkanDevice& device) : device(device), batch(device) {
     const VkCommandPoolCreateInfo createInfo {
         .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
         .pNext = nullptr,
@@ -59,9 +58,11 @@ void VulkanCommandContext::allocate(std::size_t count) {
     this->recordedInstanceRevisions.assign(count, 0);
     this->recordedMeshRevisions.assign(count, 0);
     this->recorded.assign(count, false);
+    this->batch.allocate(count);
 }
 
 void VulkanCommandContext::release() noexcept {
+    this->batch.release();
     this->recorded.clear();
     this->recordedMeshRevisions.clear();
     this->recordedInstanceRevisions.clear();
@@ -84,6 +85,8 @@ void VulkanCommandContext::record(std::size_t imageIndex, const RenderFrame& ren
         this->recordedMeshRevisions[imageIndex] == meshRevision) {
         return;
     }
+
+    this->batch.update(imageIndex, renderFrame, meshes);
 
     const VkCommandBuffer commandBuffer = this->buffers[imageIndex];
     VkResult result = vkResetCommandBuffer(commandBuffer, 0);
@@ -118,16 +121,7 @@ void VulkanCommandContext::record(std::size_t imageIndex, const RenderFrame& ren
     vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
     pipeline.bind(commandBuffer, imageIndex);
 
-    for (const RenderInstance& instance : renderFrame.instances) {
-        const VulkanMesh* mesh = meshes.find(instance.mesh);
-
-        if (!mesh) {
-            continue;
-        }
-
-        pipeline.push_transform(commandBuffer, instance.transform);
-        mesh->draw(commandBuffer);
-    }
+    this->batch.draw(commandBuffer, imageIndex, meshes);
 
     vkCmdEndRenderPass(commandBuffer);
     result = vkEndCommandBuffer(commandBuffer);

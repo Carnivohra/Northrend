@@ -39,23 +39,16 @@ void VulkanMeshPipeline::bind(VkCommandBuffer commandBuffer, std::size_t imageIn
     this->camera.bind(commandBuffer, this->layout, imageIndex);
 }
 
-void VulkanMeshPipeline::push_transform(VkCommandBuffer commandBuffer, const Matrix4& transform) const noexcept {
-    vkCmdPushConstants(commandBuffer, this->layout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(transform), &transform);
-}
-
 void VulkanMeshPipeline::create_layout() {
     const VkDescriptorSetLayout cameraLayout = this->camera.descriptor_layout();
-    const VkPushConstantRange instanceRange {
-        .stageFlags = VK_SHADER_STAGE_VERTEX_BIT, .offset = 0, .size = sizeof(Matrix4)
-    };
     const VkPipelineLayoutCreateInfo createInfo {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
         .pNext = nullptr,
         .flags = 0,
         .setLayoutCount = 1,
         .pSetLayouts = &cameraLayout,
-        .pushConstantRangeCount = 1,
-        .pPushConstantRanges = &instanceRange
+        .pushConstantRangeCount = 0,
+        .pPushConstantRanges = nullptr
     };
     const VkResult result = vkCreatePipelineLayout(this->device.handle(), &createInfo, nullptr, &this->layout);
 
@@ -95,23 +88,40 @@ void VulkanMeshPipeline::create_graphics_pipeline(VkRenderPass renderPass, VkExt
             .pSpecializationInfo = nullptr
         }
     };
-    const VkVertexInputBindingDescription vertexBinding {
-        .binding = 0, .stride = sizeof(Vector3), .inputRate = VK_VERTEX_INPUT_RATE_VERTEX
+    const std::array<VkVertexInputBindingDescription, 2> vertexBindings {
+        VkVertexInputBindingDescription {
+            .binding = 0, .stride = sizeof(Vector3), .inputRate = VK_VERTEX_INPUT_RATE_VERTEX
+        },
+        VkVertexInputBindingDescription {
+            .binding = 1, .stride = sizeof(Matrix4), .inputRate = VK_VERTEX_INPUT_RATE_INSTANCE
+        }
     };
-    const std::array<VkVertexInputAttributeDescription, 1> vertexAttributes {
+    const std::array<VkVertexInputAttributeDescription, 5> vertexAttributes {
         VkVertexInputAttributeDescription {
             .location = 0,
             .binding = 0,
             .format = VK_FORMAT_R32G32B32_SFLOAT,
             .offset = 0
+        },
+        VkVertexInputAttributeDescription {
+            .location = 1, .binding = 1, .format = VK_FORMAT_R32G32B32A32_SFLOAT, .offset = sizeof(float) * 0
+        },
+        VkVertexInputAttributeDescription {
+            .location = 2, .binding = 1, .format = VK_FORMAT_R32G32B32A32_SFLOAT, .offset = sizeof(float) * 4
+        },
+        VkVertexInputAttributeDescription {
+            .location = 3, .binding = 1, .format = VK_FORMAT_R32G32B32A32_SFLOAT, .offset = sizeof(float) * 8
+        },
+        VkVertexInputAttributeDescription {
+            .location = 4, .binding = 1, .format = VK_FORMAT_R32G32B32A32_SFLOAT, .offset = sizeof(float) * 12
         }
     };
     const VkPipelineVertexInputStateCreateInfo vertexInput {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
         .pNext = nullptr,
         .flags = 0,
-        .vertexBindingDescriptionCount = 1,
-        .pVertexBindingDescriptions = &vertexBinding,
+        .vertexBindingDescriptionCount = static_cast<std::uint32_t>(vertexBindings.size()),
+        .pVertexBindingDescriptions = vertexBindings.data(),
         .vertexAttributeDescriptionCount = static_cast<std::uint32_t>(vertexAttributes.size()),
         .pVertexAttributeDescriptions = vertexAttributes.data()
     };
