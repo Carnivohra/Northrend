@@ -94,6 +94,12 @@ target_sources(Northrend
       Engine/engine.hpp
       Engine/fps.hpp
       Engine/plan.hpp
+      Input/gamepad.hpp
+      Input/input.hpp
+      Input/keyboard.hpp
+      Input/mouse.hpp
+      Input/touch.hpp
+      Input/Touch/point.hpp
       App/plan.hpp
       Math/matrix.hpp
       Math/quaternion.hpp

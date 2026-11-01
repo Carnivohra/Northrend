@@ -6,14 +6,16 @@
 
 namespace Northrend {
 
+class Input;
 class Window;
 
 template <typename Type>
 concept PresentationModule =
-    std::constructible_from<Type, PresentationExchange&> && requires(Type presentation, const Window& window) {
+    std::constructible_from<Type, PresentationExchange&> &&
+    requires(Type presentation, const Window& window, const Input& input) {
         { presentation.start(window) } -> std::same_as<void>;
         { presentation.suspend() } -> std::same_as<void>;
-        { presentation.tick() } -> std::same_as<void>;
+        { presentation.tick(input) } -> std::same_as<void>;
         { presentation.stop() } -> std::same_as<void>;
     };
 
@@ -34,8 +36,8 @@ public:
         this->presentation.suspend();
     }
 
-    void tick() {
-        this->presentation.tick();
+    void tick(const Input& input) {
+        this->presentation.tick(input);
     }
 
     void stop() {

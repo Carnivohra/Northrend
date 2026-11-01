@@ -124,8 +124,8 @@ Adt::Adt(std::shared_ptr<const AssetData> data) : data(std::move(data)) {
             throw std::runtime_error("ADT height chunk is invalid");
         }
 
-        this->positionsY[cell] = read_float(chunk->bytes(), 104);
-        this->positionsX[cell] = read_float(chunk->bytes(), 108);
+        this->positionsX[cell] = read_float(chunk->bytes(), 104);
+        this->positionsY[cell] = read_float(chunk->bytes(), 108);
         this->baseHeights[cell] = read_float(chunk->bytes(), 112);
         this->holeMasks[cell] = read_uint32(chunk->bytes(), 60);
         this->heightData[cell] = nested.subspan(ChunkHeaderSize, HeightDataSize);

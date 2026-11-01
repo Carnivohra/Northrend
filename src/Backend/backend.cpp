@@ -10,15 +10,23 @@ void Backend::execute(BackendApplication& application, Window& window) {
     }
 
     this->application = &application;
+    this->input.reset();
+    this->input.begin_frame();
 
     try {
         application.started(window);
         this->started = true;
         this->resume();
 
-        while (this->process_events(window)) {
+        while (true) {
+            this->input.begin_frame();
+
+            if (!this->process_events(window, this->input)) {
+                break;
+            }
+
             if (this->resumed) {
-                application.tick();
+                application.tick(this->input);
             } else {
                 this->delay(10);
             }

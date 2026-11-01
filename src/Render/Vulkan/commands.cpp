@@ -106,7 +106,7 @@ void VulkanCommandContext::record(std::size_t imageIndex, const RenderFrame& ren
 
     std::array<VkClearValue, 2> clearValues {};
     clearValues[0].color = clearColor;
-    clearValues[1].depthStencil = VkClearDepthStencilValue {.depth = 1.0F, .stencil = 0};
+    clearValues[1].depthStencil = VkClearDepthStencilValue {.depth = 0.0F, .stencil = 0};
 
     const VkRenderPassBeginInfo renderPassInfo {
         .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,

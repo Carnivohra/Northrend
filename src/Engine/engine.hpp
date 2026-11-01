@@ -4,6 +4,7 @@
 #include "Backend/application.hpp"
 #include "Engine/fps.hpp"
 #include "Engine/plan.hpp"
+#include "Input/input.hpp"
 #include "Presentation/runtime.hpp"
 #include "Simulation/runtime.hpp"
 #include "Thread/pool.hpp"
@@ -55,10 +56,10 @@ public:
         this->simulation.request_map(map);
     }
 
-    void tick() override {
+    void tick(const Input& input) override {
         this->assets.tick();
         this->simulation.tick();
-        this->presentation.tick();
+        this->presentation.tick(input);
 
         if (const auto currentFps = this->fps.record_frame()) {
             std::cout << "FPS: " << static_cast<std::uint32_t>(*currentFps + 0.5) << '\n';

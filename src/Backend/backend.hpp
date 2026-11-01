@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Backend/application.hpp"
+#include "Input/input.hpp"
 
 #include <cstdint>
 #include <filesystem>
@@ -21,7 +22,7 @@ protected:
     void resume();
     void suspend();
 
-    virtual bool process_events(Window& window) = 0;
+    virtual bool process_events(Window& window, Input& input) = 0;
     virtual void delay(std::uint32_t milliseconds) const noexcept = 0;
 
 private:
@@ -29,6 +30,7 @@ private:
     void stop_after_failure() noexcept;
 
     BackendApplication* application = nullptr;
+    Input input;
     bool started = false;
     bool resumed = false;
 };

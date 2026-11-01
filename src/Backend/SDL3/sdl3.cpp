@@ -1,5 +1,6 @@
 #include "Backend/SDL3/sdl3.hpp"
 
+#include "Backend/SDL3/input.hpp"
 #include "Backend/SDL3/window.hpp"
 #include "Backend/plan.hpp"
 
@@ -25,11 +26,13 @@ void SDL3Backend::run(BackendApplication& application, const BackendPlan& plan) 
     this->execute(application, window);
 }
 
-bool SDL3Backend::process_events(Window& window) {
+bool SDL3Backend::process_events(Window& window, Input& input) {
     bool running = true;
     SDL_Event event;
 
     while (SDL_PollEvent(&event)) {
+        SDL3Input::process(event, input);
+
         switch (event.type) {
         case SDL_EVENT_QUIT:
         case SDL_EVENT_WINDOW_CLOSE_REQUESTED:

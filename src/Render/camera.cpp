@@ -41,7 +41,7 @@ Matrix4 Camera::projection(float aspectRatio) const {
         throw std::invalid_argument("Camera clipping planes must define a positive range");
     }
 
-    return from_glm(glm::perspectiveRH_ZO(this->verticalFieldOfView, aspectRatio, this->nearPlane, this->farPlane));
+    return from_glm(glm::perspectiveRH_ZO(this->verticalFieldOfView, aspectRatio, this->farPlane, this->nearPlane));
 }
 
 void Camera::look_at(const Vector3 target, const Vector3 up) {

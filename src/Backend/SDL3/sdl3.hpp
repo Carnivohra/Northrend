@@ -13,7 +13,7 @@ public:
     void run(BackendApplication& application, const BackendPlan& plan) override;
 
 private:
-    bool process_events(Window& window) override;
+    bool process_events(Window& window, Input& input) override;
     void delay(std::uint32_t milliseconds) const noexcept override;
 };
 

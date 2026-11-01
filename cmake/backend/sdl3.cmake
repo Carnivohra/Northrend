@@ -2,6 +2,8 @@
 
 target_sources(Northrend
   PRIVATE
+    Backend/SDL3/input.cpp
+    Backend/SDL3/input.hpp
     Backend/SDL3/window.cpp
     Backend/SDL3/window.hpp
     Backend/SDL3/sdl3.cpp
