@@ -20,7 +20,7 @@ TerrainGeometry::TerrainGeometry(const Adt& adt) {
     }
 }
 
-std::span<const Vector3> TerrainGeometry::vertices() const noexcept {
+std::span<const MeshVertex> TerrainGeometry::vertices() const noexcept {
     return this->terrainVertices;
 }
 
@@ -37,10 +37,15 @@ void TerrainGeometry::append_vertices(const Adt& adt, const std::size_t chunkX, 
         const std::size_t rowOffset = row * (CellsPerChunk * 2 + 1);
 
         for (std::size_t column = 0; column <= CellsPerChunk; ++column) {
-            this->terrainVertices.push_back(Vector3 {
-                .x = x,
-                .y = baseY - static_cast<float>(column) * CellSize,
-                .z = adt.height(chunkX, chunkY, rowOffset + column)
+            const std::size_t vertex = rowOffset + column;
+            const std::array<std::int8_t, 3> normal = adt.normal(chunkX, chunkY, vertex);
+            this->terrainVertices.push_back(MeshVertex {
+                .position = Vector3 {
+                    .x = x,
+                    .y = baseY - static_cast<float>(column) * CellSize,
+                    .z = adt.height(chunkX, chunkY, vertex)
+                },
+                .normal = {normal[0], normal[1], normal[2], 0}
             });
         }
 
@@ -49,10 +54,15 @@ void TerrainGeometry::append_vertices(const Adt& adt, const std::size_t chunkX, 
         }
 
         for (std::size_t column = 0; column < CellsPerChunk; ++column) {
-            this->terrainVertices.push_back(Vector3 {
-                .x = x - HalfCellSize,
-                .y = baseY - static_cast<float>(column) * CellSize - HalfCellSize,
-                .z = adt.height(chunkX, chunkY, rowOffset + CellsPerChunk + 1 + column)
+            const std::size_t vertex = rowOffset + CellsPerChunk + 1 + column;
+            const std::array<std::int8_t, 3> normal = adt.normal(chunkX, chunkY, vertex);
+            this->terrainVertices.push_back(MeshVertex {
+                .position = Vector3 {
+                    .x = x - HalfCellSize,
+                    .y = baseY - static_cast<float>(column) * CellSize - HalfCellSize,
+                    .z = adt.height(chunkX, chunkY, vertex)
+                },
+                .normal = {normal[0], normal[1], normal[2], 0}
             });
         }
     }

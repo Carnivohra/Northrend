@@ -12,13 +12,13 @@
 namespace Northrend {
 
 class AssetState;
-class AssetStorage;
+class AssetStore;
 class ThreadPool;
 class Work;
 
 class AssetStreamer final {
 public:
-    AssetStreamer(AssetStorage& storage, ThreadPool& pool) noexcept;
+    AssetStreamer(AssetStore& store, ThreadPool& pool) noexcept;
     ~AssetStreamer();
 
     AssetStreamer(const AssetStreamer&) = delete;
@@ -35,7 +35,7 @@ private:
     void load(const std::shared_ptr<AssetState>& state) noexcept;
     void prune() noexcept;
 
-    AssetStorage& storage;
+    AssetStore& store;
     ThreadPool& pool;
     mutable std::mutex mutex;
     std::unordered_map<std::string, std::weak_ptr<AssetState>> active;

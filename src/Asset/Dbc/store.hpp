@@ -13,20 +13,20 @@
 
 namespace Northrend {
 
-class AssetStorage;
+class AssetStore;
 class AssetStreamer;
 class ThreadPool;
 class Work;
 
-class DbcStorage final {
+class DbcStore final {
 public:
-    DbcStorage(AssetStorage& assets, AssetStreamer& streamer, ThreadPool& threadPool) noexcept;
-    ~DbcStorage();
+    DbcStore(AssetStore& assets, AssetStreamer& streamer, ThreadPool& threadPool) noexcept;
+    ~DbcStore();
 
-    DbcStorage(const DbcStorage&) = delete;
-    DbcStorage& operator=(const DbcStorage&) = delete;
-    DbcStorage(DbcStorage&&) = delete;
-    DbcStorage& operator=(DbcStorage&&) = delete;
+    DbcStore(const DbcStore&) = delete;
+    DbcStore& operator=(const DbcStore&) = delete;
+    DbcStore(DbcStore&&) = delete;
+    DbcStore& operator=(DbcStore&&) = delete;
 
     void start();
     void tick();
@@ -48,7 +48,7 @@ private:
 
     static constexpr std::size_t TablesPerTick = 8;
 
-    AssetStorage& assets;
+    AssetStore& assets;
     AssetStreamer& streamer;
     ThreadPool& threadPool;
     std::shared_ptr<Work> discovery;

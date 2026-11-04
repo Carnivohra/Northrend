@@ -16,7 +16,7 @@ public:
     [[nodiscard]] bool empty() const noexcept;
 
 private:
-    std::vector<std::byte> storage;
+    std::vector<std::byte> data;
 };
 
 }

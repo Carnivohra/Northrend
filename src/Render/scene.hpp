@@ -4,6 +4,7 @@
 #include "Render/camera.hpp"
 #include "Render/frame.hpp"
 #include "Render/instance.hpp"
+#include "Render/light.hpp"
 
 #include <concepts>
 #include <cstdint>
@@ -21,6 +22,7 @@ public:
     [[nodiscard]] Registry& registry() noexcept;
     [[nodiscard]] const Registry& registry() const noexcept;
     [[nodiscard]] const Camera& active_camera() const;
+    [[nodiscard]] const DirectionalLight& active_light() const;
 
     template <typename Callback>
         requires std::invocable<Callback, Camera&>
@@ -35,6 +37,20 @@ public:
         }
     }
 
+    template <typename Callback>
+        requires std::invocable<Callback, DirectionalLight&>
+    void modify_active_light(Callback&& callback) {
+        const bool modified = this->state.modify<DirectionalLight>(this->lightEntity,
+            [&callback](DirectionalLight& light) {
+                std::invoke(std::forward<Callback>(callback), light);
+                ++light.revision;
+            });
+
+        if (!modified) {
+            throw std::runtime_error("Render scene has no active directional light");
+        }
+    }
+
     [[nodiscard]] RenderFrame frame();
 
 private:
@@ -43,6 +59,7 @@ private:
     Registry state;
     flecs::query<const RenderInstance> instanceQuery;
     Entity cameraEntity;
+    Entity lightEntity;
     std::vector<RenderInstance> instances;
     std::uint64_t instancesRevision = 0;
     Camera cachedCamera;

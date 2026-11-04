@@ -2,6 +2,7 @@
 
 #include "Render/camera.hpp"
 #include "Render/instance.hpp"
+#include "Render/light.hpp"
 
 #include <cstdint>
 #include <span>
@@ -14,6 +15,7 @@ struct RenderFrame final {
     const Camera& camera;
     const Matrix4& view;
     std::uint64_t cameraRevision;
+    const DirectionalLight& light;
 };
 
 }

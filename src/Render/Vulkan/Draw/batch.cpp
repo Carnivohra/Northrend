@@ -17,17 +17,16 @@ VulkanDrawBatch::VulkanDrawBatch(VulkanDevice& device) noexcept : device(device)
 VulkanDrawBatch::~VulkanDrawBatch() = default;
 
 void VulkanDrawBatch::allocate(const std::size_t count) {
-    this->storage.clear();
-    this->storage.resize(count);
+    this->stores.clear();
+    this->stores.resize(count);
 }
 
 void VulkanDrawBatch::release() noexcept {
-    this->storage.clear();
+    this->stores.clear();
 }
 
-void VulkanDrawBatch::update(
-    const std::size_t imageIndex, const RenderFrame& frame, const VulkanMeshStore& meshes) {
-    Storage& target = this->storage.at(imageIndex);
+void VulkanDrawBatch::update(const std::size_t imageIndex, const RenderFrame& frame, const VulkanMeshStore& meshes) {
+    Store& target = this->stores.at(imageIndex);
     const std::uint64_t meshRevision = meshes.revision();
 
     if (target.initialized && target.instanceRevision == frame.instancesRevision &&
@@ -37,10 +36,13 @@ void VulkanDrawBatch::update(
 
     std::vector<Matrix4> transforms;
     transforms.reserve(frame.instances.size());
-    target.unsigned16.clear();
-    target.unsigned32.clear();
-    target.unsigned16.reserve(frame.instances.size());
-    target.unsigned32.reserve(frame.instances.size());
+    target.unsigned16.resize(meshes.page_count());
+    target.unsigned32.resize(meshes.page_count());
+
+    for (std::size_t page = 0; page < meshes.page_count(); ++page) {
+        target.unsigned16[page].clear();
+        target.unsigned32[page].clear();
+    }
 
     for (const RenderInstance& instance : frame.instances) {
         const VulkanMesh* mesh = meshes.find(instance.mesh);
@@ -55,7 +57,8 @@ void VulkanDrawBatch::update(
 
         const std::uint32_t firstInstance = static_cast<std::uint32_t>(transforms.size());
         transforms.push_back(instance.transform);
-        auto& commands = mesh->index_type() == VK_INDEX_TYPE_UINT16 ? target.unsigned16 : target.unsigned32;
+        auto& pages = mesh->index_type() == VK_INDEX_TYPE_UINT16 ? target.unsigned16 : target.unsigned32;
+        auto& commands = pages[mesh->page()];
         commands.push_back(mesh->draw(firstInstance));
     }
 
@@ -79,27 +82,37 @@ void VulkanDrawBatch::update(
     target.initialized = true;
 }
 
-void VulkanDrawBatch::draw(const VkCommandBuffer commandBuffer, const std::size_t imageIndex,
-    const VulkanMeshStore& meshes) const noexcept {
-    const Storage& source = this->storage[imageIndex];
+void VulkanDrawBatch::draw(
+    const VkCommandBuffer commandBuffer, const std::size_t imageIndex, const VulkanMeshStore& meshes) const noexcept {
+    const Store& source = this->stores[imageIndex];
 
-    if (!source.buffer || (source.unsigned16.empty() && source.unsigned32.empty())) {
+    if (!source.buffer) {
         return;
     }
 
-    const VkBuffer meshBuffer = meshes.buffer();
-    const VkBuffer vertexBuffers[] {meshBuffer, source.buffer->handle()};
     constexpr VkDeviceSize offsets[] {0, 0};
-    vkCmdBindVertexBuffers(commandBuffer, 0, 2, vertexBuffers, offsets);
 
-    if (!source.unsigned16.empty()) {
-        vkCmdBindIndexBuffer(commandBuffer, meshBuffer, 0, VK_INDEX_TYPE_UINT16);
-        draw_group(commandBuffer, source.unsigned16);
-    }
+    for (std::size_t page = 0; page < meshes.page_count(); ++page) {
+        const auto& unsigned16 = source.unsigned16[page];
+        const auto& unsigned32 = source.unsigned32[page];
 
-    if (!source.unsigned32.empty()) {
-        vkCmdBindIndexBuffer(commandBuffer, meshBuffer, 0, VK_INDEX_TYPE_UINT32);
-        draw_group(commandBuffer, source.unsigned32);
+        if (unsigned16.empty() && unsigned32.empty()) {
+            continue;
+        }
+
+        const VkBuffer meshBuffer = meshes.buffer(page);
+        const VkBuffer vertexBuffers[] {meshBuffer, source.buffer->handle()};
+        vkCmdBindVertexBuffers(commandBuffer, 0, 2, vertexBuffers, offsets);
+
+        if (!unsigned16.empty()) {
+            vkCmdBindIndexBuffer(commandBuffer, meshBuffer, 0, VK_INDEX_TYPE_UINT16);
+            draw_group(commandBuffer, unsigned16);
+        }
+
+        if (!unsigned32.empty()) {
+            vkCmdBindIndexBuffer(commandBuffer, meshBuffer, 0, VK_INDEX_TYPE_UINT32);
+            draw_group(commandBuffer, unsigned32);
+        }
     }
 }
 
@@ -119,8 +132,7 @@ VkDeviceSize VulkanDrawBatch::capacity(const VkDeviceSize current, const VkDevic
 
 void VulkanDrawBatch::draw_group(const VkCommandBuffer commandBuffer, const std::vector<VulkanDraw>& draws) noexcept {
     for (const VulkanDraw& draw : draws) {
-        vkCmdDrawIndexed(
-            commandBuffer, draw.indexCount, 1, draw.firstIndex, draw.vertexOffset, draw.firstInstance);
+        vkCmdDrawIndexed(commandBuffer, draw.indexCount, 1, draw.firstIndex, draw.vertexOffset, draw.firstInstance);
     }
 }
 

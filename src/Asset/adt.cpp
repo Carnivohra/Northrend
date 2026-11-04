@@ -18,11 +18,13 @@ Adt::Adt(std::shared_ptr<const AssetData> data) : data(std::move(data)) {
     static constexpr ChunkId IndexId {'N', 'I', 'C', 'M'};
     static constexpr ChunkId TerrainId {'K', 'N', 'C', 'M'};
     static constexpr ChunkId HeightsId {'T', 'V', 'C', 'M'};
+    static constexpr ChunkId NormalsId {'R', 'N', 'C', 'M'};
     static constexpr std::size_t ChunkHeaderSize = 8;
     static constexpr std::size_t HeaderSize = 64;
     static constexpr std::size_t IndexEntrySize = 16;
     static constexpr std::size_t TerrainHeaderSize = 128;
     static constexpr std::size_t HeightDataSize = HeightsPerChunk * sizeof(float);
+    static constexpr std::size_t NormalDataSize = HeightsPerChunk * 3;
 
     if (this->data == nullptr || this->data->empty()) {
         throw std::invalid_argument("ADT data is empty");
@@ -106,29 +108,41 @@ Adt::Adt(std::shared_ptr<const AssetData> data) : data(std::move(data)) {
         }
 
         const std::uint32_t heightOffset = read_uint32(chunk->bytes(), 20);
+        const std::uint32_t normalOffset = read_uint32(chunk->bytes(), 24);
 
-        if (heightOffset < ChunkHeaderSize) {
-            throw std::runtime_error("ADT terrain chunk contains an invalid height offset");
+        if (heightOffset < ChunkHeaderSize || normalOffset < ChunkHeaderSize) {
+            throw std::runtime_error("ADT terrain chunk contains an invalid vertex data offset");
         }
 
-        const std::size_t nestedOffset = static_cast<std::size_t>(heightOffset) - ChunkHeaderSize;
+        const std::size_t heightChunkOffset = static_cast<std::size_t>(heightOffset) - ChunkHeaderSize;
+        const std::size_t normalChunkOffset = static_cast<std::size_t>(normalOffset) - ChunkHeaderSize;
 
-        if (nestedOffset > chunk->size() || chunk->size() - nestedOffset < ChunkHeaderSize) {
-            throw std::runtime_error("ADT height chunk header is truncated");
+        if (heightChunkOffset > chunk->size() || chunk->size() - heightChunkOffset < ChunkHeaderSize ||
+            normalChunkOffset > chunk->size() || chunk->size() - normalChunkOffset < ChunkHeaderSize) {
+            throw std::runtime_error("ADT terrain vertex chunk header is truncated");
         }
 
-        const std::span<const std::byte> nested = chunk->bytes().subspan(nestedOffset);
+        const std::span<const std::byte> heights = chunk->bytes().subspan(heightChunkOffset);
+        const std::span<const std::byte> normals = chunk->bytes().subspan(normalChunkOffset);
 
-        if (read_uint32(nested, 0) != HeightsId.raw() || read_uint32(nested, 4) != HeightDataSize ||
-            nested.size() - ChunkHeaderSize < HeightDataSize) {
+        if (read_uint32(heights, 0) != HeightsId.raw() || read_uint32(heights, 4) != HeightDataSize ||
+            heights.size() - ChunkHeaderSize < HeightDataSize) {
             throw std::runtime_error("ADT height chunk is invalid");
+        }
+
+        const std::size_t normalChunkSize = read_uint32(normals, 4);
+
+        if (read_uint32(normals, 0) != NormalsId.raw() || normalChunkSize < NormalDataSize ||
+            normals.size() - ChunkHeaderSize < normalChunkSize) {
+            throw std::runtime_error("ADT normal chunk is invalid");
         }
 
         this->positionsX[cell] = read_float(chunk->bytes(), 104);
         this->positionsY[cell] = read_float(chunk->bytes(), 108);
         this->baseHeights[cell] = read_float(chunk->bytes(), 112);
         this->holeMasks[cell] = read_uint32(chunk->bytes(), 60);
-        this->heightData[cell] = nested.subspan(ChunkHeaderSize, HeightDataSize);
+        this->heightData[cell] = heights.subspan(ChunkHeaderSize, HeightDataSize);
+        this->normalData[cell] = normals.subspan(ChunkHeaderSize, NormalDataSize);
 
         if (!std::isfinite(this->positionsX[cell]) || !std::isfinite(this->positionsY[cell]) ||
             !std::isfinite(this->baseHeights[cell])) {
@@ -204,6 +218,21 @@ float Adt::height_offset(const std::size_t x, const std::size_t y, const std::si
 
 float Adt::height(const std::size_t x, const std::size_t y, const std::size_t vertex) const {
     return this->base_height(x, y) + this->height_offset(x, y, vertex);
+}
+
+std::array<std::int8_t, 3> Adt::normal(
+    const std::size_t x, const std::size_t y, const std::size_t vertex) const {
+    if (vertex >= HeightsPerChunk) {
+        throw std::out_of_range("ADT normal vertex is outside the terrain chunk");
+    }
+
+    const std::span<const std::byte> normals = this->normalData[index(x, y)];
+    const std::size_t offset = vertex * 3;
+    return {
+        std::bit_cast<std::int8_t>(std::to_integer<std::uint8_t>(normals[offset])),
+        std::bit_cast<std::int8_t>(std::to_integer<std::uint8_t>(normals[offset + 1])),
+        std::bit_cast<std::int8_t>(std::to_integer<std::uint8_t>(normals[offset + 2]))
+    };
 }
 
 std::uint32_t Adt::holes(const std::size_t x, const std::size_t y) const {

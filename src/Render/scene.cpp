@@ -11,6 +11,9 @@ RenderScene::RenderScene() : instanceQuery(this->state.tracked_query<const Rende
     this->cachedCamera = camera;
     this->cachedView = camera.view();
     this->cachedCameraRevision = camera.revision;
+
+    this->lightEntity = this->state.create();
+    this->state.emplace<DirectionalLight>(this->lightEntity);
 }
 
 Registry& RenderScene::registry() noexcept {
@@ -31,10 +34,21 @@ const Camera& RenderScene::active_camera() const {
     return *camera;
 }
 
+const DirectionalLight& RenderScene::active_light() const {
+    const DirectionalLight* light = this->state.get<DirectionalLight>(this->lightEntity);
+
+    if (!light) {
+        throw std::runtime_error("Render scene has no active directional light");
+    }
+
+    return *light;
+}
+
 RenderFrame RenderScene::frame() {
     this->refresh_instances();
 
     const Camera& camera = this->active_camera();
+    const DirectionalLight& light = this->active_light();
 
     if (camera.revision != this->cachedCameraRevision) {
         this->cachedCamera = camera;
@@ -47,7 +61,8 @@ RenderFrame RenderScene::frame() {
         .instancesRevision = this->instancesRevision,
         .camera = this->cachedCamera,
         .view = this->cachedView,
-        .cameraRevision = this->cachedCameraRevision
+        .cameraRevision = this->cachedCameraRevision,
+        .light = light
     };
 }
 

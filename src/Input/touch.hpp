@@ -15,14 +15,14 @@ public:
     }
 
     void reset() noexcept {
-        this->storage.fill({});
+        this->touchPoints.fill({});
         this->activePoints = {};
     }
 
 private:
     static constexpr std::size_t MaximumPoints = 10;
 
-    std::array<TouchPoint, MaximumPoints> storage {};
+    std::array<TouchPoint, MaximumPoints> touchPoints {};
     std::span<const TouchPoint> activePoints;
 };
 

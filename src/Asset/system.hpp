@@ -1,9 +1,9 @@
 #pragma once
 
-#include "Asset/Dbc/storage.hpp"
+#include "Asset/Dbc/store.hpp"
 #include "Asset/Stream/streamer.hpp"
 #include "Asset/plan.hpp"
-#include "Asset/storage.hpp"
+#include "Asset/store.hpp"
 
 #include <memory>
 
@@ -27,7 +27,7 @@ public:
 
     [[nodiscard]] bool ready() const noexcept;
     [[nodiscard]] AssetRequest request(AssetId asset, AssetPriority priority = AssetPriority::normal);
-    [[nodiscard]] const DbcStorage& databases() const noexcept;
+    [[nodiscard]] const DbcStore& databases() const noexcept;
 
     void request_stop() noexcept;
     void stop();
@@ -39,9 +39,9 @@ private:
 
     AssetPlan plan;
     ThreadPool& threadPool;
-    AssetStorage storage;
+    AssetStore store;
     AssetStreamer streamer;
-    DbcStorage dbcStorage;
+    DbcStore dbcStore;
     std::shared_ptr<Work> startup;
     State state = State::idle;
 };

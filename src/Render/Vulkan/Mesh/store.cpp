@@ -67,8 +67,12 @@ const VulkanMesh* VulkanMeshStore::find(MeshHandle handle) const noexcept {
     return this->meshes[static_cast<std::size_t>(index)].get();
 }
 
-VkBuffer VulkanMeshStore::buffer() const noexcept {
-    return this->arena.handle();
+VkBuffer VulkanMeshStore::buffer(const std::size_t page) const noexcept {
+    return this->arena.buffer(page);
+}
+
+std::size_t VulkanMeshStore::page_count() const noexcept {
+    return this->arena.page_count();
 }
 
 std::uint64_t VulkanMeshStore::revision() const noexcept {

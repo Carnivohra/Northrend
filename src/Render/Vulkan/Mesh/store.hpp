@@ -25,7 +25,8 @@ public:
     void store(MeshHandle handle, const MeshData& data);
     void erase(MeshHandle handle) noexcept;
     [[nodiscard]] const VulkanMesh* find(MeshHandle handle) const noexcept;
-    [[nodiscard]] VkBuffer buffer() const noexcept;
+    [[nodiscard]] VkBuffer buffer(std::size_t page) const noexcept;
+    [[nodiscard]] std::size_t page_count() const noexcept;
     [[nodiscard]] std::uint64_t revision() const noexcept;
 
 private:

@@ -2,6 +2,7 @@
 
 #include "Render/Mesh/data.hpp"
 #include "Render/Vulkan/Draw/draw.hpp"
+#include "Render/Vulkan/Mesh/allocation.hpp"
 
 #include <volk.h>
 
@@ -22,13 +23,13 @@ public:
 
     [[nodiscard]] VulkanDraw draw(std::uint32_t firstInstance) const;
     [[nodiscard]] VkIndexType index_type() const noexcept;
+    [[nodiscard]] std::size_t page() const noexcept;
 
 private:
     [[nodiscard]] static VkIndexType vulkan_index_type(MeshIndexType type) noexcept;
 
     VulkanMeshArena& arena;
-    VkDeviceSize offset;
-    VkDeviceSize byteSize;
+    VulkanMeshAllocation allocation;
     VkDeviceSize indexOffset;
     std::uint32_t indexCount;
     VkIndexType indexType;

@@ -6,7 +6,7 @@ target_sources(Northrend
     App/app.cpp
     Asset/Chunk/reader.cpp
     Asset/Dbc/format.cpp
-    Asset/Dbc/storage.cpp
+    Asset/Dbc/store.cpp
     Asset/Dbc/table.cpp
     Asset/Stream/request.cpp
     Asset/Stream/state.cpp
@@ -17,7 +17,7 @@ target_sources(Northrend
     Asset/directory.cpp
     Asset/id.cpp
     Asset/mpq.cpp
-    Asset/storage.cpp
+    Asset/store.cpp
     Asset/system.cpp
     Asset/wdt.cpp
     Backend/backend.cpp
@@ -65,7 +65,7 @@ target_sources(Northrend
       Asset/Chunk/id.hpp
       Asset/Chunk/reader.hpp
       Asset/Dbc/format.hpp
-      Asset/Dbc/storage.hpp
+      Asset/Dbc/store.hpp
       Asset/Dbc/table.hpp
       Asset/Stream/priority.hpp
       Asset/Stream/request.hpp
@@ -78,7 +78,7 @@ target_sources(Northrend
       Asset/mpq.hpp
       Asset/plan.hpp
       Asset/source.hpp
-      Asset/storage.hpp
+      Asset/store.hpp
       Asset/system.hpp
       Asset/wdt.hpp
       Backend/application.hpp
@@ -112,9 +112,11 @@ target_sources(Northrend
       Render/camera.hpp
       Render/frame.hpp
       Render/instance.hpp
+      Render/light.hpp
       Render/Mesh/data.hpp
       Render/Mesh/allocator.hpp
       Render/Mesh/mesh.hpp
+      Render/Mesh/vertex.hpp
       Render/renderer.hpp
       Render/scene.hpp
       Simulation/runtime.hpp

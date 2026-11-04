@@ -2,6 +2,7 @@
 
 #include "Math/matrix.hpp"
 #include "Render/Vulkan/Camera/context.hpp"
+#include "Render/Vulkan/Light/context.hpp"
 
 #include <volk.h>
 
@@ -12,6 +13,7 @@
 namespace Northrend {
 
 struct Camera;
+struct DirectionalLight;
 class VulkanDevice;
 
 class VulkanMeshPipeline final {
@@ -24,6 +26,7 @@ public:
 
     void update_camera(
         std::size_t imageIndex, const Camera& camera, const Matrix4& view, std::uint64_t revision, VkExtent2D extent);
+    void update_light(std::size_t imageIndex, const DirectionalLight& light);
     void bind(VkCommandBuffer commandBuffer, std::size_t imageIndex) const noexcept;
 
 private:
@@ -35,6 +38,7 @@ private:
 
     VulkanDevice& device;
     VulkanCameraContext camera;
+    VulkanLightContext light;
     VkPipelineLayout layout = VK_NULL_HANDLE;
     VkPipeline pipeline = VK_NULL_HANDLE;
 };

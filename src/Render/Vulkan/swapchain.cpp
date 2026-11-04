@@ -6,7 +6,7 @@
 #include "Render/Vulkan/target.hpp"
 #include "Render/Vulkan/device.hpp"
 #include "Render/Vulkan/frame.hpp"
-#include "Render/Vulkan/Pipeline/mesh.hpp"
+#include "Render/Vulkan/Mesh/pipeline.hpp"
 #include "Render/frame.hpp"
 
 #include <algorithm>
@@ -90,6 +90,7 @@ void VulkanSwapchain::render(const RenderFrame& renderFrame) {
 
     this->pipeline->update_camera(
         imageIndex, renderFrame.camera, renderFrame.view, renderFrame.cameraRevision, this->extent);
+    this->pipeline->update_light(imageIndex, renderFrame.light);
     this->commands->record(imageIndex, renderFrame, *this->target, *this->pipeline, this->meshes, this->clearColor);
 
     result = vkResetFences(this->device.handle(), 1, &frameFence);

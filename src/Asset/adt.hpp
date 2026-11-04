@@ -24,6 +24,7 @@ public:
     [[nodiscard]] float base_height(std::size_t x, std::size_t y) const;
     [[nodiscard]] float height_offset(std::size_t x, std::size_t y, std::size_t vertex) const;
     [[nodiscard]] float height(std::size_t x, std::size_t y, std::size_t vertex) const;
+    [[nodiscard]] std::array<std::int8_t, 3> normal(std::size_t x, std::size_t y, std::size_t vertex) const;
     [[nodiscard]] std::uint32_t holes(std::size_t x, std::size_t y) const;
 
 private:
@@ -33,6 +34,7 @@ private:
 
     std::shared_ptr<const AssetData> data;
     std::array<std::span<const std::byte>, ChunkCount> heightData;
+    std::array<std::span<const std::byte>, ChunkCount> normalData;
     std::array<float, ChunkCount> positionsX {};
     std::array<float, ChunkCount> positionsY {};
     std::array<float, ChunkCount> baseHeights {};

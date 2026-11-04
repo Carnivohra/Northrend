@@ -11,8 +11,10 @@
 namespace Northrend {
 
 AssetSystem::AssetSystem(const AssetPlan& plan, ThreadPool& threadPool) :
-    plan(plan), threadPool(threadPool), streamer(this->storage, threadPool),
-    dbcStorage(this->storage, this->streamer, threadPool) {}
+    plan(plan),
+    threadPool(threadPool),
+    streamer(this->store, threadPool),
+    dbcStore(this->store, this->streamer, threadPool) {}
 
 AssetSystem::~AssetSystem() {
     try {
@@ -27,10 +29,10 @@ void AssetSystem::start() {
     }
 
     this->startup = this->threadPool.submit(WorkPriority::critical, [this](std::stop_token stopToken) {
-        AssetStorage storage(this->plan, stopToken);
+        AssetStore store(this->plan, stopToken);
 
         if (!stopToken.stop_requested()) {
-            this->storage = std::move(storage);
+            this->store = std::move(store);
         }
     });
     this->state = State::starting;
@@ -40,7 +42,7 @@ void AssetSystem::tick() {
     this->finish_startup();
 
     if (this->ready()) {
-        this->dbcStorage.tick();
+        this->dbcStore.tick();
         this->streamer.tick();
     }
 }
@@ -59,8 +61,8 @@ AssetRequest AssetSystem::request(AssetId asset, const AssetPriority priority) {
     return this->streamer.request(std::move(asset), priority);
 }
 
-const DbcStorage& AssetSystem::databases() const noexcept {
-    return this->dbcStorage;
+const DbcStore& AssetSystem::databases() const noexcept {
+    return this->dbcStore;
 }
 
 void AssetSystem::request_stop() noexcept {
@@ -68,7 +70,7 @@ void AssetSystem::request_stop() noexcept {
         this->startup->cancel();
     }
 
-    this->dbcStorage.request_stop();
+    this->dbcStore.request_stop();
 }
 
 void AssetSystem::stop() {
@@ -83,7 +85,7 @@ void AssetSystem::stop() {
     this->state = State::stopped;
 
     try {
-        this->dbcStorage.stop();
+        this->dbcStore.stop();
     } catch (...) {
         failure = std::current_exception();
     }
@@ -111,7 +113,7 @@ void AssetSystem::finish_startup() {
     std::shared_ptr<Work> startup = std::move(this->startup);
     startup->wait();
     this->state = State::ready;
-    this->dbcStorage.start();
+    this->dbcStore.start();
 }
 
 }

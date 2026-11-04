@@ -1,7 +1,7 @@
 #include "Asset/Stream/streamer.hpp"
 
 #include "Asset/Stream/state.hpp"
-#include "Asset/storage.hpp"
+#include "Asset/store.hpp"
 #include "Thread/pool.hpp"
 
 #include <cstdint>
@@ -11,7 +11,7 @@
 
 namespace Northrend {
 
-AssetStreamer::AssetStreamer(AssetStorage& storage, ThreadPool& pool) noexcept : storage(storage), pool(pool) {}
+AssetStreamer::AssetStreamer(AssetStore& store, ThreadPool& pool) noexcept : store(store), pool(pool) {}
 
 AssetStreamer::~AssetStreamer() {
     this->stop();
@@ -126,7 +126,7 @@ void AssetStreamer::load(const std::shared_ptr<AssetState>& state) noexcept {
     }
 
     try {
-        auto data = std::make_shared<AssetData>(this->storage.read(state->asset()));
+        auto data = std::make_shared<AssetData>(this->store.read(state->asset()));
         state->complete(std::move(data));
     } catch (...) {
         state->fail(std::current_exception());

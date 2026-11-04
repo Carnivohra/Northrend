@@ -1,4 +1,4 @@
-#include "Asset/storage.hpp"
+#include "Asset/store.hpp"
 
 #include "Asset/directory.hpp"
 #include "Asset/mpq.hpp"
@@ -13,9 +13,9 @@
 
 namespace Northrend {
 
-AssetStorage::AssetStorage(const AssetPlan& plan) : AssetStorage(plan, {}) {}
+AssetStore::AssetStore(const AssetPlan& plan) : AssetStore(plan, {}) {}
 
-AssetStorage::AssetStorage(const AssetPlan& plan, const std::stop_token stopToken) {
+AssetStore::AssetStore(const AssetPlan& plan, const std::stop_token stopToken) {
     this->sources.reserve(plan.mounts.size());
 
     for (const AssetMount& mount : plan.mounts) {
@@ -34,7 +34,7 @@ AssetStorage::AssetStorage(const AssetPlan& plan, const std::stop_token stopToke
     }
 }
 
-void AssetStorage::mount(std::unique_ptr<AssetSource> source) {
+void AssetStore::mount(std::unique_ptr<AssetSource> source) {
     if (!source) {
         throw std::invalid_argument("Cannot mount an empty asset source");
     }
@@ -42,7 +42,7 @@ void AssetStorage::mount(std::unique_ptr<AssetSource> source) {
     this->sources.push_back(std::move(source));
 }
 
-std::vector<AssetId> AssetStorage::database_assets(const std::stop_token stopToken) const {
+std::vector<AssetId> AssetStore::database_assets(const std::stop_token stopToken) const {
     std::unordered_map<std::string, AssetId> unique;
 
     for (const std::unique_ptr<AssetSource>& source : this->sources) {
@@ -64,8 +64,7 @@ std::vector<AssetId> AssetStorage::database_assets(const std::stop_token stopTok
             const auto lowercase = [](const char value) {
                 return static_cast<char>(std::tolower(static_cast<unsigned char>(value)));
             };
-            const bool database = lowercase(path[path.size() - 3]) == 'd' &&
-                lowercase(path[path.size() - 2]) == 'b' &&
+            const bool database = lowercase(path[path.size() - 3]) == 'd' && lowercase(path[path.size() - 2]) == 'b' &&
                 (lowercase(path[path.size() - 1]) == 'c' || lowercase(path[path.size() - 1]) == '2');
 
             if (!database) {
@@ -85,13 +84,11 @@ std::vector<AssetId> AssetStorage::database_assets(const std::stop_token stopTok
         assets.push_back(std::move(asset));
     }
 
-    std::ranges::sort(assets, [](const AssetId& left, const AssetId& right) {
-        return left.path() < right.path();
-    });
+    std::ranges::sort(assets, [](const AssetId& left, const AssetId& right) { return left.path() < right.path(); });
     return assets;
 }
 
-bool AssetStorage::contains(const AssetId& asset) const {
+bool AssetStore::contains(const AssetId& asset) const {
     for (auto source = this->sources.rbegin(); source != this->sources.rend(); ++source) {
         if ((*source)->contains(asset)) {
             return true;
@@ -101,7 +98,7 @@ bool AssetStorage::contains(const AssetId& asset) const {
     return false;
 }
 
-AssetData AssetStorage::read(const AssetId& asset) const {
+AssetData AssetStore::read(const AssetId& asset) const {
     for (auto source = this->sources.rbegin(); source != this->sources.rend(); ++source) {
         std::optional<AssetData> data = (*source)->try_read(asset);
 

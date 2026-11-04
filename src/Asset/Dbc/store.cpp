@@ -1,9 +1,9 @@
-#include "Asset/Dbc/storage.hpp"
+#include "Asset/Dbc/store.hpp"
 
 #include "Asset/Dbc/format.hpp"
 #include "Asset/Stream/priority.hpp"
 #include "Asset/Stream/streamer.hpp"
-#include "Asset/storage.hpp"
+#include "Asset/store.hpp"
 #include "Thread/pool.hpp"
 #include "Thread/work.hpp"
 
@@ -15,19 +15,19 @@
 
 namespace Northrend {
 
-DbcStorage::DbcStorage(AssetStorage& assets, AssetStreamer& streamer, ThreadPool& threadPool) noexcept :
+DbcStore::DbcStore(AssetStore& assets, AssetStreamer& streamer, ThreadPool& threadPool) noexcept :
     assets(assets), streamer(streamer), threadPool(threadPool) {}
 
-DbcStorage::~DbcStorage() {
+DbcStore::~DbcStore() {
     try {
         this->stop();
     } catch (...) {
     }
 }
 
-void DbcStorage::start() {
+void DbcStore::start() {
     if (this->state != State::idle) {
-        throw std::logic_error("DBC storage cannot be started more than once");
+        throw std::logic_error("DBC store cannot be started more than once");
     }
 
     this->discovery = this->threadPool.submit(WorkPriority::background, [this](std::stop_token stopToken) {
@@ -40,7 +40,7 @@ void DbcStorage::start() {
     this->state = State::discovering;
 }
 
-void DbcStorage::tick() {
+void DbcStore::tick() {
     if (this->state == State::discovering) {
         this->finish_discovery();
     }
@@ -50,23 +50,22 @@ void DbcStorage::tick() {
     }
 }
 
-bool DbcStorage::ready() const noexcept {
+bool DbcStore::ready() const noexcept {
     return this->state == State::ready;
 }
 
-std::size_t DbcStorage::size() const noexcept {
+std::size_t DbcStore::size() const noexcept {
     return this->tables.size();
 }
 
-const DbcTable* DbcStorage::find(const std::string_view path) const {
+const DbcTable* DbcStore::find(const std::string_view path) const {
     if (!this->ready()) {
         return nullptr;
     }
 
     const std::string name = key(path);
-    const auto position = std::ranges::lower_bound(this->tables, name, {}, [](const auto& entry) -> const std::string& {
-        return entry.first;
-    });
+    const auto position = std::ranges::lower_bound(
+        this->tables, name, {}, [](const auto& entry) -> const std::string& { return entry.first; });
 
     if (position == this->tables.end() || position->first != name) {
         return nullptr;
@@ -75,7 +74,7 @@ const DbcTable* DbcStorage::find(const std::string_view path) const {
     return &position->second;
 }
 
-const DbcTable* DbcStorage::find_file(const std::string_view name) const {
+const DbcTable* DbcStore::find_file(const std::string_view name) const {
     if (!this->ready()) {
         return nullptr;
     }
@@ -102,13 +101,13 @@ const DbcTable* DbcStorage::find_file(const std::string_view name) const {
     return result;
 }
 
-void DbcStorage::request_stop() noexcept {
+void DbcStore::request_stop() noexcept {
     if (this->discovery) {
         this->discovery->cancel();
     }
 }
 
-void DbcStorage::stop() {
+void DbcStore::stop() {
     if (this->state == State::stopped) {
         return;
     }
@@ -126,15 +125,14 @@ void DbcStorage::stop() {
     this->tables.clear();
 }
 
-std::string DbcStorage::key(const std::string_view path) {
+std::string DbcStore::key(const std::string_view path) {
     std::string result(path);
-    std::ranges::transform(result, result.begin(), [](const unsigned char value) {
-        return value == '\\' ? '/' : static_cast<char>(std::tolower(value));
-    });
+    std::ranges::transform(result, result.begin(),
+        [](const unsigned char value) { return value == '\\' ? '/' : static_cast<char>(std::tolower(value)); });
     return result;
 }
 
-void DbcStorage::finish_discovery() {
+void DbcStore::finish_discovery() {
     if (!this->discovery || !this->discovery->ready()) {
         return;
     }
@@ -146,14 +144,15 @@ void DbcStorage::finish_discovery() {
 
     for (AssetId& asset : this->discovered) {
         std::string name = key(asset.path());
-        this->requests.emplace_back(std::move(name), this->streamer.request(std::move(asset), AssetPriority::background));
+        this->requests.emplace_back(
+            std::move(name), this->streamer.request(std::move(asset), AssetPriority::background));
     }
 
     this->discovered.clear();
     this->state = this->requests.empty() ? State::ready : State::loading;
 }
 
-void DbcStorage::finish_loading() {
+void DbcStore::finish_loading() {
     std::size_t completed = 0;
 
     for (std::size_t position = 0; position < this->requests.size() && completed < TablesPerTick;) {
@@ -174,8 +173,8 @@ void DbcStorage::finish_loading() {
             try {
                 this->tables.emplace_back(this->requests[position].first, DbcTable(std::move(data)));
             } catch (const std::exception& error) {
-                throw std::runtime_error("Failed to parse database " + this->requests[position].first + ": " +
-                    error.what());
+                throw std::runtime_error(
+                    "Failed to parse database " + this->requests[position].first + ": " + error.what());
             }
         }
 

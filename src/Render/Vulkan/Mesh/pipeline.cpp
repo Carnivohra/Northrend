@@ -1,8 +1,8 @@
-#include "Render/Vulkan/Pipeline/mesh.hpp"
+#include "Render/Vulkan/Mesh/pipeline.hpp"
 
 #include "Render/Vulkan/Shader/Mesh/fragment.hpp"
 #include "Render/Vulkan/Shader/Mesh/vertex.hpp"
-#include "Math/vector.hpp"
+#include "Render/Mesh/vertex.hpp"
 #include "Render/Vulkan/device.hpp"
 
 #include <array>
@@ -15,7 +15,7 @@ namespace Northrend {
 
 VulkanMeshPipeline::VulkanMeshPipeline(
     VulkanDevice& device, VkRenderPass renderPass, VkExtent2D extent, std::size_t imageCount) :
-    device(device), camera(device, imageCount) {
+    device(device), camera(device, imageCount), light(device, imageCount) {
     try {
         this->create_layout();
         this->create_graphics_pipeline(renderPass, extent);
@@ -23,6 +23,10 @@ VulkanMeshPipeline::VulkanMeshPipeline(
         this->destroy();
         throw;
     }
+}
+
+void VulkanMeshPipeline::update_light(const std::size_t imageIndex, const DirectionalLight& light) {
+    this->light.update(imageIndex, light);
 }
 
 VulkanMeshPipeline::~VulkanMeshPipeline() {
@@ -37,16 +41,19 @@ void VulkanMeshPipeline::update_camera(
 void VulkanMeshPipeline::bind(VkCommandBuffer commandBuffer, std::size_t imageIndex) const noexcept {
     vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, this->pipeline);
     this->camera.bind(commandBuffer, this->layout, imageIndex);
+    this->light.bind(commandBuffer, this->layout, imageIndex);
 }
 
 void VulkanMeshPipeline::create_layout() {
-    const VkDescriptorSetLayout cameraLayout = this->camera.descriptor_layout();
+    const VkDescriptorSetLayout descriptorLayouts[] {
+        this->camera.descriptor_layout(), this->light.descriptor_layout()
+    };
     const VkPipelineLayoutCreateInfo createInfo {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
         .pNext = nullptr,
         .flags = 0,
-        .setLayoutCount = 1,
-        .pSetLayouts = &cameraLayout,
+        .setLayoutCount = 2,
+        .pSetLayouts = descriptorLayouts,
         .pushConstantRangeCount = 0,
         .pPushConstantRanges = nullptr
     };
@@ -90,13 +97,13 @@ void VulkanMeshPipeline::create_graphics_pipeline(VkRenderPass renderPass, VkExt
     };
     const std::array<VkVertexInputBindingDescription, 2> vertexBindings {
         VkVertexInputBindingDescription {
-            .binding = 0, .stride = sizeof(Vector3), .inputRate = VK_VERTEX_INPUT_RATE_VERTEX
+            .binding = 0, .stride = sizeof(MeshVertex), .inputRate = VK_VERTEX_INPUT_RATE_VERTEX
         },
         VkVertexInputBindingDescription {
             .binding = 1, .stride = sizeof(Matrix4), .inputRate = VK_VERTEX_INPUT_RATE_INSTANCE
         }
     };
-    const std::array<VkVertexInputAttributeDescription, 5> vertexAttributes {
+    const std::array<VkVertexInputAttributeDescription, 6> vertexAttributes {
         VkVertexInputAttributeDescription {
             .location = 0,
             .binding = 0,
@@ -104,16 +111,22 @@ void VulkanMeshPipeline::create_graphics_pipeline(VkRenderPass renderPass, VkExt
             .offset = 0
         },
         VkVertexInputAttributeDescription {
-            .location = 1, .binding = 1, .format = VK_FORMAT_R32G32B32A32_SFLOAT, .offset = sizeof(float) * 0
+            .location = 1,
+            .binding = 0,
+            .format = VK_FORMAT_R8G8B8A8_SNORM,
+            .offset = offsetof(MeshVertex, normal)
         },
         VkVertexInputAttributeDescription {
-            .location = 2, .binding = 1, .format = VK_FORMAT_R32G32B32A32_SFLOAT, .offset = sizeof(float) * 4
+            .location = 2, .binding = 1, .format = VK_FORMAT_R32G32B32A32_SFLOAT, .offset = sizeof(float) * 0
         },
         VkVertexInputAttributeDescription {
-            .location = 3, .binding = 1, .format = VK_FORMAT_R32G32B32A32_SFLOAT, .offset = sizeof(float) * 8
+            .location = 3, .binding = 1, .format = VK_FORMAT_R32G32B32A32_SFLOAT, .offset = sizeof(float) * 4
         },
         VkVertexInputAttributeDescription {
-            .location = 4, .binding = 1, .format = VK_FORMAT_R32G32B32A32_SFLOAT, .offset = sizeof(float) * 12
+            .location = 4, .binding = 1, .format = VK_FORMAT_R32G32B32A32_SFLOAT, .offset = sizeof(float) * 8
+        },
+        VkVertexInputAttributeDescription {
+            .location = 5, .binding = 1, .format = VK_FORMAT_R32G32B32A32_SFLOAT, .offset = sizeof(float) * 12
         }
     };
     const VkPipelineVertexInputStateCreateInfo vertexInput {

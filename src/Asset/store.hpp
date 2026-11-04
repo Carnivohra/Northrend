@@ -9,16 +9,16 @@
 
 namespace Northrend {
 
-class AssetStorage final {
+class AssetStore final {
 public:
-    AssetStorage() = default;
-    explicit AssetStorage(const AssetPlan& plan);
-    AssetStorage(const AssetPlan& plan, std::stop_token stopToken);
+    AssetStore() = default;
+    explicit AssetStore(const AssetPlan& plan);
+    AssetStore(const AssetPlan& plan, std::stop_token stopToken);
 
-    AssetStorage(const AssetStorage&) = delete;
-    AssetStorage& operator=(const AssetStorage&) = delete;
-    AssetStorage(AssetStorage&&) = default;
-    AssetStorage& operator=(AssetStorage&&) = default;
+    AssetStore(const AssetStore&) = delete;
+    AssetStore& operator=(const AssetStore&) = delete;
+    AssetStore(AssetStore&&) = default;
+    AssetStore& operator=(AssetStore&&) = default;
 
     void mount(std::unique_ptr<AssetSource> source);
 

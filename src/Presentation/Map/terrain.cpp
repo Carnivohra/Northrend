@@ -39,7 +39,8 @@ void PresentationTerrain::load(const std::size_t x, const std::size_t y, const M
         .y = std::numeric_limits<float>::lowest(),
         .z = std::numeric_limits<float>::lowest()
     };
-    for (const Vector3& position : geometry.vertices()) {
+    for (const MeshVertex& vertex : geometry.vertices()) {
+        const Vector3& position = vertex.position;
         minimum.x = std::min(minimum.x, position.x);
         minimum.y = std::min(minimum.y, position.y);
         minimum.z = std::min(minimum.z, position.z);

@@ -1,7 +1,7 @@
 #include "Render/Vulkan/Mesh/mesh.hpp"
 
 #include "Render/Vulkan/Mesh/arena.hpp"
-#include "Math/vector.hpp"
+#include "Render/Mesh/vertex.hpp"
 
 #include <limits>
 #include <stdexcept>
@@ -10,15 +10,14 @@ namespace Northrend {
 
 VulkanMesh::VulkanMesh(VulkanMeshArena& arena, const MeshData& data) :
     arena(arena),
-    offset(0),
-    byteSize(0),
+    allocation(),
     indexOffset(0),
     indexCount(data.index_count()),
     indexType(vulkan_index_type(data.index_type())) {
     const std::span<const std::byte> vertices = data.vertices();
     const std::span<const std::byte> indices = data.indices();
-    const std::size_t indexSize = this->indexType == VK_INDEX_TYPE_UINT16 ? sizeof(std::uint16_t) :
-        sizeof(std::uint32_t);
+    const std::size_t indexSize =
+        this->indexType == VK_INDEX_TYPE_UINT16 ? sizeof(std::uint16_t) : sizeof(std::uint32_t);
 
     const std::size_t remainder = vertices.size_bytes() % indexSize;
     const std::size_t padding = remainder == 0 ? 0 : indexSize - remainder;
@@ -28,19 +27,19 @@ VulkanMesh::VulkanMesh(VulkanMeshArena& arena, const MeshData& data) :
         throw std::overflow_error("Vulkan mesh size overflow");
     }
 
-    this->byteSize = this->indexOffset + indices.size_bytes();
-    this->offset = this->arena.allocate(this->byteSize);
+    const VkDeviceSize byteSize = this->indexOffset + indices.size_bytes();
+    this->allocation = this->arena.allocate(byteSize);
 
     try {
-        this->arena.upload(this->offset, vertices, this->indexOffset, indices);
+        this->arena.upload(this->allocation, vertices, this->indexOffset, indices);
     } catch (...) {
-        this->arena.release(this->offset, this->byteSize);
+        this->arena.release(this->allocation);
         throw;
     }
 }
 
 VulkanMesh::~VulkanMesh() {
-    this->arena.release(this->offset, this->byteSize);
+    this->arena.release(this->allocation);
 }
 
 VkIndexType VulkanMesh::vulkan_index_type(const MeshIndexType type) noexcept {
@@ -48,11 +47,11 @@ VkIndexType VulkanMesh::vulkan_index_type(const MeshIndexType type) noexcept {
 }
 
 VulkanDraw VulkanMesh::draw(const std::uint32_t firstInstance) const {
-    const VkDeviceSize indexSize = this->indexType == VK_INDEX_TYPE_UINT16 ? sizeof(std::uint16_t) :
-        sizeof(std::uint32_t);
-    const VkDeviceSize absoluteIndexOffset = this->offset + this->indexOffset;
+    const VkDeviceSize indexSize =
+        this->indexType == VK_INDEX_TYPE_UINT16 ? sizeof(std::uint16_t) : sizeof(std::uint32_t);
+    const VkDeviceSize absoluteIndexOffset = this->allocation.offset + this->indexOffset;
     const VkDeviceSize firstIndex = absoluteIndexOffset / indexSize;
-    const VkDeviceSize vertexOffset = this->offset / sizeof(Vector3);
+    const VkDeviceSize vertexOffset = this->allocation.offset / sizeof(MeshVertex);
 
     if (firstIndex > std::numeric_limits<std::uint32_t>::max() ||
         vertexOffset > static_cast<VkDeviceSize>(std::numeric_limits<std::int32_t>::max())) {
@@ -69,6 +68,10 @@ VulkanDraw VulkanMesh::draw(const std::uint32_t firstInstance) const {
 
 VkIndexType VulkanMesh::index_type() const noexcept {
     return this->indexType;
+}
+
+std::size_t VulkanMesh::page() const noexcept {
+    return this->allocation.page;
 }
 
 }

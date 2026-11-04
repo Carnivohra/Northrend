@@ -49,14 +49,21 @@ target_sources(Northrend
     Render/Vulkan/frame.hpp
     Render/Vulkan/instance.cpp
     Render/Vulkan/instance.hpp
+    Render/Vulkan/Light/buffer.hpp
+    Render/Vulkan/Light/context.cpp
+    Render/Vulkan/Light/context.hpp
+    Render/Vulkan/Light/data.hpp
     Render/Vulkan/Mesh/arena.cpp
     Render/Vulkan/Mesh/arena.hpp
+    Render/Vulkan/Mesh/allocation.hpp
     Render/Vulkan/Mesh/mesh.cpp
     Render/Vulkan/Mesh/mesh.hpp
+    Render/Vulkan/Mesh/page.cpp
+    Render/Vulkan/Mesh/page.hpp
     Render/Vulkan/Mesh/store.cpp
     Render/Vulkan/Mesh/store.hpp
-    Render/Vulkan/Pipeline/mesh.cpp
-    Render/Vulkan/Pipeline/mesh.hpp
+    Render/Vulkan/Mesh/pipeline.cpp
+    Render/Vulkan/Mesh/pipeline.hpp
     Render/Vulkan/physical.cpp
     Render/Vulkan/physical.hpp
     Render/Vulkan/Queue/families.hpp

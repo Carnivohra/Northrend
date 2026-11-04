@@ -30,11 +30,11 @@ public:
     void draw(VkCommandBuffer commandBuffer, std::size_t imageIndex, const VulkanMeshStore& meshes) const noexcept;
 
 private:
-    struct Storage final {
+    struct Store final {
         std::unique_ptr<VulkanBuffer> buffer;
         std::unique_ptr<VulkanBuffer> staging;
-        std::vector<VulkanDraw> unsigned16;
-        std::vector<VulkanDraw> unsigned32;
+        std::vector<std::vector<VulkanDraw>> unsigned16;
+        std::vector<std::vector<VulkanDraw>> unsigned32;
         std::uint64_t instanceRevision = 0;
         std::uint64_t meshRevision = 0;
         bool initialized = false;
@@ -46,7 +46,7 @@ private:
     static void draw_group(VkCommandBuffer commandBuffer, const std::vector<VulkanDraw>& draws) noexcept;
 
     VulkanDevice& device;
-    std::vector<Storage> storage;
+    std::vector<Store> stores;
 };
 
 }

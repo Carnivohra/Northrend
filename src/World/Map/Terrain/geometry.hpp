@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Math/vector.hpp"
+#include "Render/Mesh/vertex.hpp"
 
 #include <cstddef>
 #include <cstdint>
@@ -18,7 +18,7 @@ public:
 
     explicit TerrainGeometry(const Adt& adt);
 
-    [[nodiscard]] std::span<const Vector3> vertices() const noexcept;
+    [[nodiscard]] std::span<const MeshVertex> vertices() const noexcept;
     [[nodiscard]] std::span<const std::uint16_t> indices() const noexcept;
 
 private:
@@ -30,7 +30,7 @@ private:
     void append_vertices(const Adt& adt, std::size_t chunkX, std::size_t chunkY);
     void append_indices(const Adt& adt, std::size_t chunkX, std::size_t chunkY);
 
-    std::vector<Vector3> terrainVertices;
+    std::vector<MeshVertex> terrainVertices;
     std::vector<std::uint16_t> terrainIndices;
 };
 
