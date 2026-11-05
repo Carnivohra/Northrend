@@ -15,7 +15,13 @@
 
 namespace Northrend {
 
-VulkanCommandContext::VulkanCommandContext(VulkanDevice& device) : device(device), batch(device), timer(device) {
+VulkanCommandContext::VulkanCommandContext(VulkanDevice& device) :
+    device(device),
+    batch(device)
+#ifdef NORTHREND_GPU_PROFILING
+    , timer(device)
+#endif
+{
     const VkCommandPoolCreateInfo createInfo {
         .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
         .pNext = nullptr,
@@ -59,12 +65,19 @@ void VulkanCommandContext::allocate(std::size_t count) {
     this->recordedMeshRevisions.assign(count, 0);
     this->recorded.assign(count, false);
     this->batch.allocate(count);
+
+#ifdef NORTHREND_GPU_PROFILING
     this->timer.allocate(count);
+#endif
 }
 
 void VulkanCommandContext::release() noexcept {
     this->batch.release();
+
+#ifdef NORTHREND_GPU_PROFILING
     this->timer.release();
+#endif
+
     this->recorded.clear();
     this->recordedMeshRevisions.clear();
     this->recordedInstanceRevisions.clear();
@@ -106,7 +119,9 @@ void VulkanCommandContext::record(std::size_t imageIndex, const RenderFrame& ren
         throw std::runtime_error("Failed to begin a Vulkan command buffer: " + std::to_string(result));
     }
 
+#ifdef NORTHREND_GPU_PROFILING
     this->timer.begin(commandBuffer, imageIndex);
+#endif
 
     std::array<VkClearValue, 2> clearValues {};
     clearValues[0].color = clearColor;
@@ -123,12 +138,23 @@ void VulkanCommandContext::record(std::size_t imageIndex, const RenderFrame& ren
     };
 
     vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
-    pipeline.bind(commandBuffer, imageIndex);
 
-    this->batch.draw(commandBuffer, imageIndex, meshes);
+    if (this->batch.has_world(imageIndex)) {
+        pipeline.bind_world(commandBuffer, imageIndex);
+        this->batch.draw_world(commandBuffer, imageIndex, meshes);
+    }
+
+    if (this->batch.has_transformed(imageIndex)) {
+        pipeline.bind_transformed(commandBuffer, imageIndex);
+        this->batch.draw_transformed(commandBuffer, imageIndex, meshes);
+    }
 
     vkCmdEndRenderPass(commandBuffer);
+
+#ifdef NORTHREND_GPU_PROFILING
     this->timer.end(commandBuffer, imageIndex);
+#endif
+
     result = vkEndCommandBuffer(commandBuffer);
 
     if (result != VK_SUCCESS) {
@@ -140,16 +166,20 @@ void VulkanCommandContext::record(std::size_t imageIndex, const RenderFrame& ren
     this->recorded[imageIndex] = true;
 }
 
+#ifdef NORTHREND_GPU_PROFILING
 void VulkanCommandContext::submitted(const std::size_t imageIndex) noexcept {
     this->timer.submitted(imageIndex);
 }
+#endif
 
 VkCommandBuffer VulkanCommandContext::handle(std::size_t imageIndex) const noexcept {
     return this->buffers[imageIndex];
 }
 
+#ifdef NORTHREND_GPU_PROFILING
 std::optional<double> VulkanCommandContext::gpu_time(const std::size_t imageIndex) {
     return this->timer.collect(imageIndex);
 }
+#endif
 
 }

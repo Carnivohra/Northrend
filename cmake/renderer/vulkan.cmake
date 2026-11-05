@@ -29,6 +29,10 @@ function(northrend_embed_spirv source symbol output_name)
   target_sources(Northrend PRIVATE "${source_path}" "${output_path}")
 endfunction()
 
+option(NORTHREND_GPU_PROFILING
+  "Collect Vulkan GPU frame timings"
+  OFF)
+
 target_sources(Northrend
   PRIVATE
     Render/Vulkan/buffer.cpp
@@ -73,12 +77,11 @@ target_sources(Northrend
     Render/Vulkan/surface.hpp
     Render/Vulkan/target.cpp
     Render/Vulkan/target.hpp
-    Render/Vulkan/Timing/timer.cpp
-    Render/Vulkan/Timing/timer.hpp
     Render/Vulkan/transfer.cpp
     Render/Vulkan/transfer.hpp
     Render/Vulkan/Shader/Mesh/fragment.frag
     Render/Vulkan/Shader/Mesh/vertex.vert
+    Render/Vulkan/Shader/Mesh/world.vert
     Render/Vulkan/swapchain.cpp
     Render/Vulkan/swapchain.hpp
     Render/Vulkan/vulkan.cpp
@@ -89,10 +92,25 @@ target_sources(Northrend
     FILES
       Render/Vulkan/vulkan.hpp)
 
+if(NORTHREND_GPU_PROFILING)
+  target_sources(Northrend
+    PRIVATE
+      Render/Vulkan/Timing/timer.cpp
+      Render/Vulkan/Timing/timer.hpp)
+
+  target_compile_definitions(Northrend
+    PRIVATE
+      NORTHREND_GPU_PROFILING)
+endif()
+
 northrend_embed_spirv(
   Render/Vulkan/Shader/Mesh/vertex.spv
   MeshVertex
   Mesh/vertex)
+northrend_embed_spirv(
+  Render/Vulkan/Shader/Mesh/world.spv
+  MeshWorldVertex
+  Mesh/world)
 northrend_embed_spirv(
   Render/Vulkan/Shader/Mesh/fragment.spv
   MeshFragment

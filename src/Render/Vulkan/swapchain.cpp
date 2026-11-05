@@ -12,13 +12,16 @@
 #include <algorithm>
 #include <array>
 #include <cstdint>
-#include <iostream>
 #include <limits>
 #include <memory>
 #include <span>
 #include <stdexcept>
 #include <string>
 #include <vector>
+
+#ifdef NORTHREND_GPU_PROFILING
+#include <iostream>
+#endif
 
 namespace Northrend {
 
@@ -89,9 +92,11 @@ void VulkanSwapchain::render(const RenderFrame& renderFrame) {
         }
     }
 
+#ifdef NORTHREND_GPU_PROFILING
     if (const auto milliseconds = this->commands->gpu_time(imageIndex)) {
         std::cout << "GPU render: " << *milliseconds << " ms\n";
     }
+#endif
 
     this->pipeline->update_camera(
         imageIndex, renderFrame.camera, renderFrame.view, renderFrame.cameraRevision, this->extent);
@@ -127,7 +132,9 @@ void VulkanSwapchain::render(const RenderFrame& renderFrame) {
         throw std::runtime_error("Failed to submit the Vulkan frame: " + std::to_string(result));
     }
 
+#ifdef NORTHREND_GPU_PROFILING
     this->commands->submitted(imageIndex);
+#endif
 
     const VkSwapchainKHR swapchains[] {this->swapchain};
     const VkPresentInfoKHR presentInfo {

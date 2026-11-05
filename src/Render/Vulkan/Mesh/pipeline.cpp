@@ -2,6 +2,7 @@
 
 #include "Render/Vulkan/Shader/Mesh/fragment.hpp"
 #include "Render/Vulkan/Shader/Mesh/vertex.hpp"
+#include "Render/Vulkan/Shader/Mesh/world.hpp"
 #include "Render/Mesh/vertex.hpp"
 #include "Render/Vulkan/device.hpp"
 
@@ -18,7 +19,10 @@ VulkanMeshPipeline::VulkanMeshPipeline(
     device(device), camera(device, imageCount), light(device, imageCount) {
     try {
         this->create_layout();
-        this->create_graphics_pipeline(renderPass, extent);
+        this->worldPipeline =
+            this->create_graphics_pipeline(renderPass, extent, VulkanShader::MeshWorldVertex, false);
+        this->transformedPipeline =
+            this->create_graphics_pipeline(renderPass, extent, VulkanShader::MeshVertex, true);
     } catch (...) {
         this->destroy();
         throw;
@@ -38,8 +42,18 @@ void VulkanMeshPipeline::update_camera(
     this->camera.update(imageIndex, camera, view, revision, extent);
 }
 
-void VulkanMeshPipeline::bind(VkCommandBuffer commandBuffer, std::size_t imageIndex) const noexcept {
-    vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, this->pipeline);
+void VulkanMeshPipeline::bind_world(const VkCommandBuffer commandBuffer, const std::size_t imageIndex) const noexcept {
+    this->bind(commandBuffer, imageIndex, this->worldPipeline);
+}
+
+void VulkanMeshPipeline::bind_transformed(
+    const VkCommandBuffer commandBuffer, const std::size_t imageIndex) const noexcept {
+    this->bind(commandBuffer, imageIndex, this->transformedPipeline);
+}
+
+void VulkanMeshPipeline::bind(
+    const VkCommandBuffer commandBuffer, const std::size_t imageIndex, const VkPipeline pipeline) const noexcept {
+    vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
     this->camera.bind(commandBuffer, this->layout, imageIndex);
     this->light.bind(commandBuffer, this->layout, imageIndex);
 }
@@ -64,8 +78,9 @@ void VulkanMeshPipeline::create_layout() {
     }
 }
 
-void VulkanMeshPipeline::create_graphics_pipeline(VkRenderPass renderPass, VkExtent2D extent) {
-    const VkShaderModule vertexShader = this->create_shader_module(VulkanShader::MeshVertex);
+VkPipeline VulkanMeshPipeline::create_graphics_pipeline(const VkRenderPass renderPass, const VkExtent2D extent,
+    const std::span<const unsigned char> vertexCode, const bool transformed) const {
+    const VkShaderModule vertexShader = this->create_shader_module(vertexCode);
     VkShaderModule fragmentShader = VK_NULL_HANDLE;
 
     try {
@@ -95,7 +110,7 @@ void VulkanMeshPipeline::create_graphics_pipeline(VkRenderPass renderPass, VkExt
             .pSpecializationInfo = nullptr
         }
     };
-    const std::array<VkVertexInputBindingDescription, 2> vertexBindings {
+    const std::array<VkVertexInputBindingDescription, 2> transformedBindings {
         VkVertexInputBindingDescription {
             .binding = 0, .stride = sizeof(MeshVertex), .inputRate = VK_VERTEX_INPUT_RATE_VERTEX
         },
@@ -103,7 +118,10 @@ void VulkanMeshPipeline::create_graphics_pipeline(VkRenderPass renderPass, VkExt
             .binding = 1, .stride = sizeof(Matrix4), .inputRate = VK_VERTEX_INPUT_RATE_INSTANCE
         }
     };
-    const std::array<VkVertexInputAttributeDescription, 6> vertexAttributes {
+    const VkVertexInputBindingDescription worldBinding {
+        .binding = 0, .stride = sizeof(MeshVertex), .inputRate = VK_VERTEX_INPUT_RATE_VERTEX
+    };
+    const std::array<VkVertexInputAttributeDescription, 6> transformedAttributes {
         VkVertexInputAttributeDescription {
             .location = 0,
             .binding = 0,
@@ -129,14 +147,29 @@ void VulkanMeshPipeline::create_graphics_pipeline(VkRenderPass renderPass, VkExt
             .location = 5, .binding = 1, .format = VK_FORMAT_R32G32B32A32_SFLOAT, .offset = sizeof(float) * 12
         }
     };
+    const std::array<VkVertexInputAttributeDescription, 2> worldAttributes {
+        VkVertexInputAttributeDescription {
+            .location = 0,
+            .binding = 0,
+            .format = VK_FORMAT_R32G32B32_SFLOAT,
+            .offset = 0
+        },
+        VkVertexInputAttributeDescription {
+            .location = 1,
+            .binding = 0,
+            .format = VK_FORMAT_R8G8B8A8_SNORM,
+            .offset = offsetof(MeshVertex, normal)
+        }
+    };
     const VkPipelineVertexInputStateCreateInfo vertexInput {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
         .pNext = nullptr,
         .flags = 0,
-        .vertexBindingDescriptionCount = static_cast<std::uint32_t>(vertexBindings.size()),
-        .pVertexBindingDescriptions = vertexBindings.data(),
-        .vertexAttributeDescriptionCount = static_cast<std::uint32_t>(vertexAttributes.size()),
-        .pVertexAttributeDescriptions = vertexAttributes.data()
+        .vertexBindingDescriptionCount = transformed ? static_cast<std::uint32_t>(transformedBindings.size()) : 1,
+        .pVertexBindingDescriptions = transformed ? transformedBindings.data() : &worldBinding,
+        .vertexAttributeDescriptionCount = transformed ? static_cast<std::uint32_t>(transformedAttributes.size()) :
+                                                         static_cast<std::uint32_t>(worldAttributes.size()),
+        .pVertexAttributeDescriptions = transformed ? transformedAttributes.data() : worldAttributes.data()
     };
     const VkPipelineInputAssemblyStateCreateInfo inputAssembly {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
@@ -245,8 +278,9 @@ void VulkanMeshPipeline::create_graphics_pipeline(VkRenderPass renderPass, VkExt
         .basePipelineHandle = VK_NULL_HANDLE,
         .basePipelineIndex = -1
     };
+    VkPipeline pipeline = VK_NULL_HANDLE;
     const VkResult result =
-        vkCreateGraphicsPipelines(this->device.handle(), VK_NULL_HANDLE, 1, &createInfo, nullptr, &this->pipeline);
+        vkCreateGraphicsPipelines(this->device.handle(), VK_NULL_HANDLE, 1, &createInfo, nullptr, &pipeline);
 
     vkDestroyShaderModule(this->device.handle(), fragmentShader, nullptr);
     vkDestroyShaderModule(this->device.handle(), vertexShader, nullptr);
@@ -254,12 +288,19 @@ void VulkanMeshPipeline::create_graphics_pipeline(VkRenderPass renderPass, VkExt
     if (result != VK_SUCCESS) {
         throw std::runtime_error("Failed to create the Vulkan graphics pipeline: " + std::to_string(result));
     }
+
+    return pipeline;
 }
 
 void VulkanMeshPipeline::destroy() noexcept {
-    if (this->pipeline != VK_NULL_HANDLE) {
-        vkDestroyPipeline(this->device.handle(), this->pipeline, nullptr);
-        this->pipeline = VK_NULL_HANDLE;
+    if (this->transformedPipeline != VK_NULL_HANDLE) {
+        vkDestroyPipeline(this->device.handle(), this->transformedPipeline, nullptr);
+        this->transformedPipeline = VK_NULL_HANDLE;
+    }
+
+    if (this->worldPipeline != VK_NULL_HANDLE) {
+        vkDestroyPipeline(this->device.handle(), this->worldPipeline, nullptr);
+        this->worldPipeline = VK_NULL_HANDLE;
     }
 
     if (this->layout != VK_NULL_HANDLE) {

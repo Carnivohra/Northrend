@@ -36,12 +36,18 @@ void VulkanDrawBatch::update(const std::size_t imageIndex, const RenderFrame& fr
 
     std::vector<Matrix4> transforms;
     transforms.reserve(frame.instances.size());
-    target.unsigned16.resize(meshes.page_count());
-    target.unsigned32.resize(meshes.page_count());
+    target.worldUnsigned16.resize(meshes.page_count());
+    target.worldUnsigned32.resize(meshes.page_count());
+    target.transformedUnsigned16.resize(meshes.page_count());
+    target.transformedUnsigned32.resize(meshes.page_count());
+    target.worldDraws = false;
+    target.transformedDraws = false;
 
     for (std::size_t page = 0; page < meshes.page_count(); ++page) {
-        target.unsigned16[page].clear();
-        target.unsigned32[page].clear();
+        target.worldUnsigned16[page].clear();
+        target.worldUnsigned32[page].clear();
+        target.transformedUnsigned16[page].clear();
+        target.transformedUnsigned32[page].clear();
     }
 
     for (const RenderInstance& instance : frame.instances) {
@@ -51,30 +57,40 @@ void VulkanDrawBatch::update(const std::size_t imageIndex, const RenderFrame& fr
             continue;
         }
 
+        if (instance.worldSpace) {
+            auto& pages = mesh->index_type() == VK_INDEX_TYPE_UINT16 ? target.worldUnsigned16 : target.worldUnsigned32;
+            pages[mesh->page()].push_back(mesh->draw(0, instance.level));
+            target.worldDraws = true;
+            continue;
+        }
+
         if (transforms.size() >= std::numeric_limits<std::uint32_t>::max()) {
             throw std::overflow_error("Vulkan draw batch exceeds the instance index range");
         }
 
         const std::uint32_t firstInstance = static_cast<std::uint32_t>(transforms.size());
         transforms.push_back(instance.transform);
-        auto& pages = mesh->index_type() == VK_INDEX_TYPE_UINT16 ? target.unsigned16 : target.unsigned32;
+        auto& pages =
+            mesh->index_type() == VK_INDEX_TYPE_UINT16 ? target.transformedUnsigned16 : target.transformedUnsigned32;
         auto& commands = pages[mesh->page()];
         commands.push_back(mesh->draw(firstInstance, instance.level));
+        target.transformedDraws = true;
     }
 
     const VkDeviceSize required = transforms.size() * sizeof(Matrix4);
 
-    if (required != 0 && (!target.buffer || target.buffer->size() < required)) {
-        const VkDeviceSize byteCapacity = capacity(target.buffer ? target.buffer->size() : 0, required);
-        target.buffer = std::make_unique<VulkanBuffer>(this->device, byteCapacity,
+    if (required != 0 && (!target.transformBuffer || target.transformBuffer->size() < required)) {
+        const VkDeviceSize byteCapacity = capacity(target.transformBuffer ? target.transformBuffer->size() : 0, required);
+        target.transformBuffer = std::make_unique<VulkanBuffer>(this->device, byteCapacity,
             VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-        target.staging = std::make_unique<VulkanBuffer>(this->device, byteCapacity, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+        target.transformStaging =
+            std::make_unique<VulkanBuffer>(this->device, byteCapacity, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+                VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
     }
 
     if (required != 0) {
-        target.staging->write(std::as_bytes(std::span<const Matrix4>(transforms)));
-        this->device.copy_buffer(target.staging->handle(), target.buffer->handle(), required);
+        target.transformStaging->write(std::as_bytes(std::span<const Matrix4>(transforms)));
+        this->device.copy_buffer(target.transformStaging->handle(), target.transformBuffer->handle(), required);
     }
 
     target.instanceRevision = frame.instancesRevision;
@@ -82,27 +98,34 @@ void VulkanDrawBatch::update(const std::size_t imageIndex, const RenderFrame& fr
     target.initialized = true;
 }
 
-void VulkanDrawBatch::draw(
+bool VulkanDrawBatch::has_world(const std::size_t imageIndex) const noexcept {
+    return this->stores[imageIndex].worldDraws;
+}
+
+bool VulkanDrawBatch::has_transformed(const std::size_t imageIndex) const noexcept {
+    return this->stores[imageIndex].transformedDraws;
+}
+
+void VulkanDrawBatch::draw_world(
     const VkCommandBuffer commandBuffer, const std::size_t imageIndex, const VulkanMeshStore& meshes) const noexcept {
     const Store& source = this->stores[imageIndex];
 
-    if (!source.buffer) {
+    if (!source.worldDraws) {
         return;
     }
 
-    constexpr VkDeviceSize offsets[] {0, 0};
+    constexpr VkDeviceSize offset = 0;
 
     for (std::size_t page = 0; page < meshes.page_count(); ++page) {
-        const auto& unsigned16 = source.unsigned16[page];
-        const auto& unsigned32 = source.unsigned32[page];
+        const auto& unsigned16 = source.worldUnsigned16[page];
+        const auto& unsigned32 = source.worldUnsigned32[page];
 
         if (unsigned16.empty() && unsigned32.empty()) {
             continue;
         }
 
         const VkBuffer meshBuffer = meshes.buffer(page);
-        const VkBuffer vertexBuffers[] {meshBuffer, source.buffer->handle()};
-        vkCmdBindVertexBuffers(commandBuffer, 0, 2, vertexBuffers, offsets);
+        vkCmdBindVertexBuffers(commandBuffer, 0, 1, &meshBuffer, &offset);
 
         if (!unsigned16.empty()) {
             vkCmdBindIndexBuffer(commandBuffer, meshBuffer, 0, VK_INDEX_TYPE_UINT16);
@@ -111,6 +134,39 @@ void VulkanDrawBatch::draw(
 
         if (!unsigned32.empty()) {
             vkCmdBindIndexBuffer(commandBuffer, meshBuffer, 0, VK_INDEX_TYPE_UINT32);
+            draw_group(commandBuffer, unsigned32);
+        }
+    }
+}
+
+void VulkanDrawBatch::draw_transformed(
+    const VkCommandBuffer commandBuffer, const std::size_t imageIndex, const VulkanMeshStore& meshes) const noexcept {
+    const Store& source = this->stores[imageIndex];
+
+    if (!source.transformedDraws || !source.transformBuffer) {
+        return;
+    }
+
+    constexpr VkDeviceSize offsets[] {0, 0};
+
+    for (std::size_t page = 0; page < meshes.page_count(); ++page) {
+        const auto& unsigned16 = source.transformedUnsigned16[page];
+        const auto& unsigned32 = source.transformedUnsigned32[page];
+
+        if (unsigned16.empty() && unsigned32.empty()) {
+            continue;
+        }
+
+        const VkBuffer vertexBuffers[] {meshes.buffer(page), source.transformBuffer->handle()};
+        vkCmdBindVertexBuffers(commandBuffer, 0, 2, vertexBuffers, offsets);
+
+        if (!unsigned16.empty()) {
+            vkCmdBindIndexBuffer(commandBuffer, vertexBuffers[0], 0, VK_INDEX_TYPE_UINT16);
+            draw_group(commandBuffer, unsigned16);
+        }
+
+        if (!unsigned32.empty()) {
+            vkCmdBindIndexBuffer(commandBuffer, vertexBuffers[0], 0, VK_INDEX_TYPE_UINT32);
             draw_group(commandBuffer, unsigned32);
         }
     }

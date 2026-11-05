@@ -27,20 +27,24 @@ public:
     void update_camera(
         std::size_t imageIndex, const Camera& camera, const Matrix4& view, std::uint64_t revision, VkExtent2D extent);
     void update_light(std::size_t imageIndex, const DirectionalLight& light);
-    void bind(VkCommandBuffer commandBuffer, std::size_t imageIndex) const noexcept;
+    void bind_world(VkCommandBuffer commandBuffer, std::size_t imageIndex) const noexcept;
+    void bind_transformed(VkCommandBuffer commandBuffer, std::size_t imageIndex) const noexcept;
 
 private:
     [[nodiscard]] VkShaderModule create_shader_module(std::span<const unsigned char> code) const;
+    [[nodiscard]] VkPipeline create_graphics_pipeline(VkRenderPass renderPass, VkExtent2D extent,
+        std::span<const unsigned char> vertexCode, bool transformed) const;
 
     void create_layout();
-    void create_graphics_pipeline(VkRenderPass renderPass, VkExtent2D extent);
+    void bind(VkCommandBuffer commandBuffer, std::size_t imageIndex, VkPipeline pipeline) const noexcept;
     void destroy() noexcept;
 
     VulkanDevice& device;
     VulkanCameraContext camera;
     VulkanLightContext light;
     VkPipelineLayout layout = VK_NULL_HANDLE;
-    VkPipeline pipeline = VK_NULL_HANDLE;
+    VkPipeline worldPipeline = VK_NULL_HANDLE;
+    VkPipeline transformedPipeline = VK_NULL_HANDLE;
 };
 
 }

@@ -69,7 +69,8 @@ void PresentationTerrain::load(const std::size_t x, const std::size_t y, const M
 
     try {
         entity = scene.registry().create();
-        scene.registry().emplace<RenderInstance>(entity, RenderInstance {.mesh = mesh, .transform = {}});
+        scene.registry().emplace<RenderInstance>(
+            entity, RenderInstance {.mesh = mesh, .transform = {}, .worldSpace = true});
     } catch (...) {
         if (entity) {
             scene.registry().destroy(entity);

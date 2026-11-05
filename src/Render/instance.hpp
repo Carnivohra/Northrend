@@ -13,6 +13,7 @@ struct RenderInstance final {
     Matrix4 transform;
     std::uint8_t level = 0;
     bool visible = true;
+    bool worldSpace = false;
 };
 
 static_assert(std::is_trivially_copyable_v<RenderInstance>);
