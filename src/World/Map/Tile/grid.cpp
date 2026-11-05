@@ -72,7 +72,8 @@ std::optional<TileRequest> TileGrid::next_request() noexcept {
         }
 
         this->states[tile] = TileState::loading;
-        return TileRequest(tile, this->requestDistances[position], this->currentGeneration);
+        return TileRequest(
+            tile, this->requestDistances[position], this->currentGeneration, this->mapLayout->high_resolution_alpha());
     }
 
     return std::nullopt;

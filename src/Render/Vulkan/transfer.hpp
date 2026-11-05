@@ -2,6 +2,9 @@
 
 #include <volk.h>
 
+#include <cstdint>
+#include <span>
+
 namespace Northrend {
 
 class VulkanDevice;
@@ -16,8 +19,12 @@ public:
 
     void copy_buffer(VkBuffer source, VkBuffer destination, VkDeviceSize size, VkDeviceSize sourceOffset,
         VkDeviceSize destinationOffset);
+    void copy_texture(
+        VkBuffer source, VkImage destination, std::span<const VkBufferImageCopy> regions, std::uint32_t mipLevels);
 
 private:
+    void begin();
+    void submit();
     void destroy() noexcept;
 
     VulkanDevice& device;

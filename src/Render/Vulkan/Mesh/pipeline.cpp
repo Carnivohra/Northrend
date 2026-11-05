@@ -1,10 +1,12 @@
 #include "Render/Vulkan/Mesh/pipeline.hpp"
 
 #include "Render/Vulkan/Shader/Mesh/fragment.hpp"
+#include "Render/Vulkan/Shader/Mesh/terrain.hpp"
 #include "Render/Vulkan/Shader/Mesh/vertex.hpp"
 #include "Render/Vulkan/Shader/Mesh/world.hpp"
 #include "Render/Mesh/vertex.hpp"
 #include "Render/Vulkan/device.hpp"
+#include "Render/Vulkan/Material/store.hpp"
 
 #include <array>
 #include <cstddef>
@@ -14,13 +16,15 @@
 
 namespace Northrend {
 
-VulkanMeshPipeline::VulkanMeshPipeline(
-    VulkanDevice& device, VkRenderPass renderPass, VkExtent2D extent, std::size_t imageCount) :
-    device(device), camera(device, imageCount), light(device, imageCount) {
+VulkanMeshPipeline::VulkanMeshPipeline(VulkanDevice& device, const VulkanMaterialStore& materials,
+    VkRenderPass renderPass, VkExtent2D extent, std::size_t imageCount) :
+    device(device), materials(materials), camera(device, imageCount), light(device, imageCount) {
     try {
         this->create_layout();
-        this->worldPipeline = this->create_graphics_pipeline(renderPass, extent, VulkanShader::MeshWorldVertex, false);
-        this->transformedPipeline = this->create_graphics_pipeline(renderPass, extent, VulkanShader::MeshVertex, true);
+        this->worldPipeline = this->create_graphics_pipeline(
+            renderPass, extent, VulkanShader::MeshWorldVertex, VulkanShader::MeshTerrainFragment, false);
+        this->transformedPipeline = this->create_graphics_pipeline(
+            renderPass, extent, VulkanShader::MeshVertex, VulkanShader::MeshFragment, true);
     } catch (...) {
         this->destroy();
         throw;
@@ -49,6 +53,10 @@ void VulkanMeshPipeline::bind_transformed(
     this->bind(commandBuffer, imageIndex, this->transformedPipeline);
 }
 
+VkPipelineLayout VulkanMeshPipeline::pipeline_layout() const noexcept {
+    return this->layout;
+}
+
 void VulkanMeshPipeline::bind(
     const VkCommandBuffer commandBuffer, const std::size_t imageIndex, const VkPipeline pipeline) const noexcept {
     vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
@@ -57,12 +65,14 @@ void VulkanMeshPipeline::bind(
 }
 
 void VulkanMeshPipeline::create_layout() {
-    const VkDescriptorSetLayout descriptorLayouts[] {this->camera.descriptor_layout(), this->light.descriptor_layout()};
+    const VkDescriptorSetLayout descriptorLayouts[] {
+        this->camera.descriptor_layout(), this->light.descriptor_layout(), this->materials.descriptor_layout()
+    };
     const VkPipelineLayoutCreateInfo createInfo {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
         .pNext = nullptr,
         .flags = 0,
-        .setLayoutCount = 2,
+        .setLayoutCount = 3,
         .pSetLayouts = descriptorLayouts,
         .pushConstantRangeCount = 0,
         .pPushConstantRanges = nullptr
@@ -75,12 +85,13 @@ void VulkanMeshPipeline::create_layout() {
 }
 
 VkPipeline VulkanMeshPipeline::create_graphics_pipeline(const VkRenderPass renderPass, const VkExtent2D extent,
-    const std::span<const unsigned char> vertexCode, const bool transformed) const {
+    const std::span<const unsigned char> vertexCode, const std::span<const unsigned char> fragmentCode,
+    const bool transformed) const {
     const VkShaderModule vertexShader = this->create_shader_module(vertexCode);
     VkShaderModule fragmentShader = VK_NULL_HANDLE;
 
     try {
-        fragmentShader = this->create_shader_module(VulkanShader::MeshFragment);
+        fragmentShader = this->create_shader_module(fragmentCode);
     } catch (...) {
         vkDestroyShaderModule(this->device.handle(), vertexShader, nullptr);
         throw;
@@ -137,12 +148,21 @@ VkPipeline VulkanMeshPipeline::create_graphics_pipeline(const VkRenderPass rende
             .location = 5, .binding = 1, .format = VK_FORMAT_R32G32B32A32_SFLOAT, .offset = sizeof(float) * 12
         }
     };
-    const std::array<VkVertexInputAttributeDescription, 2> worldAttributes {
+    const std::array<VkVertexInputAttributeDescription, 4> worldAttributes {
         VkVertexInputAttributeDescription {
             .location = 0, .binding = 0, .format = VK_FORMAT_R32G32B32_SFLOAT, .offset = 0
         },
         VkVertexInputAttributeDescription {
             .location = 1, .binding = 0, .format = VK_FORMAT_R8G8B8A8_SNORM, .offset = offsetof(MeshVertex, normal)
+        },
+        VkVertexInputAttributeDescription {
+            .location = 2,
+            .binding = 0,
+            .format = VK_FORMAT_R32G32_SFLOAT,
+            .offset = offsetof(MeshVertex, textureCoordinates)
+        },
+        VkVertexInputAttributeDescription {
+            .location = 3, .binding = 0, .format = VK_FORMAT_R32_UINT, .offset = offsetof(MeshVertex, texture)
         }
     };
     const VkPipelineVertexInputStateCreateInfo vertexInput {

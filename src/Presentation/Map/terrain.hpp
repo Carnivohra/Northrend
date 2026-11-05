@@ -3,6 +3,7 @@
 #include "ECS/entity.hpp"
 #include "Math/vector.hpp"
 #include "Render/Mesh/mesh.hpp"
+#include "Render/Material/material.hpp"
 #include "World/Map/Tile/grid.hpp"
 
 #include <array>
@@ -13,13 +14,16 @@ namespace Northrend {
 
 struct Camera;
 class MapTile;
+class MaterialHandleAllocator;
 class MeshHandleAllocator;
+class PresentationTextureCache;
 class Renderer;
 class RenderScene;
 
 class PresentationTerrain final {
 public:
-    void load(std::size_t x, std::size_t y, const MapTile& tile, MeshHandleAllocator& allocator, Renderer& renderer,
+    void load(std::size_t x, std::size_t y, const MapTile& tile, MeshHandleAllocator& meshAllocator,
+        MaterialHandleAllocator& materialAllocator, const PresentationTextureCache& textures, Renderer& renderer,
         RenderScene& scene);
     void unload(std::size_t x, std::size_t y, Renderer& renderer, RenderScene& scene);
     void clear(Renderer& renderer, RenderScene& scene);
@@ -38,6 +42,7 @@ private:
     static constexpr std::uint8_t UnsetLevel = 0xFF;
 
     std::array<MeshHandle, TileGrid::TileCount> meshes;
+    std::array<MaterialHandle, TileGrid::TileCount> materials;
     std::array<Entity, TileGrid::TileCount> entities;
     std::array<Vector3, TileGrid::TileCount> minimums;
     std::array<Vector3, TileGrid::TileCount> maximums;

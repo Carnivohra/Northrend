@@ -4,7 +4,9 @@
 #include "Input/input.hpp"
 #include "Presentation/exchange.hpp"
 #include "Presentation/Map/map.hpp"
+#include "Presentation/Texture/cache.hpp"
 #include "Render/Mesh/allocator.hpp"
+#include "Render/Material/allocator.hpp"
 #include "Render/renderer.hpp"
 #include "Render/scene.hpp"
 #include "World/snapshot.hpp"
@@ -24,7 +26,8 @@ concept PresentationRenderer = std::derived_from<Type, Renderer> && std::constru
 
 template <PresentationRenderer RendererType> class Presentation final {
 public:
-    explicit Presentation(PresentationExchange& presentationExchange) : presentationExchange(presentationExchange) {}
+    Presentation(PresentationExchange& presentationExchange, AssetSystem& assets) :
+        presentationExchange(presentationExchange), textures(assets) {}
 
     void start(const Window& window) {
         this->renderer.emplace(window);
@@ -47,9 +50,12 @@ public:
                 break;
             }
 
-            this->map.apply(std::move(*change), this->meshHandles, *this->renderer, this->scene);
+            this->map.apply(std::move(*change), this->textures, *this->renderer, this->scene);
             mapChanged = true;
         }
+
+        this->textures.tick(*this->renderer);
+        this->map.prepare(this->meshHandles, this->materialHandles, this->textures, *this->renderer, this->scene);
 
         const WorldSnapshot& snapshot = this->presentationExchange.read_latest();
 
@@ -64,7 +70,7 @@ public:
 
     void stop() {
         if (this->renderer) {
-            this->map.clear(*this->renderer, this->scene);
+            this->map.clear(this->textures, *this->renderer, this->scene);
         }
 
         this->renderer.reset();
@@ -188,6 +194,8 @@ private:
     PresentationExchange& presentationExchange;
     WorldSnapshot latestSnapshot;
     MeshHandleAllocator meshHandles;
+    MaterialHandleAllocator materialHandles;
+    PresentationTextureCache textures;
     PresentationMap map;
     RenderScene scene;
     std::optional<RendererType> renderer;

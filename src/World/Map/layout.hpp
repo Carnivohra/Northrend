@@ -12,6 +12,7 @@ public:
     explicit MapLayout(std::span<const std::byte> data);
 
     [[nodiscard]] bool has_tile(std::size_t x, std::size_t y) const noexcept;
+    [[nodiscard]] bool high_resolution_alpha() const noexcept;
 
 private:
     Wdt mapDefinition;

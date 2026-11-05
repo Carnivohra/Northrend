@@ -63,7 +63,8 @@ void TileJob::execute(const std::stop_token stopToken) {
 
     TileResult result = [&] {
         try {
-            return TileResult(this->tileRequest, std::make_shared<MapTile>(this->assetRequest.data()));
+            return TileResult(this->tileRequest,
+                std::make_shared<MapTile>(this->assetRequest.data(), this->tileRequest.high_resolution_alpha()));
         } catch (...) {
             return TileResult(this->tileRequest, std::current_exception());
         }

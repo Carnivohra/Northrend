@@ -3,6 +3,7 @@
 #include "Backend/Window/window.hpp"
 #include "Render/Vulkan/commands.hpp"
 #include "Render/Vulkan/Mesh/store.hpp"
+#include "Render/Vulkan/Material/store.hpp"
 #include "Render/Vulkan/target.hpp"
 #include "Render/Vulkan/device.hpp"
 #include "Render/Vulkan/frame.hpp"
@@ -25,9 +26,9 @@
 
 namespace Northrend {
 
-VulkanSwapchain::VulkanSwapchain(VulkanDevice& device, VulkanMeshStore& meshes, VkSurfaceKHR surface,
-    const Window& window, const VkClearColorValue& clearColor) :
-    device(device), meshes(meshes), surface(surface), window(window), clearColor(clearColor) {
+VulkanSwapchain::VulkanSwapchain(VulkanDevice& device, VulkanMeshStore& meshes, VulkanMaterialStore& materials,
+    VkSurfaceKHR surface, const Window& window, const VkClearColorValue& clearColor) :
+    device(device), meshes(meshes), materials(materials), surface(surface), window(window), clearColor(clearColor) {
     try {
         this->commands = std::make_unique<VulkanCommandContext>(this->device);
         this->create_frame_resources();
@@ -101,7 +102,8 @@ void VulkanSwapchain::render(const RenderFrame& renderFrame) {
     this->pipeline->update_camera(
         imageIndex, renderFrame.camera, renderFrame.view, renderFrame.cameraRevision, this->extent);
     this->pipeline->update_light(imageIndex, renderFrame.light);
-    this->commands->record(imageIndex, renderFrame, *this->target, *this->pipeline, this->meshes, this->clearColor);
+    this->commands->record(
+        imageIndex, renderFrame, *this->target, *this->pipeline, this->meshes, this->materials, this->clearColor);
 
     result = vkResetFences(this->device.handle(), 1, &frameFence);
 
@@ -277,7 +279,7 @@ void VulkanSwapchain::create_swapchain_resources() {
     this->target = std::make_unique<VulkanRenderTarget>(
         this->device, std::span<const VkImage>(this->images), this->imageFormat, this->extent);
     this->pipeline = std::make_unique<VulkanMeshPipeline>(
-        this->device, this->target->render_pass(), this->extent, this->images.size());
+        this->device, this->materials, this->target->render_pass(), this->extent, this->images.size());
     this->commands->allocate(this->images.size());
     this->pixelWidth = width;
     this->pixelHeight = height;

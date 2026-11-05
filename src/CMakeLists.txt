@@ -6,6 +6,7 @@ target_sources(Northrend
     App/app.cpp
     Asset/Chunk/reader.cpp
     Asset/Format/adt.cpp
+    Asset/Format/blp.cpp
     Asset/Format/dbc.cpp
     Asset/Format/mpq.cpp
     Asset/Format/wtf.cpp
@@ -28,10 +29,16 @@ target_sources(Northrend
     Math/matrix.cpp
     Presentation/Map/map.cpp
     Presentation/Map/terrain.cpp
+    Presentation/Texture/cache.cpp
+    Presentation/Texture/entry.cpp
     Render/camera.cpp
     Render/frustum.cpp
+    Render/Material/allocator.cpp
+    Render/Material/data.cpp
     Render/Mesh/data.cpp
     Render/Mesh/allocator.cpp
+    Render/Texture/allocator.cpp
+    Render/Texture/data.cpp
     Render/scene.cpp
     Simulation/runtime.cpp
     Simulation/simulation.cpp
@@ -47,6 +54,7 @@ target_sources(Northrend
     World/Map/result.cpp
     World/Map/selection.cpp
     World/Map/Terrain/geometry.cpp
+    World/Map/Terrain/material.cpp
     World/Map/Tile/change.cpp
     World/Map/Tile/grid.cpp
     World/Map/Tile/job.cpp
@@ -64,6 +72,7 @@ target_sources(Northrend
       Asset/Chunk/id.hpp
       Asset/Chunk/reader.hpp
       Asset/Format/adt.hpp
+      Asset/Format/blp.hpp
       Asset/Format/dbc.hpp
       Asset/Format/mpq.hpp
       Asset/Format/wtf.hpp
@@ -108,6 +117,8 @@ target_sources(Northrend
       Math/vector.hpp
       Presentation/Map/map.hpp
       Presentation/Map/terrain.hpp
+      Presentation/Texture/cache.hpp
+      Presentation/Texture/entry.hpp
       Presentation/exchange.hpp
       Presentation/presentation.hpp
       Presentation/runtime.hpp
@@ -116,11 +127,18 @@ target_sources(Northrend
       Render/frustum.hpp
       Render/instance.hpp
       Render/light.hpp
+      Render/Material/allocator.hpp
+      Render/Material/data.hpp
+      Render/Material/material.hpp
       Render/Mesh/data.hpp
       Render/Mesh/level.hpp
       Render/Mesh/allocator.hpp
       Render/Mesh/mesh.hpp
       Render/Mesh/vertex.hpp
+      Render/Texture/allocator.hpp
+      Render/Texture/data.hpp
+      Render/Texture/format.hpp
+      Render/Texture/texture.hpp
       Render/renderer.hpp
       Render/scene.hpp
       Simulation/runtime.hpp
@@ -140,6 +158,7 @@ target_sources(Northrend
       World/Map/result.hpp
       World/Map/selection.hpp
       World/Map/Terrain/geometry.hpp
+      World/Map/Terrain/material.hpp
       World/Map/Tile/change.hpp
       World/Map/Tile/grid.hpp
       World/Map/Tile/job.hpp

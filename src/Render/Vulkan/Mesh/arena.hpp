@@ -35,7 +35,7 @@ public:
     [[nodiscard]] std::uint64_t revision() const noexcept;
 
 private:
-    static constexpr VkDeviceSize Alignment = 16;
+    static constexpr VkDeviceSize Alignment = 32;
     static constexpr VkDeviceSize PageCapacity = 128ULL * 1024ULL * 1024ULL;
     static constexpr VkDeviceSize InitialStagingCapacity = 1ULL * 1024ULL * 1024ULL;
 

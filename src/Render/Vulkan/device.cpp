@@ -31,11 +31,25 @@ VulkanDevice::VulkanDevice(VkInstance instance, VkSurfaceKHR surface) : physical
         });
     }
 
+    VkPhysicalDeviceDescriptorIndexingFeatures supportedIndexing {};
+    supportedIndexing.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES;
+    VkPhysicalDeviceFeatures2 supportedFeatures {};
+    supportedFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+    supportedFeatures.pNext = &supportedIndexing;
+    vkGetPhysicalDeviceFeatures2(this->physicalDevice.handle(), &supportedFeatures);
+
+    if (supportedIndexing.shaderSampledImageArrayNonUniformIndexing != VK_TRUE) {
+        throw std::runtime_error("Vulkan device does not support non-uniform texture indexing");
+    }
+
+    VkPhysicalDeviceDescriptorIndexingFeatures enabledIndexing {};
+    enabledIndexing.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES;
+    enabledIndexing.shaderSampledImageArrayNonUniformIndexing = VK_TRUE;
     const char* extensions[] {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
     const VkPhysicalDeviceFeatures features {};
     const VkDeviceCreateInfo createInfo {
         .sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
-        .pNext = nullptr,
+        .pNext = &enabledIndexing,
         .flags = 0,
         .queueCreateInfoCount = static_cast<std::uint32_t>(queueInfos.size()),
         .pQueueCreateInfos = queueInfos.data(),
@@ -103,6 +117,15 @@ void VulkanDevice::copy_buffer(VkBuffer source, VkBuffer destination, VkDeviceSi
     }
 
     this->transfer->copy_buffer(source, destination, size, sourceOffset, destinationOffset);
+}
+
+void VulkanDevice::copy_texture(const VkBuffer source, const VkImage destination,
+    const std::span<const VkBufferImageCopy> regions, const std::uint32_t mipLevels) {
+    if (!this->transfer) {
+        this->transfer = std::make_unique<VulkanTransferContext>(*this);
+    }
+
+    this->transfer->copy_texture(source, destination, regions, mipLevels);
 }
 
 void VulkanDevice::wait_idle() const noexcept {

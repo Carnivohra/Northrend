@@ -23,6 +23,7 @@ public:
     explicit Engine(const EnginePlan& plan) :
         threadPool(worker_count()),
         assets(plan.assets, this->threadPool),
+        presentation(this->assets),
         simulation(this->presentation.exchange(), this->assets, this->threadPool) {}
 
     void started(const Window& window) override {
@@ -106,10 +107,10 @@ private:
         return std::clamp(concurrency / 4, std::size_t {1}, std::size_t {4});
     }
 
-    PresentationRuntime<PresentationType> presentation;
     Fps fps;
     ThreadPool threadPool;
     AssetSystem assets;
+    PresentationRuntime<PresentationType> presentation;
     SimulationRuntime simulation;
 };
 

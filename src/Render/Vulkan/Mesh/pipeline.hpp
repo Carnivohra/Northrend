@@ -15,10 +15,12 @@ namespace Northrend {
 struct Camera;
 struct DirectionalLight;
 class VulkanDevice;
+class VulkanMaterialStore;
 
 class VulkanMeshPipeline final {
 public:
-    VulkanMeshPipeline(VulkanDevice& device, VkRenderPass renderPass, VkExtent2D extent, std::size_t imageCount);
+    VulkanMeshPipeline(VulkanDevice& device, const VulkanMaterialStore& materials, VkRenderPass renderPass,
+        VkExtent2D extent, std::size_t imageCount);
     ~VulkanMeshPipeline();
 
     VulkanMeshPipeline(const VulkanMeshPipeline&) = delete;
@@ -29,17 +31,19 @@ public:
     void update_light(std::size_t imageIndex, const DirectionalLight& light);
     void bind_world(VkCommandBuffer commandBuffer, std::size_t imageIndex) const noexcept;
     void bind_transformed(VkCommandBuffer commandBuffer, std::size_t imageIndex) const noexcept;
+    [[nodiscard]] VkPipelineLayout pipeline_layout() const noexcept;
 
 private:
     [[nodiscard]] VkShaderModule create_shader_module(std::span<const unsigned char> code) const;
-    [[nodiscard]] VkPipeline create_graphics_pipeline(
-        VkRenderPass renderPass, VkExtent2D extent, std::span<const unsigned char> vertexCode, bool transformed) const;
+    [[nodiscard]] VkPipeline create_graphics_pipeline(VkRenderPass renderPass, VkExtent2D extent,
+        std::span<const unsigned char> vertexCode, std::span<const unsigned char> fragmentCode, bool transformed) const;
 
     void create_layout();
     void bind(VkCommandBuffer commandBuffer, std::size_t imageIndex, VkPipeline pipeline) const noexcept;
     void destroy() noexcept;
 
     VulkanDevice& device;
+    const VulkanMaterialStore& materials;
     VulkanCameraUniform camera;
     VulkanLightUniform light;
     VkPipelineLayout layout = VK_NULL_HANDLE;

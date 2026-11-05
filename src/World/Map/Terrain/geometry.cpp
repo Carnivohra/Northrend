@@ -41,6 +41,7 @@ std::span<const std::uint16_t> TerrainGeometry::indices(const std::size_t level)
 void TerrainGeometry::append_vertices(const Adt& adt, const std::size_t chunkX, const std::size_t chunkY) {
     const float baseX = adt.position_x(chunkX, chunkY);
     const float baseY = adt.position_y(chunkX, chunkY);
+    const std::uint32_t texture = adt.layer_count(chunkX, chunkY) == 0 ? 0 : adt.layer_texture(chunkX, chunkY, 0);
 
     for (std::size_t row = 0; row <= CellsPerChunk; ++row) {
         const float x = baseX - static_cast<float>(row) * CellSize;
@@ -56,7 +57,10 @@ void TerrainGeometry::append_vertices(const Adt& adt, const std::size_t chunkX, 
                         .y = baseY - static_cast<float>(column) * CellSize,
                         .z = adt.height(chunkX, chunkY, vertex)
                     },
-                .normal = {normal[0], normal[1], normal[2], 0}
+                .normal = {normal[0], normal[1], normal[2], 0},
+                .textureCoordinates =
+                    {static_cast<float>(column) / CellsPerChunk, static_cast<float>(row) / CellsPerChunk},
+                .texture = texture
             });
         }
 
@@ -74,7 +78,11 @@ void TerrainGeometry::append_vertices(const Adt& adt, const std::size_t chunkX, 
                         .y = baseY - static_cast<float>(column) * CellSize - HalfCellSize,
                         .z = adt.height(chunkX, chunkY, vertex)
                     },
-                .normal = {normal[0], normal[1], normal[2], 0}
+                .normal = {normal[0], normal[1], normal[2], 0},
+                .textureCoordinates =
+                    {(static_cast<float>(column) + 0.5F) / CellsPerChunk,
+                        (static_cast<float>(row) + 0.5F) / CellsPerChunk},
+                .texture = texture
             });
         }
     }

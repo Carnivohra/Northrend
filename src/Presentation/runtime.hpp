@@ -7,10 +7,11 @@
 namespace Northrend {
 
 class Input;
+class AssetSystem;
 class Window;
 
 template <typename Type>
-concept PresentationModule = std::constructible_from<Type, PresentationExchange&> &&
+concept PresentationModule = std::constructible_from<Type, PresentationExchange&, AssetSystem&> &&
     requires(Type presentation, const Window& window, const Input& input) {
         { presentation.start(window) } -> std::same_as<void>;
         { presentation.suspend() } -> std::same_as<void>;
@@ -20,7 +21,7 @@ concept PresentationModule = std::constructible_from<Type, PresentationExchange&
 
 template <PresentationModule PresentationType> class PresentationRuntime final {
 public:
-    PresentationRuntime() = default;
+    explicit PresentationRuntime(AssetSystem& assets) : presentation(this->presentationExchange, assets) {}
 
     PresentationRuntime(const PresentationRuntime&) = delete;
     PresentationRuntime& operator=(const PresentationRuntime&) = delete;
@@ -49,7 +50,7 @@ public:
 
 private:
     PresentationExchange presentationExchange;
-    PresentationType presentation {this->presentationExchange};
+    PresentationType presentation;
 };
 
 }

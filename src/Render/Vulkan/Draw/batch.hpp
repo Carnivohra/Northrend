@@ -15,6 +15,7 @@ struct RenderFrame;
 class VulkanBuffer;
 class VulkanDevice;
 class VulkanMeshStore;
+class VulkanMaterialStore;
 
 class VulkanDrawBatch final {
 public:
@@ -29,8 +30,8 @@ public:
     void update(std::size_t imageIndex, const RenderFrame& frame, const VulkanMeshStore& meshes);
     [[nodiscard]] bool has_world(std::size_t imageIndex) const noexcept;
     [[nodiscard]] bool has_transformed(std::size_t imageIndex) const noexcept;
-    void draw_world(
-        VkCommandBuffer commandBuffer, std::size_t imageIndex, const VulkanMeshStore& meshes) const noexcept;
+    void draw_world(VkCommandBuffer commandBuffer, std::size_t imageIndex, const VulkanMeshStore& meshes,
+        const VulkanMaterialStore& materials, VkPipelineLayout pipelineLayout) const noexcept;
     void draw_transformed(
         VkCommandBuffer commandBuffer, std::size_t imageIndex, const VulkanMeshStore& meshes) const noexcept;
 
@@ -52,7 +53,8 @@ private:
     static constexpr VkDeviceSize InitialCapacity = 64ULL * 1024ULL;
 
     [[nodiscard]] static VkDeviceSize capacity(VkDeviceSize current, VkDeviceSize required);
-    static void draw_group(VkCommandBuffer commandBuffer, const std::vector<VulkanDraw>& draws) noexcept;
+    static void draw_group(VkCommandBuffer commandBuffer, const std::vector<VulkanDraw>& draws,
+        const VulkanMaterialStore* materials = nullptr, VkPipelineLayout pipelineLayout = VK_NULL_HANDLE) noexcept;
 
     VulkanDevice& device;
     std::vector<Store> stores;

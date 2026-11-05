@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Math/matrix.hpp"
+#include "Render/Material/material.hpp"
 #include "Render/Mesh/mesh.hpp"
 
 #include <cstdint>
@@ -10,6 +11,7 @@ namespace Northrend {
 
 struct RenderInstance final {
     MeshHandle mesh;
+    MaterialHandle material;
     Matrix4 transform;
     std::uint8_t level = 0;
     bool visible = true;

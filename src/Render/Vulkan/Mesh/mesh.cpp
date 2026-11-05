@@ -54,6 +54,11 @@ VulkanDraw VulkanMesh::draw(const std::uint32_t firstInstance, const std::size_t
         this->indexType == VK_INDEX_TYPE_UINT16 ? sizeof(std::uint16_t) : sizeof(std::uint32_t);
     const VkDeviceSize absoluteIndexOffset = this->allocation.offset + selected.indexOffset;
     const VkDeviceSize firstIndex = absoluteIndexOffset / indexSize;
+
+    if (this->allocation.offset % sizeof(MeshVertex) != 0) {
+        throw std::runtime_error("Vulkan mesh allocation is not aligned to its vertex layout");
+    }
+
     const VkDeviceSize vertexOffset = this->allocation.offset / sizeof(MeshVertex);
 
     if (firstIndex > std::numeric_limits<std::uint32_t>::max() ||
@@ -65,7 +70,8 @@ VulkanDraw VulkanMesh::draw(const std::uint32_t firstInstance, const std::size_t
         .indexCount = selected.indexCount,
         .firstIndex = static_cast<std::uint32_t>(firstIndex),
         .vertexOffset = static_cast<std::int32_t>(vertexOffset),
-        .firstInstance = firstInstance
+        .firstInstance = firstInstance,
+        .material = {}
     };
 }
 

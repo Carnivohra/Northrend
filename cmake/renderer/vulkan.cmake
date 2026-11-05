@@ -57,6 +57,8 @@ target_sources(Northrend
     Render/Vulkan/Light/uniform.cpp
     Render/Vulkan/Light/uniform.hpp
     Render/Vulkan/Light/data.hpp
+    Render/Vulkan/Material/store.cpp
+    Render/Vulkan/Material/store.hpp
     Render/Vulkan/Mesh/arena.cpp
     Render/Vulkan/Mesh/arena.hpp
     Render/Vulkan/Mesh/allocation.hpp
@@ -77,9 +79,14 @@ target_sources(Northrend
     Render/Vulkan/surface.hpp
     Render/Vulkan/target.cpp
     Render/Vulkan/target.hpp
+    Render/Vulkan/Texture/store.cpp
+    Render/Vulkan/Texture/store.hpp
+    Render/Vulkan/Texture/texture.cpp
+    Render/Vulkan/Texture/texture.hpp
     Render/Vulkan/transfer.cpp
     Render/Vulkan/transfer.hpp
     Render/Vulkan/Shader/Mesh/fragment.frag
+    Render/Vulkan/Shader/Mesh/terrain.frag
     Render/Vulkan/Shader/Mesh/vertex.vert
     Render/Vulkan/Shader/Mesh/world.vert
     Render/Vulkan/swapchain.cpp
@@ -115,6 +122,10 @@ northrend_embed_spirv(
   Render/Vulkan/Shader/Mesh/fragment.spv
   MeshFragment
   Mesh/fragment)
+northrend_embed_spirv(
+  Render/Vulkan/Shader/Mesh/terrain.spv
+  MeshTerrainFragment
+  Mesh/terrain)
 
 target_include_directories(Northrend
   PRIVATE

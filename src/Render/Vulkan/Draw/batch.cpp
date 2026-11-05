@@ -2,6 +2,7 @@
 
 #include "Render/Vulkan/Mesh/mesh.hpp"
 #include "Render/Vulkan/Mesh/store.hpp"
+#include "Render/Vulkan/Material/store.hpp"
 #include "Render/Vulkan/buffer.hpp"
 #include "Render/Vulkan/device.hpp"
 #include "Render/frame.hpp"
@@ -59,7 +60,9 @@ void VulkanDrawBatch::update(const std::size_t imageIndex, const RenderFrame& fr
 
         if (instance.worldSpace) {
             auto& pages = mesh->index_type() == VK_INDEX_TYPE_UINT16 ? target.worldUnsigned16 : target.worldUnsigned32;
-            pages[mesh->page()].push_back(mesh->draw(0, instance.level));
+            VulkanDraw draw = mesh->draw(0, instance.level);
+            draw.material = instance.material;
+            pages[mesh->page()].push_back(draw);
             target.worldDraws = true;
             continue;
         }
@@ -107,8 +110,9 @@ bool VulkanDrawBatch::has_transformed(const std::size_t imageIndex) const noexce
     return this->stores[imageIndex].transformedDraws;
 }
 
-void VulkanDrawBatch::draw_world(
-    const VkCommandBuffer commandBuffer, const std::size_t imageIndex, const VulkanMeshStore& meshes) const noexcept {
+void VulkanDrawBatch::draw_world(const VkCommandBuffer commandBuffer, const std::size_t imageIndex,
+    const VulkanMeshStore& meshes, const VulkanMaterialStore& materials,
+    const VkPipelineLayout pipelineLayout) const noexcept {
     const Store& source = this->stores[imageIndex];
 
     if (!source.worldDraws) {
@@ -130,12 +134,12 @@ void VulkanDrawBatch::draw_world(
 
         if (!unsigned16.empty()) {
             vkCmdBindIndexBuffer(commandBuffer, meshBuffer, 0, VK_INDEX_TYPE_UINT16);
-            draw_group(commandBuffer, unsigned16);
+            draw_group(commandBuffer, unsigned16, &materials, pipelineLayout);
         }
 
         if (!unsigned32.empty()) {
             vkCmdBindIndexBuffer(commandBuffer, meshBuffer, 0, VK_INDEX_TYPE_UINT32);
-            draw_group(commandBuffer, unsigned32);
+            draw_group(commandBuffer, unsigned32, &materials, pipelineLayout);
         }
     }
 }
@@ -187,8 +191,13 @@ VkDeviceSize VulkanDrawBatch::capacity(const VkDeviceSize current, const VkDevic
     return result;
 }
 
-void VulkanDrawBatch::draw_group(const VkCommandBuffer commandBuffer, const std::vector<VulkanDraw>& draws) noexcept {
+void VulkanDrawBatch::draw_group(const VkCommandBuffer commandBuffer, const std::vector<VulkanDraw>& draws,
+    const VulkanMaterialStore* materials, const VkPipelineLayout pipelineLayout) noexcept {
     for (const VulkanDraw& draw : draws) {
+        if (materials != nullptr) {
+            materials->bind(commandBuffer, pipelineLayout, draw.material);
+        }
+
         vkCmdDrawIndexed(commandBuffer, draw.indexCount, 1, draw.firstIndex, draw.vertexOffset, draw.firstInstance);
     }
 }

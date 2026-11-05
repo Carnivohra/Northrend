@@ -1,6 +1,7 @@
 #include "Render/Vulkan/commands.hpp"
 
 #include "Render/Vulkan/Mesh/store.hpp"
+#include "Render/Vulkan/Material/store.hpp"
 #include "Render/Vulkan/target.hpp"
 #include "Render/Vulkan/device.hpp"
 #include "Render/Vulkan/Mesh/pipeline.hpp"
@@ -94,7 +95,7 @@ void VulkanCommandContext::release() noexcept {
 
 void VulkanCommandContext::record(std::size_t imageIndex, const RenderFrame& renderFrame,
     const VulkanRenderTarget& target, VulkanMeshPipeline& pipeline, const VulkanMeshStore& meshes,
-    const VkClearColorValue& clearColor) {
+    const VulkanMaterialStore& materials, const VkClearColorValue& clearColor) {
     const std::uint64_t meshRevision = meshes.revision();
 
     if (this->recorded[imageIndex] && this->recordedInstanceRevisions[imageIndex] == renderFrame.instancesRevision &&
@@ -142,7 +143,7 @@ void VulkanCommandContext::record(std::size_t imageIndex, const RenderFrame& ren
 
     if (this->batch.has_world(imageIndex)) {
         pipeline.bind_world(commandBuffer, imageIndex);
-        this->batch.draw_world(commandBuffer, imageIndex, meshes);
+        this->batch.draw_world(commandBuffer, imageIndex, meshes, materials, pipeline.pipeline_layout());
     }
 
     if (this->batch.has_transformed(imageIndex)) {

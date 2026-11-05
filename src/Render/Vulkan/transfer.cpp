@@ -60,6 +60,61 @@ VulkanTransferContext::~VulkanTransferContext() {
 
 void VulkanTransferContext::copy_buffer(VkBuffer source, VkBuffer destination, VkDeviceSize size,
     const VkDeviceSize sourceOffset, const VkDeviceSize destinationOffset) {
+    this->begin();
+    const VkBufferCopy region {.srcOffset = sourceOffset, .dstOffset = destinationOffset, .size = size};
+    vkCmdCopyBuffer(this->commandBuffer, source, destination, 1, &region);
+    this->submit();
+}
+
+void VulkanTransferContext::copy_texture(const VkBuffer source, const VkImage destination,
+    const std::span<const VkBufferImageCopy> regions, const std::uint32_t mipLevels) {
+    if (source == VK_NULL_HANDLE || destination == VK_NULL_HANDLE || regions.empty() || mipLevels == 0) {
+        throw std::invalid_argument("Vulkan texture transfer is invalid");
+    }
+
+    this->begin();
+    const VkImageSubresourceRange range {
+        .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+        .baseMipLevel = 0,
+        .levelCount = mipLevels,
+        .baseArrayLayer = 0,
+        .layerCount = 1
+    };
+    const VkImageMemoryBarrier transferBarrier {
+        .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+        .pNext = nullptr,
+        .srcAccessMask = 0,
+        .dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
+        .oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+        .newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+        .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+        .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+        .image = destination,
+        .subresourceRange = range
+    };
+    vkCmdPipelineBarrier(this->commandBuffer, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0,
+        nullptr, 0, nullptr, 1, &transferBarrier);
+    vkCmdCopyBufferToImage(this->commandBuffer, source, destination, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+        static_cast<std::uint32_t>(regions.size()), regions.data());
+
+    const VkImageMemoryBarrier sampleBarrier {
+        .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+        .pNext = nullptr,
+        .srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
+        .dstAccessMask = VK_ACCESS_SHADER_READ_BIT,
+        .oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+        .newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+        .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+        .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+        .image = destination,
+        .subresourceRange = range
+    };
+    vkCmdPipelineBarrier(this->commandBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0,
+        0, nullptr, 0, nullptr, 1, &sampleBarrier);
+    this->submit();
+}
+
+void VulkanTransferContext::begin() {
     VkResult result = vkResetFences(this->device.handle(), 1, &this->fence);
 
     if (result != VK_SUCCESS) {
@@ -83,10 +138,10 @@ void VulkanTransferContext::copy_buffer(VkBuffer source, VkBuffer destination, V
     if (result != VK_SUCCESS) {
         throw std::runtime_error("Failed to begin the Vulkan transfer command buffer: " + std::to_string(result));
     }
+}
 
-    const VkBufferCopy region {.srcOffset = sourceOffset, .dstOffset = destinationOffset, .size = size};
-    vkCmdCopyBuffer(this->commandBuffer, source, destination, 1, &region);
-    result = vkEndCommandBuffer(this->commandBuffer);
+void VulkanTransferContext::submit() {
+    VkResult result = vkEndCommandBuffer(this->commandBuffer);
 
     if (result != VK_SUCCESS) {
         throw std::runtime_error("Failed to end the Vulkan transfer command buffer: " + std::to_string(result));

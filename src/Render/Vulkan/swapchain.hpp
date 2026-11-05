@@ -13,6 +13,7 @@ struct RenderFrame;
 class VulkanCommandContext;
 class VulkanDevice;
 class VulkanFrame;
+class VulkanMaterialStore;
 class VulkanMeshStore;
 class VulkanMeshPipeline;
 class VulkanRenderTarget;
@@ -20,8 +21,8 @@ class Window;
 
 class VulkanSwapchain final {
 public:
-    VulkanSwapchain(VulkanDevice& device, VulkanMeshStore& meshes, VkSurfaceKHR surface, const Window& window,
-        const VkClearColorValue& clearColor);
+    VulkanSwapchain(VulkanDevice& device, VulkanMeshStore& meshes, VulkanMaterialStore& materials, VkSurfaceKHR surface,
+        const Window& window, const VkClearColorValue& clearColor);
     ~VulkanSwapchain();
 
     VulkanSwapchain(const VulkanSwapchain&) = delete;
@@ -47,6 +48,7 @@ private:
 
     VulkanDevice& device;
     VulkanMeshStore& meshes;
+    VulkanMaterialStore& materials;
     VkSurfaceKHR surface;
     const Window& window;
     VkClearColorValue clearColor;

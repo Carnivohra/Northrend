@@ -23,6 +23,7 @@ class VulkanDevice;
 class VulkanMeshStore;
 class VulkanMeshPipeline;
 class VulkanRenderTarget;
+class VulkanMaterialStore;
 
 class VulkanCommandContext final {
 public:
@@ -36,7 +37,8 @@ public:
     void release() noexcept;
 
     void record(std::size_t imageIndex, const RenderFrame& frame, const VulkanRenderTarget& target,
-        VulkanMeshPipeline& pipeline, const VulkanMeshStore& meshes, const VkClearColorValue& clearColor);
+        VulkanMeshPipeline& pipeline, const VulkanMeshStore& meshes, const VulkanMaterialStore& materials,
+        const VkClearColorValue& clearColor);
 
 #ifdef NORTHREND_GPU_PROFILING
     void submitted(std::size_t imageIndex) noexcept;

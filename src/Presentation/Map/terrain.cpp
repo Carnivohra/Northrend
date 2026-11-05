@@ -1,6 +1,8 @@
 #include "Presentation/Map/terrain.hpp"
 
 #include "Render/instance.hpp"
+#include "Render/Material/allocator.hpp"
+#include "Render/Material/data.hpp"
 #include "Render/frustum.hpp"
 #include "Render/Mesh/allocator.hpp"
 #include "Render/Mesh/data.hpp"
@@ -8,7 +10,9 @@
 #include "Render/renderer.hpp"
 #include "Render/camera.hpp"
 #include "Render/scene.hpp"
+#include "Presentation/Texture/cache.hpp"
 #include "World/Map/Terrain/geometry.hpp"
+#include "World/Map/Terrain/material.hpp"
 #include "World/Map/Tile/tile.hpp"
 
 #include <algorithm>
@@ -19,11 +23,13 @@
 #include <span>
 #include <stdexcept>
 #include <utility>
+#include <vector>
 
 namespace Northrend {
 
 void PresentationTerrain::load(const std::size_t x, const std::size_t y, const MapTile& tile,
-    MeshHandleAllocator& allocator, Renderer& renderer, RenderScene& scene) {
+    MeshHandleAllocator& meshAllocator, MaterialHandleAllocator& materialAllocator,
+    const PresentationTextureCache& textures, Renderer& renderer, RenderScene& scene) {
     if (x >= TileGrid::Size || y >= TileGrid::Size) {
         throw std::out_of_range("Presentation terrain coordinate is outside the map");
     }
@@ -32,6 +38,26 @@ void PresentationTerrain::load(const std::size_t x, const std::size_t y, const M
     this->release(tileIndex, renderer, scene);
 
     const TerrainGeometry& geometry = tile.terrain();
+    const TerrainMaterial& material = tile.material();
+    std::vector<MeshVertex> vertices(geometry.vertices().begin(), geometry.vertices().end());
+    std::vector<TextureHandle> materialTextures;
+    materialTextures.reserve(material.texture_count());
+
+    for (std::size_t texture = 0; texture < material.texture_count(); ++texture) {
+        const TextureHandle handle = textures.find(material.texture(texture));
+
+        if (!handle) {
+            throw std::runtime_error("Terrain texture is missing from the presentation cache");
+        }
+
+        materialTextures.push_back(handle);
+    }
+
+    for (MeshVertex& vertex : vertices) {
+        if (vertex.texture >= materialTextures.size()) {
+            throw std::runtime_error("Terrain vertex references an invalid texture");
+        }
+    }
     Vector3 minimum {
         .x = std::numeric_limits<float>::max(),
         .y = std::numeric_limits<float>::max(),
@@ -42,7 +68,7 @@ void PresentationTerrain::load(const std::size_t x, const std::size_t y, const M
         .y = std::numeric_limits<float>::lowest(),
         .z = std::numeric_limits<float>::lowest()
     };
-    for (const MeshVertex& vertex : geometry.vertices()) {
+    for (const MeshVertex& vertex : vertices) {
         const Vector3& position = vertex.position;
         minimum.x = std::min(minimum.x, position.x);
         minimum.y = std::min(minimum.y, position.y);
@@ -60,26 +86,36 @@ void PresentationTerrain::load(const std::size_t x, const std::size_t y, const M
             MeshLevel {.indices = std::as_bytes(indices), .indexCount = static_cast<std::uint32_t>(indices.size())};
     }
 
-    const MeshData data(std::as_bytes(geometry.vertices()), levels, MeshIndexType::unsigned16);
-    const MeshHandle mesh = allocator.allocate();
-    renderer.store_mesh(mesh, data);
+    const MaterialHandle renderMaterial = materialAllocator.allocate();
+    renderer.store_material(renderMaterial, MaterialData(materialTextures));
+    const MeshData data(std::as_bytes(std::span<const MeshVertex>(vertices)), levels, MeshIndexType::unsigned16);
+    const MeshHandle mesh = meshAllocator.allocate();
+
+    try {
+        renderer.store_mesh(mesh, data);
+    } catch (...) {
+        renderer.remove_material(renderMaterial);
+        throw;
+    }
 
     Entity entity;
 
     try {
         entity = scene.registry().create();
         scene.registry().emplace<RenderInstance>(
-            entity, RenderInstance {.mesh = mesh, .transform = {}, .worldSpace = true});
+            entity, RenderInstance {.mesh = mesh, .material = renderMaterial, .transform = {}, .worldSpace = true});
     } catch (...) {
         if (entity) {
             scene.registry().destroy(entity);
         }
 
         renderer.remove_mesh(mesh);
+        renderer.remove_material(renderMaterial);
         throw;
     }
 
     this->meshes[tileIndex] = mesh;
+    this->materials[tileIndex] = renderMaterial;
     this->entities[tileIndex] = entity;
     this->minimums[tileIndex] = minimum;
     this->maximums[tileIndex] = maximum;
@@ -157,6 +193,7 @@ void PresentationTerrain::update(const Camera& camera, const int width, const in
 void PresentationTerrain::release(const std::size_t tile, Renderer& renderer, RenderScene& scene) {
     const Entity entity = this->entities[tile];
     const MeshHandle mesh = this->meshes[tile];
+    const MaterialHandle material = this->materials[tile];
 
     if (entity) {
         scene.registry().destroy(entity);
@@ -166,6 +203,11 @@ void PresentationTerrain::release(const std::size_t tile, Renderer& renderer, Re
     if (mesh) {
         renderer.remove_mesh(mesh);
         this->meshes[tile] = {};
+    }
+
+    if (material) {
+        renderer.remove_material(material);
+        this->materials[tile] = {};
     }
 
     this->levels[tile] = UnsetLevel;
