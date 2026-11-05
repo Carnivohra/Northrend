@@ -1,10 +1,9 @@
 #pragma once
 
-#include "Config/wtf.hpp"
-
 #include <filesystem>
 #include <string>
 #include <string_view>
+#include <vector>
 
 namespace Northrend {
 
@@ -22,12 +21,17 @@ public:
     void set(std::string name, std::string value);
 
 private:
-    [[nodiscard]] Wtf::Command* find(std::string_view name) noexcept;
-    [[nodiscard]] const Wtf::Command* find(std::string_view name) const noexcept;
+    struct Entry final {
+        std::string name;
+        std::string value;
+    };
+
+    [[nodiscard]] Entry* find(std::string_view name) noexcept;
+    [[nodiscard]] const Entry* find(std::string_view name) const noexcept;
 
     [[nodiscard]] static bool equal_ascii(std::string_view left, std::string_view right) noexcept;
 
-    Wtf document;
+    std::vector<Entry> entries;
 };
 
 }

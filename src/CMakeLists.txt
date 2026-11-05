@@ -5,30 +5,29 @@ target_sources(Northrend
   PRIVATE
     App/app.cpp
     Asset/Chunk/reader.cpp
-    Asset/Dbc/format.cpp
-    Asset/Dbc/store.cpp
-    Asset/Dbc/table.cpp
+    Asset/Format/adt.cpp
+    Asset/Format/dbc.cpp
+    Asset/Format/mpq.cpp
+    Asset/Format/wtf.cpp
+    Asset/Format/wdt.cpp
     Asset/Stream/request.cpp
     Asset/Stream/state.cpp
     Asset/Stream/streamer.cpp
     Asset/Stream/state.hpp
-    Asset/adt.cpp
+    Asset/database.cpp
     Asset/data.cpp
     Asset/directory.cpp
     Asset/id.cpp
-    Asset/mpq.cpp
     Asset/store.cpp
     Asset/system.cpp
-    Asset/wdt.cpp
     Backend/backend.cpp
     Config/config.cpp
-    Config/wtf.cpp
     ECS/registry.cpp
     Math/Glm/matrix.cpp
     Math/Glm/matrix.hpp
     Math/matrix.cpp
+    Presentation/Map/map.cpp
     Presentation/Map/terrain.cpp
-    Presentation/map.cpp
     Render/camera.cpp
     Render/frustum.cpp
     Render/Mesh/data.cpp
@@ -48,7 +47,6 @@ target_sources(Northrend
     World/Map/result.cpp
     World/Map/selection.cpp
     World/Map/Terrain/geometry.cpp
-    World/Map/Terrain/tile.cpp
     World/Map/Tile/change.cpp
     World/Map/Tile/grid.cpp
     World/Map/Tile/job.cpp
@@ -65,23 +63,23 @@ target_sources(Northrend
       Asset/Chunk/chunk.hpp
       Asset/Chunk/id.hpp
       Asset/Chunk/reader.hpp
-      Asset/Dbc/format.hpp
-      Asset/Dbc/store.hpp
-      Asset/Dbc/table.hpp
+      Asset/Format/adt.hpp
+      Asset/Format/dbc.hpp
+      Asset/Format/mpq.hpp
+      Asset/Format/wtf.hpp
+      Asset/Format/wdt.hpp
       Asset/Stream/priority.hpp
       Asset/Stream/request.hpp
       Asset/Stream/streamer.hpp
-      Asset/adt.hpp
+      Asset/database.hpp
       Asset/data.hpp
       Asset/directory.hpp
       Asset/id.hpp
       Asset/mount.hpp
-      Asset/mpq.hpp
       Asset/plan.hpp
       Asset/source.hpp
       Asset/store.hpp
       Asset/system.hpp
-      Asset/wdt.hpp
       Backend/application.hpp
       Backend/backend.hpp
       Backend/plan.hpp
@@ -89,27 +87,30 @@ target_sources(Northrend
       Backend/Window/window.hpp
       Config/config.hpp
       Config/plan.hpp
-      Config/wtf.hpp
       ECS/entity.hpp
       ECS/registry.hpp
       Engine/engine.hpp
-      Engine/fps.hpp
+      Debug/fps.hpp
       Engine/plan.hpp
-      Input/gamepad.hpp
-      Input/input.hpp
-      Input/keyboard.hpp
-      Input/mouse.hpp
-      Input/touch.hpp
+      Input/Gamepad/axis.hpp
+      Input/Gamepad/button.hpp
+      Input/Gamepad/gamepad.hpp
+      Input/Keyboard/key.hpp
+      Input/Keyboard/keyboard.hpp
+      Input/Mouse/button.hpp
+      Input/Mouse/mouse.hpp
       Input/Touch/point.hpp
+      Input/Touch/touch.hpp
+      Input/input.hpp
       App/plan.hpp
       Math/matrix.hpp
       Math/quaternion.hpp
       Math/vector.hpp
+      Presentation/Map/map.hpp
       Presentation/Map/terrain.hpp
       Presentation/exchange.hpp
       Presentation/presentation.hpp
       Presentation/runtime.hpp
-      Presentation/map.hpp
       Render/camera.hpp
       Render/frame.hpp
       Render/frustum.hpp
@@ -139,7 +140,6 @@ target_sources(Northrend
       World/Map/result.hpp
       World/Map/selection.hpp
       World/Map/Terrain/geometry.hpp
-      World/Map/Terrain/tile.hpp
       World/Map/Tile/change.hpp
       World/Map/Tile/grid.hpp
       World/Map/Tile/job.hpp

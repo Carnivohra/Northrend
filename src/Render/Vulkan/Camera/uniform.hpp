@@ -14,13 +14,13 @@ namespace Northrend {
 struct Camera;
 class VulkanDevice;
 
-class VulkanCameraContext final {
+class VulkanCameraUniform final {
 public:
-    VulkanCameraContext(VulkanDevice& device, std::size_t imageCount);
-    ~VulkanCameraContext();
+    VulkanCameraUniform(VulkanDevice& device, std::size_t imageCount);
+    ~VulkanCameraUniform();
 
-    VulkanCameraContext(const VulkanCameraContext&) = delete;
-    VulkanCameraContext& operator=(const VulkanCameraContext&) = delete;
+    VulkanCameraUniform(const VulkanCameraUniform&) = delete;
+    VulkanCameraUniform& operator=(const VulkanCameraUniform&) = delete;
 
     void update(
         std::size_t imageIndex, const Camera& camera, const Matrix4& view, std::uint64_t revision, VkExtent2D extent);

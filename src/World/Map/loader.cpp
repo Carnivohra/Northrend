@@ -1,6 +1,6 @@
 #include "World/Map/loader.hpp"
 
-#include "Asset/Dbc/table.hpp"
+#include "Asset/Format/dbc.hpp"
 #include "Asset/Stream/priority.hpp"
 #include "Asset/system.hpp"
 #include "Thread/pool.hpp"
@@ -236,8 +236,7 @@ void MapLoader::receive_tile_requests() {
             priority = AssetPriority::normal;
         }
 
-        this->tileLoading.emplace_back(
-            *request, this->assets.request(tile_asset(this->activeMap, *request), priority));
+        this->tileLoading.emplace_back(*request, this->assets.request(tile_asset(this->activeMap, *request), priority));
     }
 }
 

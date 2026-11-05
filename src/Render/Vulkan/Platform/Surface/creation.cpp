@@ -1,7 +1,7 @@
 #include "Render/Vulkan/Platform/Surface/creation.hpp"
 
-#include "Render/Vulkan/Platform/wayland.hpp"
-#include "Render/Vulkan/Platform/x11.hpp"
+#include "Render/Vulkan/Platform/Linux/wayland.hpp"
+#include "Render/Vulkan/Platform/Linux/x11.hpp"
 
 #include <stdexcept>
 #include <variant>

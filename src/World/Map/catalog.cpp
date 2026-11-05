@@ -1,6 +1,6 @@
 #include "World/Map/catalog.hpp"
 
-#include "Asset/Dbc/table.hpp"
+#include "Asset/Format/dbc.hpp"
 
 #include <algorithm>
 #include <stdexcept>

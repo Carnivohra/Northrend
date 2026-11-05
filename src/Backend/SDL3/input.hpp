@@ -1,7 +1,7 @@
 #pragma once
 
-#include "Input/keyboard.hpp"
-#include "Input/mouse.hpp"
+#include "Input/Keyboard/keyboard.hpp"
+#include "Input/Mouse/mouse.hpp"
 
 #include <SDL3/SDL_events.h>
 

@@ -10,8 +10,7 @@ class Input;
 class Window;
 
 template <typename Type>
-concept PresentationModule =
-    std::constructible_from<Type, PresentationExchange&> &&
+concept PresentationModule = std::constructible_from<Type, PresentationExchange&> &&
     requires(Type presentation, const Window& window, const Input& input) {
         { presentation.start(window) } -> std::same_as<void>;
         { presentation.suspend() } -> std::same_as<void>;

@@ -38,8 +38,8 @@ target_sources(Northrend
     Render/Vulkan/buffer.cpp
     Render/Vulkan/buffer.hpp
     Render/Vulkan/Camera/buffer.hpp
-    Render/Vulkan/Camera/context.cpp
-    Render/Vulkan/Camera/context.hpp
+    Render/Vulkan/Camera/uniform.cpp
+    Render/Vulkan/Camera/uniform.hpp
     Render/Vulkan/commands.cpp
     Render/Vulkan/commands.hpp
     Render/Vulkan/depth.cpp
@@ -54,8 +54,8 @@ target_sources(Northrend
     Render/Vulkan/instance.cpp
     Render/Vulkan/instance.hpp
     Render/Vulkan/Light/buffer.hpp
-    Render/Vulkan/Light/context.cpp
-    Render/Vulkan/Light/context.hpp
+    Render/Vulkan/Light/uniform.cpp
+    Render/Vulkan/Light/uniform.hpp
     Render/Vulkan/Light/data.hpp
     Render/Vulkan/Mesh/arena.cpp
     Render/Vulkan/Mesh/arena.hpp
@@ -70,7 +70,7 @@ target_sources(Northrend
     Render/Vulkan/Mesh/pipeline.hpp
     Render/Vulkan/physical.cpp
     Render/Vulkan/physical.hpp
-    Render/Vulkan/Queue/families.hpp
+    Render/Vulkan/queue.hpp
     Render/Vulkan/Platform/Surface/creation.hpp
     Render/Vulkan/Platform/Surface/extension.hpp
     Render/Vulkan/surface.cpp
@@ -95,8 +95,8 @@ target_sources(Northrend
 if(NORTHREND_GPU_PROFILING)
   target_sources(Northrend
     PRIVATE
-      Render/Vulkan/Timing/timer.cpp
-      Render/Vulkan/Timing/timer.hpp)
+      Render/Vulkan/timer.cpp
+      Render/Vulkan/timer.hpp)
 
   target_compile_definitions(Northrend
     PRIVATE

@@ -1,9 +1,9 @@
 #pragma once
 
-#include "Input/gamepad.hpp"
-#include "Input/keyboard.hpp"
-#include "Input/mouse.hpp"
-#include "Input/touch.hpp"
+#include "Input/Gamepad/gamepad.hpp"
+#include "Input/Keyboard/keyboard.hpp"
+#include "Input/Mouse/mouse.hpp"
+#include "Input/Touch/touch.hpp"
 
 namespace Northrend {
 

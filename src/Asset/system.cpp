@@ -14,7 +14,7 @@ AssetSystem::AssetSystem(const AssetPlan& plan, ThreadPool& threadPool) :
     plan(plan),
     threadPool(threadPool),
     streamer(this->store, threadPool),
-    dbcStore(this->store, this->streamer, threadPool) {}
+    databaseStore(this->store, this->streamer, threadPool) {}
 
 AssetSystem::~AssetSystem() {
     try {
@@ -42,7 +42,7 @@ void AssetSystem::tick() {
     this->finish_startup();
 
     if (this->ready()) {
-        this->dbcStore.tick();
+        this->databaseStore.tick();
         this->streamer.tick();
     }
 }
@@ -61,8 +61,8 @@ AssetRequest AssetSystem::request(AssetId asset, const AssetPriority priority) {
     return this->streamer.request(std::move(asset), priority);
 }
 
-const DbcStore& AssetSystem::databases() const noexcept {
-    return this->dbcStore;
+const DatabaseStore& AssetSystem::databases() const noexcept {
+    return this->databaseStore;
 }
 
 void AssetSystem::request_stop() noexcept {
@@ -70,7 +70,7 @@ void AssetSystem::request_stop() noexcept {
         this->startup->cancel();
     }
 
-    this->dbcStore.request_stop();
+    this->databaseStore.request_stop();
 }
 
 void AssetSystem::stop() {
@@ -85,7 +85,7 @@ void AssetSystem::stop() {
     this->state = State::stopped;
 
     try {
-        this->dbcStore.stop();
+        this->databaseStore.stop();
     } catch (...) {
         failure = std::current_exception();
     }
@@ -113,7 +113,7 @@ void AssetSystem::finish_startup() {
     std::shared_ptr<Work> startup = std::move(this->startup);
     startup->wait();
     this->state = State::ready;
-    this->dbcStore.start();
+    this->databaseStore.start();
 }
 
 }

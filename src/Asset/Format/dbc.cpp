@@ -1,4 +1,4 @@
-#include "Asset/Dbc/table.hpp"
+#include "Asset/Format/dbc.hpp"
 
 #include <algorithm>
 #include <limits>
@@ -6,6 +6,15 @@
 #include <utility>
 
 namespace Northrend {
+
+std::optional<DbcFormat> dbc_format(const std::span<const std::byte> bytes) noexcept {
+    if (bytes.size() >= 4 && bytes[0] == std::byte {'W'} && bytes[1] == std::byte {'D'} &&
+        bytes[2] == std::byte {'B'} && bytes[3] == std::byte {'C'}) {
+        return DbcFormat::wdbc;
+    }
+
+    return std::nullopt;
+}
 
 DbcTable::DbcTable(std::shared_ptr<const AssetData> data) : data(std::move(data)) {
     static constexpr std::size_t headerSize = 20;
@@ -97,8 +106,7 @@ std::string_view DbcTable::string(const std::uint32_t offset) const {
     }
 
     return std::string_view {
-        reinterpret_cast<const char*>(this->strings.data() + offset),
-        static_cast<std::size_t>(end - begin)
+        reinterpret_cast<const char*>(this->strings.data() + offset), static_cast<std::size_t>(end - begin)
     };
 }
 
@@ -107,8 +115,7 @@ std::uint32_t DbcTable::read_uint32(const std::span<const std::byte> bytes, cons
         throw std::out_of_range("DBC value exceeds the available data");
     }
 
-    return std::to_integer<std::uint32_t>(bytes[offset]) |
-        std::to_integer<std::uint32_t>(bytes[offset + 1]) << 8U |
+    return std::to_integer<std::uint32_t>(bytes[offset]) | std::to_integer<std::uint32_t>(bytes[offset + 1]) << 8U |
         std::to_integer<std::uint32_t>(bytes[offset + 2]) << 16U |
         std::to_integer<std::uint32_t>(bytes[offset + 3]) << 24U;
 }

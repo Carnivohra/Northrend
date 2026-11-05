@@ -1,5 +1,7 @@
 #include "Config/config.hpp"
 
+#include "Asset/Format/wtf.hpp"
+
 #include <algorithm>
 #include <cctype>
 #include <stdexcept>
@@ -7,14 +9,32 @@
 
 namespace Northrend {
 
-Config::Config(const std::filesystem::path& path) : document(path) {}
+Config::Config(const std::filesystem::path& path) {
+    this->load(path);
+}
 
 void Config::load(const std::filesystem::path& path) {
-    this->document.load(path);
+    const Wtf document(path);
+    this->entries.clear();
+    this->entries.reserve(document.commands().size());
+
+    for (const Wtf::Command& command : document.commands()) {
+        if (command.size() >= 3 && Config::equal_ascii(command[0], "SET")) {
+            this->set(command[1], command[2]);
+        }
+    }
 }
 
 void Config::save(const std::filesystem::path& path) const {
-    this->document.save(path);
+    Wtf document;
+    Wtf::Commands& commands = document.commands();
+    commands.reserve(this->entries.size());
+
+    for (const Entry& entry : this->entries) {
+        commands.push_back({"SET", entry.name, entry.value});
+    }
+
+    document.save(path);
 }
 
 bool Config::contains(std::string_view name) const noexcept {
@@ -22,8 +42,8 @@ bool Config::contains(std::string_view name) const noexcept {
 }
 
 std::string Config::value(std::string_view name, std::string fallback) const {
-    const Wtf::Command* command = this->find(name);
-    return command == nullptr ? std::move(fallback) : command->at(2);
+    const Entry* entry = this->find(name);
+    return entry == nullptr ? std::move(fallback) : entry->value;
 }
 
 void Config::set(std::string name, std::string value) {
@@ -35,36 +55,30 @@ void Config::set(std::string name, std::string value) {
         throw std::invalid_argument("Configuration values must not contain newlines");
     }
 
-    Wtf::Command* command = this->find(name);
+    Entry* entry = this->find(name);
 
-    if (command != nullptr) {
-        command->at(2) = std::move(value);
+    if (entry != nullptr) {
+        entry->value = std::move(value);
         return;
     }
 
-    this->document.commands().push_back({"SET", std::move(name), std::move(value)});
+    this->entries.push_back(Entry {.name = std::move(name), .value = std::move(value)});
 }
 
-Wtf::Command* Config::find(std::string_view name) noexcept {
-    Wtf::Commands& commands = this->document.commands();
-
-    for (auto command = commands.rbegin(); command != commands.rend(); ++command) {
-        if (command->size() >= 3 && Config::equal_ascii(command->at(0), "SET") &&
-            Config::equal_ascii(command->at(1), name)) {
-            return &*command;
+Config::Entry* Config::find(std::string_view name) noexcept {
+    for (Entry& entry : this->entries) {
+        if (Config::equal_ascii(entry.name, name)) {
+            return &entry;
         }
     }
 
     return nullptr;
 }
 
-const Wtf::Command* Config::find(std::string_view name) const noexcept {
-    const Wtf::Commands& commands = this->document.commands();
-
-    for (auto command = commands.rbegin(); command != commands.rend(); ++command) {
-        if (command->size() >= 3 && Config::equal_ascii(command->at(0), "SET") &&
-            Config::equal_ascii(command->at(1), name)) {
-            return &*command;
+const Config::Entry* Config::find(std::string_view name) const noexcept {
+    for (const Entry& entry : this->entries) {
+        if (Config::equal_ascii(entry.name, name)) {
+            return &entry;
         }
     }
 

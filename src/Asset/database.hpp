@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Asset/Dbc/table.hpp"
+#include "Asset/Format/dbc.hpp"
 #include "Asset/Stream/request.hpp"
 #include "Asset/id.hpp"
 
@@ -18,15 +18,15 @@ class AssetStreamer;
 class ThreadPool;
 class Work;
 
-class DbcStore final {
+class DatabaseStore final {
 public:
-    DbcStore(AssetStore& assets, AssetStreamer& streamer, ThreadPool& threadPool) noexcept;
-    ~DbcStore();
+    DatabaseStore(AssetStore& assets, AssetStreamer& streamer, ThreadPool& threadPool) noexcept;
+    ~DatabaseStore();
 
-    DbcStore(const DbcStore&) = delete;
-    DbcStore& operator=(const DbcStore&) = delete;
-    DbcStore(DbcStore&&) = delete;
-    DbcStore& operator=(DbcStore&&) = delete;
+    DatabaseStore(const DatabaseStore&) = delete;
+    DatabaseStore& operator=(const DatabaseStore&) = delete;
+    DatabaseStore(DatabaseStore&&) = delete;
+    DatabaseStore& operator=(DatabaseStore&&) = delete;
 
     void start();
     void tick();

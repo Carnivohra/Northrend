@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Asset/wdt.hpp"
+#include "Asset/Format/wdt.hpp"
 
 #include <cstddef>
 #include <span>

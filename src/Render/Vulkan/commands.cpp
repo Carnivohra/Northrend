@@ -19,7 +19,8 @@ VulkanCommandContext::VulkanCommandContext(VulkanDevice& device) :
     device(device),
     batch(device)
 #ifdef NORTHREND_GPU_PROFILING
-    , timer(device)
+    ,
+    timer(device)
 #endif
 {
     const VkCommandPoolCreateInfo createInfo {

@@ -1,4 +1,4 @@
-#include "Asset/mpq.hpp"
+#include "Asset/Format/mpq.hpp"
 
 #include <StormLib.h>
 
@@ -123,8 +123,8 @@ std::optional<AssetData> MpqArchive::read_entry(const std::string& name) const {
 
         if (!SFileReadFile(file.get(), bytes.data() + offset, requested, &bytesRead, nullptr) ||
             bytesRead != requested) {
-            throw std::runtime_error("Failed to read MPQ asset: " + name + " (StormLib error " +
-                std::to_string(SErrGetLastError()) + ')');
+            throw std::runtime_error(
+                "Failed to read MPQ asset: " + name + " (StormLib error " + std::to_string(SErrGetLastError()) + ')');
         }
 
         offset += bytesRead;

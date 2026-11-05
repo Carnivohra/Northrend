@@ -1,6 +1,6 @@
 #pragma once
 
-#include "World/Map/Terrain/tile.hpp"
+#include "World/Map/Terrain/geometry.hpp"
 
 #include <memory>
 
@@ -12,10 +12,10 @@ class MapTile final {
 public:
     explicit MapTile(std::shared_ptr<const AssetData> data);
 
-    [[nodiscard]] const TerrainTile& terrain() const noexcept;
+    [[nodiscard]] const TerrainGeometry& terrain() const noexcept;
 
 private:
-    TerrainTile mapTerrain;
+    TerrainGeometry terrainGeometry;
 };
 
 }

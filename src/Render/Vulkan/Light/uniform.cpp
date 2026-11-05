@@ -1,4 +1,4 @@
-#include "Render/Vulkan/Light/context.hpp"
+#include "Render/Vulkan/Light/uniform.hpp"
 
 #include "Render/Vulkan/Light/data.hpp"
 #include "Render/Vulkan/buffer.hpp"
@@ -14,7 +14,7 @@
 
 namespace Northrend {
 
-VulkanLightContext::VulkanLightContext(VulkanDevice& device, const std::size_t imageCount) : device(device) {
+VulkanLightUniform::VulkanLightUniform(VulkanDevice& device, const std::size_t imageCount) : device(device) {
     try {
         this->create_layout();
         this->create_buffers(imageCount);
@@ -25,11 +25,11 @@ VulkanLightContext::VulkanLightContext(VulkanDevice& device, const std::size_t i
     }
 }
 
-VulkanLightContext::~VulkanLightContext() {
+VulkanLightUniform::~VulkanLightUniform() {
     this->destroy();
 }
 
-void VulkanLightContext::update(const std::size_t imageIndex, const DirectionalLight& light) {
+void VulkanLightUniform::update(const std::size_t imageIndex, const DirectionalLight& light) {
     VulkanLightBuffer& buffer = this->buffers[imageIndex];
 
     if (buffer.uploadRevision == light.revision) {
@@ -40,30 +40,26 @@ void VulkanLightContext::update(const std::size_t imageIndex, const DirectionalL
         light.direction.z * light.direction.z);
     const float inverseLength = length > 0.0F ? 1.0F / length : 0.0F;
     const VulkanLightData data {
-        .directionAmbient = {
-            light.direction.x * inverseLength,
-            light.direction.y * inverseLength,
-            light.direction.z * inverseLength,
-            light.ambient
-        },
+        .directionAmbient =
+            {light.direction.x * inverseLength, light.direction.y * inverseLength, light.direction.z * inverseLength,
+                light.ambient},
         .colorIntensity = {light.color.x, light.color.y, light.color.z, light.intensity}
     };
     std::memcpy(buffer.mapped, &data, sizeof(data));
     buffer.uploadRevision = light.revision;
 }
 
-void VulkanLightContext::bind(
-    const VkCommandBuffer commandBuffer, const VkPipelineLayout pipelineLayout, const std::size_t imageIndex) const
-    noexcept {
+void VulkanLightUniform::bind(const VkCommandBuffer commandBuffer, const VkPipelineLayout pipelineLayout,
+    const std::size_t imageIndex) const noexcept {
     vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 1, 1,
         &this->descriptorSets[imageIndex], 0, nullptr);
 }
 
-VkDescriptorSetLayout VulkanLightContext::descriptor_layout() const noexcept {
+VkDescriptorSetLayout VulkanLightUniform::descriptor_layout() const noexcept {
     return this->descriptorLayout;
 }
 
-void VulkanLightContext::create_layout() {
+void VulkanLightUniform::create_layout() {
     const VkDescriptorSetLayoutBinding lightBinding {
         .binding = 0,
         .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
@@ -86,7 +82,7 @@ void VulkanLightContext::create_layout() {
     }
 }
 
-void VulkanLightContext::create_buffers(const std::size_t imageCount) {
+void VulkanLightUniform::create_buffers(const std::size_t imageCount) {
     this->buffers.resize(imageCount);
 
     for (VulkanLightBuffer& buffer : this->buffers) {
@@ -97,7 +93,7 @@ void VulkanLightContext::create_buffers(const std::size_t imageCount) {
     }
 }
 
-void VulkanLightContext::create_descriptors() {
+void VulkanLightUniform::create_descriptors() {
     const std::uint32_t descriptorCount = static_cast<std::uint32_t>(this->buffers.size());
     const VkDescriptorPoolSize poolSize {.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, .descriptorCount = descriptorCount};
     const VkDescriptorPoolCreateInfo poolInfo {
@@ -149,7 +145,7 @@ void VulkanLightContext::create_descriptors() {
     }
 }
 
-void VulkanLightContext::destroy() noexcept {
+void VulkanLightUniform::destroy() noexcept {
     if (this->descriptorPool != VK_NULL_HANDLE) {
         vkDestroyDescriptorPool(this->device.handle(), this->descriptorPool, nullptr);
         this->descriptorPool = VK_NULL_HANDLE;

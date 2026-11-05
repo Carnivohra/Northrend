@@ -6,8 +6,7 @@
 
 namespace Northrend {
 
-TileChange::TileChange(const std::uint32_t generation) noexcept :
-    tileGeneration(generation), changeKind(Kind::reset) {}
+TileChange::TileChange(const std::uint32_t generation) noexcept : tileGeneration(generation), changeKind(Kind::reset) {}
 
 TileChange::TileChange(const TileRequest& request, std::shared_ptr<const MapTile> tile) noexcept :
     mapTile(std::move(tile)),
@@ -16,8 +15,7 @@ TileChange::TileChange(const TileRequest& request, std::shared_ptr<const MapTile
     tileY(static_cast<std::uint8_t>(request.y())),
     changeKind(Kind::loaded) {}
 
-TileChange::TileChange(
-    const std::size_t x, const std::size_t y, const std::uint32_t generation) noexcept :
+TileChange::TileChange(const std::size_t x, const std::size_t y, const std::uint32_t generation) noexcept :
     tileGeneration(generation),
     tileX(static_cast<std::uint8_t>(x)),
     tileY(static_cast<std::uint8_t>(y)),

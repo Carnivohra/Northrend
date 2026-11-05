@@ -3,7 +3,7 @@
 #include "Render/Vulkan/Draw/batch.hpp"
 
 #ifdef NORTHREND_GPU_PROFILING
-#include "Render/Vulkan/Timing/timer.hpp"
+#include "Render/Vulkan/timer.hpp"
 #endif
 
 #include <volk.h>

@@ -1,4 +1,4 @@
-#include "Asset/wdt.hpp"
+#include "Asset/Format/wdt.hpp"
 
 #include "Asset/Chunk/id.hpp"
 #include "Asset/Chunk/reader.hpp"
@@ -85,8 +85,7 @@ std::uint32_t Wdt::read_uint32(const std::span<const std::byte> bytes, const std
         throw std::out_of_range("WDT value exceeds the available data");
     }
 
-    return std::to_integer<std::uint32_t>(bytes[offset]) |
-        std::to_integer<std::uint32_t>(bytes[offset + 1]) << 8U |
+    return std::to_integer<std::uint32_t>(bytes[offset]) | std::to_integer<std::uint32_t>(bytes[offset + 1]) << 8U |
         std::to_integer<std::uint32_t>(bytes[offset + 2]) << 16U |
         std::to_integer<std::uint32_t>(bytes[offset + 3]) << 24U;
 }

@@ -19,10 +19,8 @@ VulkanMeshPipeline::VulkanMeshPipeline(
     device(device), camera(device, imageCount), light(device, imageCount) {
     try {
         this->create_layout();
-        this->worldPipeline =
-            this->create_graphics_pipeline(renderPass, extent, VulkanShader::MeshWorldVertex, false);
-        this->transformedPipeline =
-            this->create_graphics_pipeline(renderPass, extent, VulkanShader::MeshVertex, true);
+        this->worldPipeline = this->create_graphics_pipeline(renderPass, extent, VulkanShader::MeshWorldVertex, false);
+        this->transformedPipeline = this->create_graphics_pipeline(renderPass, extent, VulkanShader::MeshVertex, true);
     } catch (...) {
         this->destroy();
         throw;
@@ -59,9 +57,7 @@ void VulkanMeshPipeline::bind(
 }
 
 void VulkanMeshPipeline::create_layout() {
-    const VkDescriptorSetLayout descriptorLayouts[] {
-        this->camera.descriptor_layout(), this->light.descriptor_layout()
-    };
+    const VkDescriptorSetLayout descriptorLayouts[] {this->camera.descriptor_layout(), this->light.descriptor_layout()};
     const VkPipelineLayoutCreateInfo createInfo {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
         .pNext = nullptr,
@@ -123,16 +119,10 @@ VkPipeline VulkanMeshPipeline::create_graphics_pipeline(const VkRenderPass rende
     };
     const std::array<VkVertexInputAttributeDescription, 6> transformedAttributes {
         VkVertexInputAttributeDescription {
-            .location = 0,
-            .binding = 0,
-            .format = VK_FORMAT_R32G32B32_SFLOAT,
-            .offset = 0
+            .location = 0, .binding = 0, .format = VK_FORMAT_R32G32B32_SFLOAT, .offset = 0
         },
         VkVertexInputAttributeDescription {
-            .location = 1,
-            .binding = 0,
-            .format = VK_FORMAT_R8G8B8A8_SNORM,
-            .offset = offsetof(MeshVertex, normal)
+            .location = 1, .binding = 0, .format = VK_FORMAT_R8G8B8A8_SNORM, .offset = offsetof(MeshVertex, normal)
         },
         VkVertexInputAttributeDescription {
             .location = 2, .binding = 1, .format = VK_FORMAT_R32G32B32A32_SFLOAT, .offset = sizeof(float) * 0
@@ -149,16 +139,10 @@ VkPipeline VulkanMeshPipeline::create_graphics_pipeline(const VkRenderPass rende
     };
     const std::array<VkVertexInputAttributeDescription, 2> worldAttributes {
         VkVertexInputAttributeDescription {
-            .location = 0,
-            .binding = 0,
-            .format = VK_FORMAT_R32G32B32_SFLOAT,
-            .offset = 0
+            .location = 0, .binding = 0, .format = VK_FORMAT_R32G32B32_SFLOAT, .offset = 0
         },
         VkVertexInputAttributeDescription {
-            .location = 1,
-            .binding = 0,
-            .format = VK_FORMAT_R8G8B8A8_SNORM,
-            .offset = offsetof(MeshVertex, normal)
+            .location = 1, .binding = 0, .format = VK_FORMAT_R8G8B8A8_SNORM, .offset = offsetof(MeshVertex, normal)
         }
     };
     const VkPipelineVertexInputStateCreateInfo vertexInput {
@@ -167,8 +151,8 @@ VkPipeline VulkanMeshPipeline::create_graphics_pipeline(const VkRenderPass rende
         .flags = 0,
         .vertexBindingDescriptionCount = transformed ? static_cast<std::uint32_t>(transformedBindings.size()) : 1,
         .pVertexBindingDescriptions = transformed ? transformedBindings.data() : &worldBinding,
-        .vertexAttributeDescriptionCount = transformed ? static_cast<std::uint32_t>(transformedAttributes.size()) :
-                                                         static_cast<std::uint32_t>(worldAttributes.size()),
+        .vertexAttributeDescriptionCount = transformed ? static_cast<std::uint32_t>(transformedAttributes.size())
+                                                       : static_cast<std::uint32_t>(worldAttributes.size()),
         .pVertexAttributeDescriptions = transformed ? transformedAttributes.data() : worldAttributes.data()
     };
     const VkPipelineInputAssemblyStateCreateInfo inputAssembly {

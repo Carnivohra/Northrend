@@ -16,10 +16,10 @@ set(NORTHREND_PLATFORM_HEADERS
 set(NORTHREND_VULKAN_PLATFORM_SOURCES
   Render/Vulkan/Platform/Surface/creation.cpp
   Render/Vulkan/Platform/Surface/extension.cpp
-  Render/Vulkan/Platform/wayland.cpp
-  Render/Vulkan/Platform/wayland.hpp
-  Render/Vulkan/Platform/x11.cpp
-  Render/Vulkan/Platform/x11.hpp)
+  Render/Vulkan/Platform/Linux/wayland.cpp
+  Render/Vulkan/Platform/Linux/wayland.hpp
+  Render/Vulkan/Platform/Linux/x11.cpp
+  Render/Vulkan/Platform/Linux/x11.hpp)
 
 set(NORTHREND_VULKAN_PLATFORM_DEFINITIONS
   VK_USE_PLATFORM_WAYLAND_KHR

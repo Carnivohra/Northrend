@@ -2,7 +2,7 @@
 
 #include "Asset/system.hpp"
 #include "Backend/application.hpp"
-#include "Engine/fps.hpp"
+#include "Debug/fps.hpp"
 #include "Engine/plan.hpp"
 #include "Input/input.hpp"
 #include "Presentation/runtime.hpp"

@@ -1,12 +1,11 @@
 #pragma once
 
+#include "Input/Mouse/button.hpp"
+
 #include <bitset>
 #include <cstddef>
-#include <cstdint>
 
 namespace Northrend {
-
-enum class MouseButton : std::uint8_t { left, middle, right, back, forward, count };
 
 class Mouse final {
 public:

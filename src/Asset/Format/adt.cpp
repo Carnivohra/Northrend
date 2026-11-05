@@ -1,4 +1,4 @@
-#include "Asset/adt.hpp"
+#include "Asset/Format/adt.hpp"
 
 #include "Asset/Chunk/id.hpp"
 #include "Asset/Chunk/reader.hpp"
@@ -220,8 +220,7 @@ float Adt::height(const std::size_t x, const std::size_t y, const std::size_t ve
     return this->base_height(x, y) + this->height_offset(x, y, vertex);
 }
 
-std::array<std::int8_t, 3> Adt::normal(
-    const std::size_t x, const std::size_t y, const std::size_t vertex) const {
+std::array<std::int8_t, 3> Adt::normal(const std::size_t x, const std::size_t y, const std::size_t vertex) const {
     if (vertex >= HeightsPerChunk) {
         throw std::out_of_range("ADT normal vertex is outside the terrain chunk");
     }

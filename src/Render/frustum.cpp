@@ -6,9 +6,8 @@
 namespace Northrend {
 
 Frustum::Frustum(const Matrix4& matrix) noexcept {
-    const auto row = [&matrix](const std::size_t row, const std::size_t column) {
-        return matrix.values[column * 4 + row];
-    };
+    const auto row = [&matrix](
+                         const std::size_t row, const std::size_t column) { return matrix.values[column * 4 + row]; };
     const auto plane = [&row](const std::size_t first, const float factor, const std::size_t second) {
         std::array<float, PlaneSize> result;
 
@@ -16,8 +15,7 @@ Frustum::Frustum(const Matrix4& matrix) noexcept {
             result[component] = row(first, component) + factor * row(second, component);
         }
 
-        const float length =
-            std::sqrt(result[0] * result[0] + result[1] * result[1] + result[2] * result[2]);
+        const float length = std::sqrt(result[0] * result[0] + result[1] * result[1] + result[2] * result[2]);
 
         if (length > 0.0F) {
             for (float& component : result) {

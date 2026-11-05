@@ -80,7 +80,8 @@ void VulkanDrawBatch::update(const std::size_t imageIndex, const RenderFrame& fr
     const VkDeviceSize required = transforms.size() * sizeof(Matrix4);
 
     if (required != 0 && (!target.transformBuffer || target.transformBuffer->size() < required)) {
-        const VkDeviceSize byteCapacity = capacity(target.transformBuffer ? target.transformBuffer->size() : 0, required);
+        const VkDeviceSize byteCapacity =
+            capacity(target.transformBuffer ? target.transformBuffer->size() : 0, required);
         target.transformBuffer = std::make_unique<VulkanBuffer>(this->device, byteCapacity,
             VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
         target.transformStaging =

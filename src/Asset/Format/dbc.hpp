@@ -5,10 +5,15 @@
 #include <cstddef>
 #include <cstdint>
 #include <memory>
+#include <optional>
 #include <span>
 #include <string_view>
 
 namespace Northrend {
+
+enum class DbcFormat { wdbc };
+
+[[nodiscard]] std::optional<DbcFormat> dbc_format(std::span<const std::byte> bytes) noexcept;
 
 class DbcTable final {
 public:

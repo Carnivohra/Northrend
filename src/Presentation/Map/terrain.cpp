@@ -9,7 +9,6 @@
 #include "Render/camera.hpp"
 #include "Render/scene.hpp"
 #include "World/Map/Terrain/geometry.hpp"
-#include "World/Map/Terrain/tile.hpp"
 #include "World/Map/Tile/tile.hpp"
 
 #include <algorithm>
@@ -32,7 +31,7 @@ void PresentationTerrain::load(const std::size_t x, const std::size_t y, const M
     const std::size_t tileIndex = index(x, y);
     this->release(tileIndex, renderer, scene);
 
-    const TerrainGeometry& geometry = tile.terrain().geometry();
+    const TerrainGeometry& geometry = tile.terrain();
     Vector3 minimum {
         .x = std::numeric_limits<float>::max(),
         .y = std::numeric_limits<float>::max(),
@@ -132,8 +131,8 @@ void PresentationTerrain::update(const Camera& camera, const int width, const in
             continue;
         }
 
-        const bool modified = scene.registry().modify<RenderInstance>(
-            this->entities[tile], [visible, level](RenderInstance& instance) {
+        const bool modified =
+            scene.registry().modify<RenderInstance>(this->entities[tile], [visible, level](RenderInstance& instance) {
                 instance.visible = visible;
 
                 if (visible) {

@@ -1,32 +1,13 @@
 #pragma once
 
+#include "Input/Gamepad/axis.hpp"
+#include "Input/Gamepad/button.hpp"
+
 #include <array>
 #include <bitset>
 #include <cstddef>
-#include <cstdint>
 
 namespace Northrend {
-
-enum class GamepadButton : std::uint8_t {
-    south,
-    east,
-    west,
-    north,
-    back,
-    guide,
-    start,
-    leftStick,
-    rightStick,
-    leftShoulder,
-    rightShoulder,
-    up,
-    down,
-    left,
-    right,
-    count
-};
-
-enum class GamepadAxis : std::uint8_t { leftX, leftY, rightX, rightY, leftTrigger, rightTrigger, count };
 
 class Gamepad final {
 public:

@@ -23,8 +23,8 @@ VulkanRenderer::VulkanRenderer(const Window& window) {
     this->surface = std::make_unique<VulkanSurface>(*this->instance, nativeHandle);
     this->device = std::make_unique<VulkanDevice>(this->instance->handle(), this->surface->handle());
     this->meshes = std::make_unique<VulkanMeshStore>(*this->device);
-    this->swapchain = std::make_unique<VulkanSwapchain>(
-        *this->device, *this->meshes, this->surface->handle(), window, ClearColor);
+    this->swapchain =
+        std::make_unique<VulkanSwapchain>(*this->device, *this->meshes, this->surface->handle(), window, ClearColor);
 }
 
 VulkanRenderer::~VulkanRenderer() = default;

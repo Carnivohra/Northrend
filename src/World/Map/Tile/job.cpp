@@ -22,9 +22,8 @@ void TileJob::start(ThreadPool& threadPool) {
         throw std::logic_error("Map tile job is already running");
     }
 
-    this->work = threadPool.submit(WorkPriority::normal, [this](const std::stop_token stopToken) {
-        this->execute(stopToken);
-    });
+    this->work =
+        threadPool.submit(WorkPriority::normal, [this](const std::stop_token stopToken) { this->execute(stopToken); });
 }
 
 bool TileJob::ready() const noexcept {

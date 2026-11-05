@@ -40,8 +40,8 @@ public:
     template <typename Callback>
         requires std::invocable<Callback, DirectionalLight&>
     void modify_active_light(Callback&& callback) {
-        const bool modified = this->state.modify<DirectionalLight>(this->lightEntity,
-            [&callback](DirectionalLight& light) {
+        const bool modified =
+            this->state.modify<DirectionalLight>(this->lightEntity, [&callback](DirectionalLight& light) {
                 std::invoke(std::forward<Callback>(callback), light);
                 ++light.revision;
             });

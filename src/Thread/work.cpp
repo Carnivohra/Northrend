@@ -12,8 +12,7 @@ void Work::cancel() noexcept {
     {
         const std::scoped_lock lock(this->mutex);
 
-        if (this->status == Status::complete || this->status == Status::failed ||
-            this->status == Status::cancelled) {
+        if (this->status == Status::complete || this->status == Status::failed || this->status == Status::cancelled) {
             return;
         }
 

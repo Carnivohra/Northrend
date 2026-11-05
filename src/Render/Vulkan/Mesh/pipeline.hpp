@@ -1,8 +1,8 @@
 #pragma once
 
 #include "Math/matrix.hpp"
-#include "Render/Vulkan/Camera/context.hpp"
-#include "Render/Vulkan/Light/context.hpp"
+#include "Render/Vulkan/Camera/uniform.hpp"
+#include "Render/Vulkan/Light/uniform.hpp"
 
 #include <volk.h>
 
@@ -32,16 +32,16 @@ public:
 
 private:
     [[nodiscard]] VkShaderModule create_shader_module(std::span<const unsigned char> code) const;
-    [[nodiscard]] VkPipeline create_graphics_pipeline(VkRenderPass renderPass, VkExtent2D extent,
-        std::span<const unsigned char> vertexCode, bool transformed) const;
+    [[nodiscard]] VkPipeline create_graphics_pipeline(
+        VkRenderPass renderPass, VkExtent2D extent, std::span<const unsigned char> vertexCode, bool transformed) const;
 
     void create_layout();
     void bind(VkCommandBuffer commandBuffer, std::size_t imageIndex, VkPipeline pipeline) const noexcept;
     void destroy() noexcept;
 
     VulkanDevice& device;
-    VulkanCameraContext camera;
-    VulkanLightContext light;
+    VulkanCameraUniform camera;
+    VulkanLightUniform light;
     VkPipelineLayout layout = VK_NULL_HANDLE;
     VkPipeline worldPipeline = VK_NULL_HANDLE;
     VkPipeline transformedPipeline = VK_NULL_HANDLE;

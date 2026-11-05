@@ -13,13 +13,13 @@ namespace Northrend {
 struct DirectionalLight;
 class VulkanDevice;
 
-class VulkanLightContext final {
+class VulkanLightUniform final {
 public:
-    VulkanLightContext(VulkanDevice& device, std::size_t imageCount);
-    ~VulkanLightContext();
+    VulkanLightUniform(VulkanDevice& device, std::size_t imageCount);
+    ~VulkanLightUniform();
 
-    VulkanLightContext(const VulkanLightContext&) = delete;
-    VulkanLightContext& operator=(const VulkanLightContext&) = delete;
+    VulkanLightUniform(const VulkanLightUniform&) = delete;
+    VulkanLightUniform& operator=(const VulkanLightUniform&) = delete;
 
     void update(std::size_t imageIndex, const DirectionalLight& light);
     void bind(VkCommandBuffer commandBuffer, VkPipelineLayout pipelineLayout, std::size_t imageIndex) const noexcept;

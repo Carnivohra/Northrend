@@ -1,7 +1,7 @@
 #include "Asset/store.hpp"
 
 #include "Asset/directory.hpp"
-#include "Asset/mpq.hpp"
+#include "Asset/Format/mpq.hpp"
 
 #include <algorithm>
 #include <cctype>

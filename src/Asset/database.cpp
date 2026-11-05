@@ -1,6 +1,5 @@
-#include "Asset/Dbc/store.hpp"
+#include "Asset/database.hpp"
 
-#include "Asset/Dbc/format.hpp"
 #include "Asset/Stream/priority.hpp"
 #include "Asset/Stream/streamer.hpp"
 #include "Asset/store.hpp"
@@ -15,19 +14,19 @@
 
 namespace Northrend {
 
-DbcStore::DbcStore(AssetStore& assets, AssetStreamer& streamer, ThreadPool& threadPool) noexcept :
+DatabaseStore::DatabaseStore(AssetStore& assets, AssetStreamer& streamer, ThreadPool& threadPool) noexcept :
     assets(assets), streamer(streamer), threadPool(threadPool) {}
 
-DbcStore::~DbcStore() {
+DatabaseStore::~DatabaseStore() {
     try {
         this->stop();
     } catch (...) {
     }
 }
 
-void DbcStore::start() {
+void DatabaseStore::start() {
     if (this->state != State::idle) {
-        throw std::logic_error("DBC store cannot be started more than once");
+        throw std::logic_error("Database store cannot be started more than once");
     }
 
     this->discovery = this->threadPool.submit(WorkPriority::background, [this](std::stop_token stopToken) {
@@ -40,7 +39,7 @@ void DbcStore::start() {
     this->state = State::discovering;
 }
 
-void DbcStore::tick() {
+void DatabaseStore::tick() {
     if (this->state == State::discovering) {
         this->finish_discovery();
     }
@@ -50,15 +49,15 @@ void DbcStore::tick() {
     }
 }
 
-bool DbcStore::ready() const noexcept {
+bool DatabaseStore::ready() const noexcept {
     return this->state == State::ready;
 }
 
-std::size_t DbcStore::size() const noexcept {
+std::size_t DatabaseStore::size() const noexcept {
     return this->tables.size();
 }
 
-const DbcTable* DbcStore::find(const std::string_view path) const {
+const DbcTable* DatabaseStore::find(const std::string_view path) const {
     if (!this->ready()) {
         return nullptr;
     }
@@ -74,7 +73,7 @@ const DbcTable* DbcStore::find(const std::string_view path) const {
     return &position->second;
 }
 
-const DbcTable* DbcStore::find_file(const std::string_view name) const {
+const DbcTable* DatabaseStore::find_file(const std::string_view name) const {
     if (!this->ready()) {
         return nullptr;
     }
@@ -101,13 +100,13 @@ const DbcTable* DbcStore::find_file(const std::string_view name) const {
     return result;
 }
 
-void DbcStore::request_stop() noexcept {
+void DatabaseStore::request_stop() noexcept {
     if (this->discovery) {
         this->discovery->cancel();
     }
 }
 
-void DbcStore::stop() {
+void DatabaseStore::stop() {
     if (this->state == State::stopped) {
         return;
     }
@@ -125,14 +124,14 @@ void DbcStore::stop() {
     this->tables.clear();
 }
 
-std::string DbcStore::key(const std::string_view path) {
+std::string DatabaseStore::key(const std::string_view path) {
     std::string result(path);
     std::ranges::transform(result, result.begin(),
         [](const unsigned char value) { return value == '\\' ? '/' : static_cast<char>(std::tolower(value)); });
     return result;
 }
 
-void DbcStore::finish_discovery() {
+void DatabaseStore::finish_discovery() {
     if (!this->discovery || !this->discovery->ready()) {
         return;
     }
@@ -152,7 +151,7 @@ void DbcStore::finish_discovery() {
     this->state = this->requests.empty() ? State::ready : State::loading;
 }
 
-void DbcStore::finish_loading() {
+void DatabaseStore::finish_loading() {
     std::size_t completed = 0;
 
     for (std::size_t position = 0; position < this->requests.size() && completed < TablesPerTick;) {

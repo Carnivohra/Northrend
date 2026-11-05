@@ -1,4 +1,4 @@
-#include "Render/Vulkan/Camera/context.hpp"
+#include "Render/Vulkan/Camera/uniform.hpp"
 
 #include "Render/Vulkan/buffer.hpp"
 #include "Render/Vulkan/device.hpp"
@@ -13,7 +13,7 @@
 
 namespace Northrend {
 
-VulkanCameraContext::VulkanCameraContext(VulkanDevice& device, std::size_t imageCount) : device(device) {
+VulkanCameraUniform::VulkanCameraUniform(VulkanDevice& device, std::size_t imageCount) : device(device) {
     try {
         this->create_layout();
         this->create_buffers(imageCount);
@@ -24,11 +24,11 @@ VulkanCameraContext::VulkanCameraContext(VulkanDevice& device, std::size_t image
     }
 }
 
-VulkanCameraContext::~VulkanCameraContext() {
+VulkanCameraUniform::~VulkanCameraUniform() {
     this->destroy();
 }
 
-void VulkanCameraContext::update(
+void VulkanCameraUniform::update(
     std::size_t imageIndex, const Camera& camera, const Matrix4& view, std::uint64_t revision, VkExtent2D extent) {
     const bool extentChanged = extent.width != this->sourceExtent.width || extent.height != this->sourceExtent.height;
 
@@ -55,17 +55,17 @@ void VulkanCameraContext::update(
     buffer.uploadRevision = this->uploadRevision;
 }
 
-void VulkanCameraContext::bind(
+void VulkanCameraUniform::bind(
     VkCommandBuffer commandBuffer, VkPipelineLayout pipelineLayout, std::size_t imageIndex) const noexcept {
     vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1,
         &this->descriptorSets[imageIndex], 0, nullptr);
 }
 
-VkDescriptorSetLayout VulkanCameraContext::descriptor_layout() const noexcept {
+VkDescriptorSetLayout VulkanCameraUniform::descriptor_layout() const noexcept {
     return this->descriptorLayout;
 }
 
-void VulkanCameraContext::create_layout() {
+void VulkanCameraUniform::create_layout() {
     const VkDescriptorSetLayoutBinding cameraBinding {
         .binding = 0,
         .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
@@ -88,7 +88,7 @@ void VulkanCameraContext::create_layout() {
     }
 }
 
-void VulkanCameraContext::create_buffers(std::size_t imageCount) {
+void VulkanCameraUniform::create_buffers(std::size_t imageCount) {
     this->buffers.resize(imageCount);
 
     for (VulkanCameraBuffer& buffer : this->buffers) {
@@ -99,7 +99,7 @@ void VulkanCameraContext::create_buffers(std::size_t imageCount) {
     }
 }
 
-void VulkanCameraContext::create_descriptors() {
+void VulkanCameraUniform::create_descriptors() {
     const std::uint32_t descriptorCount = static_cast<std::uint32_t>(this->buffers.size());
     const VkDescriptorPoolSize poolSize {.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, .descriptorCount = descriptorCount};
     const VkDescriptorPoolCreateInfo poolInfo {
@@ -152,7 +152,7 @@ void VulkanCameraContext::create_descriptors() {
     }
 }
 
-void VulkanCameraContext::destroy() noexcept {
+void VulkanCameraUniform::destroy() noexcept {
     if (this->descriptorPool != VK_NULL_HANDLE) {
         vkDestroyDescriptorPool(this->device.handle(), this->descriptorPool, nullptr);
         this->descriptorPool = VK_NULL_HANDLE;
