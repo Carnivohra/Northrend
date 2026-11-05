@@ -13,9 +13,6 @@ layout(location = 1) out vec3 worldNormal;
 void main() {
     gl_Position = camera.viewProjection * vec4(position, 1.0);
 
-    const vec3 low = vec3(0.08, 0.24, 0.10);
-    const vec3 high = vec3(0.68, 0.70, 0.66);
-    const float height = clamp((position.z + 100.0) / 1200.0, 0.0, 1.0);
-    color = mix(low, high, height);
+    color = vec3(0.08, 0.24, 0.10);
     worldNormal = normal;
 }
