@@ -59,7 +59,7 @@ void VulkanDrawBatch::update(const std::size_t imageIndex, const RenderFrame& fr
         transforms.push_back(instance.transform);
         auto& pages = mesh->index_type() == VK_INDEX_TYPE_UINT16 ? target.unsigned16 : target.unsigned32;
         auto& commands = pages[mesh->page()];
-        commands.push_back(mesh->draw(firstInstance));
+        commands.push_back(mesh->draw(firstInstance, instance.level));
     }
 
     const VkDeviceSize required = transforms.size() * sizeof(Matrix4);

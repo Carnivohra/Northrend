@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Render/Mesh/level.hpp"
 #include "Render/Vulkan/Mesh/allocation.hpp"
 
 #include <volk.h>
@@ -27,7 +28,7 @@ public:
     [[nodiscard]] VulkanMeshAllocation allocate(VkDeviceSize size);
     void release(const VulkanMeshAllocation& allocation) noexcept;
     void upload(const VulkanMeshAllocation& allocation, std::span<const std::byte> vertices, VkDeviceSize indexOffset,
-        std::span<const std::byte> indices);
+        std::span<const MeshLevel> levels);
 
     [[nodiscard]] VkBuffer buffer(std::size_t page) const noexcept;
     [[nodiscard]] std::size_t page_count() const noexcept;

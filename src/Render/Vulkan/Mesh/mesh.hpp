@@ -8,6 +8,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <vector>
 
 namespace Northrend {
 
@@ -21,17 +22,21 @@ public:
     VulkanMesh(const VulkanMesh&) = delete;
     VulkanMesh& operator=(const VulkanMesh&) = delete;
 
-    [[nodiscard]] VulkanDraw draw(std::uint32_t firstInstance) const;
+    [[nodiscard]] VulkanDraw draw(std::uint32_t firstInstance, std::size_t level) const;
     [[nodiscard]] VkIndexType index_type() const noexcept;
     [[nodiscard]] std::size_t page() const noexcept;
 
 private:
+    struct Level final {
+        VkDeviceSize indexOffset;
+        std::uint32_t indexCount;
+    };
+
     [[nodiscard]] static VkIndexType vulkan_index_type(MeshIndexType type) noexcept;
 
     VulkanMeshArena& arena;
     VulkanMeshAllocation allocation;
-    VkDeviceSize indexOffset;
-    std::uint32_t indexCount;
+    std::vector<Level> levels;
     VkIndexType indexType;
 };
 

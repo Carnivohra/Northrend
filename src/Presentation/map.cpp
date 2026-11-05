@@ -7,8 +7,7 @@
 
 namespace Northrend {
 
-void PresentationMap::apply(
-    TileChange change, MeshHandleAllocator& allocator, Renderer& renderer, RenderScene& scene) {
+void PresentationMap::apply(TileChange change, MeshHandleAllocator& allocator, Renderer& renderer, RenderScene& scene) {
     if (change.kind() == TileChange::Kind::reset) {
         this->terrain.clear(renderer, scene);
         this->tiles.fill(nullptr);
@@ -45,6 +44,10 @@ void PresentationMap::clear(Renderer& renderer, RenderScene& scene) {
     this->terrain.clear(renderer, scene);
     this->tiles.fill(nullptr);
     this->currentGeneration = 0;
+}
+
+void PresentationMap::update(const Camera& camera, const int width, const int height, RenderScene& scene) {
+    this->terrain.update(camera, width, height, scene);
 }
 
 const MapTile* PresentationMap::tile(const std::size_t x, const std::size_t y) const noexcept {

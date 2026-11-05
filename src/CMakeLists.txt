@@ -114,6 +114,7 @@ target_sources(Northrend
       Render/instance.hpp
       Render/light.hpp
       Render/Mesh/data.hpp
+      Render/Mesh/level.hpp
       Render/Mesh/allocator.hpp
       Render/Mesh/mesh.hpp
       Render/Mesh/vertex.hpp

@@ -15,7 +15,7 @@
 
 namespace Northrend {
 
-VulkanCommandContext::VulkanCommandContext(VulkanDevice& device) : device(device), batch(device) {
+VulkanCommandContext::VulkanCommandContext(VulkanDevice& device) : device(device), batch(device), timer(device) {
     const VkCommandPoolCreateInfo createInfo {
         .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
         .pNext = nullptr,
@@ -59,10 +59,12 @@ void VulkanCommandContext::allocate(std::size_t count) {
     this->recordedMeshRevisions.assign(count, 0);
     this->recorded.assign(count, false);
     this->batch.allocate(count);
+    this->timer.allocate(count);
 }
 
 void VulkanCommandContext::release() noexcept {
     this->batch.release();
+    this->timer.release();
     this->recorded.clear();
     this->recordedMeshRevisions.clear();
     this->recordedInstanceRevisions.clear();
@@ -104,6 +106,8 @@ void VulkanCommandContext::record(std::size_t imageIndex, const RenderFrame& ren
         throw std::runtime_error("Failed to begin a Vulkan command buffer: " + std::to_string(result));
     }
 
+    this->timer.begin(commandBuffer, imageIndex);
+
     std::array<VkClearValue, 2> clearValues {};
     clearValues[0].color = clearColor;
     clearValues[1].depthStencil = VkClearDepthStencilValue {.depth = 0.0F, .stencil = 0};
@@ -124,6 +128,7 @@ void VulkanCommandContext::record(std::size_t imageIndex, const RenderFrame& ren
     this->batch.draw(commandBuffer, imageIndex, meshes);
 
     vkCmdEndRenderPass(commandBuffer);
+    this->timer.end(commandBuffer, imageIndex);
     result = vkEndCommandBuffer(commandBuffer);
 
     if (result != VK_SUCCESS) {
@@ -135,8 +140,16 @@ void VulkanCommandContext::record(std::size_t imageIndex, const RenderFrame& ren
     this->recorded[imageIndex] = true;
 }
 
+void VulkanCommandContext::submitted(const std::size_t imageIndex) noexcept {
+    this->timer.submitted(imageIndex);
+}
+
 VkCommandBuffer VulkanCommandContext::handle(std::size_t imageIndex) const noexcept {
     return this->buffers[imageIndex];
+}
+
+std::optional<double> VulkanCommandContext::gpu_time(const std::size_t imageIndex) {
+    return this->timer.collect(imageIndex);
 }
 
 }

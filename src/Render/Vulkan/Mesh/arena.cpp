@@ -39,16 +39,20 @@ void VulkanMeshArena::release(const VulkanMeshAllocation& allocation) noexcept {
 }
 
 void VulkanMeshArena::upload(const VulkanMeshAllocation& allocation, const std::span<const std::byte> vertices,
-    const VkDeviceSize indexOffset, const std::span<const std::byte> indices) {
-    if (vertices.empty() || indices.empty() || indexOffset < vertices.size_bytes()) {
+    const VkDeviceSize indexOffset, const std::span<const MeshLevel> levels) {
+    if (vertices.empty() || levels.empty() || indexOffset < vertices.size_bytes()) {
         throw std::invalid_argument("Vulkan mesh arena upload is invalid");
     }
 
-    if (indexOffset > std::numeric_limits<VkDeviceSize>::max() - indices.size_bytes()) {
-        throw std::overflow_error("Vulkan mesh arena upload size overflow");
-    }
+    VkDeviceSize size = indexOffset;
 
-    const VkDeviceSize size = indexOffset + indices.size_bytes();
+    for (const MeshLevel& level : levels) {
+        if (level.indices.empty() || size > std::numeric_limits<VkDeviceSize>::max() - level.indices.size_bytes()) {
+            throw std::overflow_error("Vulkan mesh arena upload size overflow");
+        }
+
+        size += level.indices.size_bytes();
+    }
 
     if (allocation.page >= this->pages.size() || size > allocation.size) {
         throw std::out_of_range("Vulkan mesh arena upload exceeds its allocation");
@@ -59,7 +63,13 @@ void VulkanMeshArena::upload(const VulkanMeshAllocation& allocation, const std::
     }
 
     this->staging->write(vertices);
-    this->staging->write(indices, indexOffset);
+    VkDeviceSize offset = indexOffset;
+
+    for (const MeshLevel& level : levels) {
+        this->staging->write(level.indices, offset);
+        offset += level.indices.size_bytes();
+    }
+
     this->device.copy_buffer(
         this->staging->handle(), this->pages[allocation.page]->handle(), size, 0, allocation.offset);
 }

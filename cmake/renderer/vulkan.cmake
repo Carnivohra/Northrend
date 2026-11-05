@@ -73,6 +73,8 @@ target_sources(Northrend
     Render/Vulkan/surface.hpp
     Render/Vulkan/target.cpp
     Render/Vulkan/target.hpp
+    Render/Vulkan/Timing/timer.cpp
+    Render/Vulkan/Timing/timer.hpp
     Render/Vulkan/transfer.cpp
     Render/Vulkan/transfer.hpp
     Render/Vulkan/Shader/Mesh/fragment.frag

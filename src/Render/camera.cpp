@@ -12,18 +12,11 @@
 namespace Northrend {
 
 Matrix4 Camera::view() const noexcept {
-    glm::quat orientation(this->orientation.w, this->orientation.x, this->orientation.y, this->orientation.z);
-
-    const float magnitude = glm::dot(orientation, orientation);
-
-    if (magnitude > 0.0F) {
-        orientation *= glm::inversesqrt(magnitude);
-    } else {
-        orientation = glm::quat(1.0F, 0.0F, 0.0F, 0.0F);
-    }
-
     const glm::vec3 position(this->position.x, this->position.y, this->position.z);
-    const glm::mat4 view = glm::mat4_cast(glm::conjugate(orientation)) * glm::translate(glm::mat4(1.0F), -position);
+    const Vector3 forward = this->forward();
+    const Vector3 up = this->up();
+    const glm::vec3 target = position + glm::vec3(forward.x, forward.y, forward.z);
+    const glm::mat4 view = glm::lookAtRH(position, target, glm::vec3(up.x, up.y, up.z));
 
     return from_glm(view);
 }
@@ -44,6 +37,18 @@ Matrix4 Camera::projection(float aspectRatio) const {
     return from_glm(glm::perspectiveRH_ZO(this->verticalFieldOfView, aspectRatio, this->farPlane, this->nearPlane));
 }
 
+Vector3 Camera::forward() const noexcept {
+    return this->rotate(Vector3 {.x = 1.0F});
+}
+
+Vector3 Camera::right() const noexcept {
+    return this->rotate(Vector3 {.y = -1.0F});
+}
+
+Vector3 Camera::up() const noexcept {
+    return this->rotate(Vector3 {.z = 1.0F});
+}
+
 void Camera::look_at(const Vector3 target, const Vector3 up) {
     const glm::vec3 position(this->position.x, this->position.y, this->position.z);
     const glm::vec3 direction = glm::vec3(target.x, target.y, target.z) - position;
@@ -54,13 +59,30 @@ void Camera::look_at(const Vector3 target, const Vector3 up) {
         throw std::invalid_argument("Camera look-at vectors must define a valid orientation");
     }
 
-    const glm::quat orientation = glm::quatLookAtRH(glm::normalize(direction), glm::normalize(upward));
-    this->orientation = Quaternion {
-        .x = orientation.x,
-        .y = orientation.y,
-        .z = orientation.z,
-        .w = orientation.w
-    };
+    const glm::vec3 forward = glm::normalize(direction);
+    const glm::vec3 right = glm::normalize(glm::cross(forward, upward));
+    const glm::vec3 correctedUp = glm::normalize(glm::cross(right, forward));
+    glm::mat3 basis(1.0F);
+    basis[0] = forward;
+    basis[1] = -right;
+    basis[2] = correctedUp;
+
+    const glm::quat orientation = glm::quat_cast(basis);
+    this->orientation = Quaternion {.x = orientation.x, .y = orientation.y, .z = orientation.z, .w = orientation.w};
+}
+
+Vector3 Camera::rotate(const Vector3 direction) const noexcept {
+    glm::quat orientation(this->orientation.w, this->orientation.x, this->orientation.y, this->orientation.z);
+    const float magnitude = glm::dot(orientation, orientation);
+
+    if (magnitude > 0.0F) {
+        orientation *= glm::inversesqrt(magnitude);
+    } else {
+        orientation = glm::quat(1.0F, 0.0F, 0.0F, 0.0F);
+    }
+
+    const glm::vec3 rotated = orientation * glm::vec3(direction.x, direction.y, direction.z);
+    return Vector3 {.x = rotated.x, .y = rotated.y, .z = rotated.z};
 }
 
 }

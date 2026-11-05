@@ -12,6 +12,7 @@
 #include <algorithm>
 #include <array>
 #include <cstdint>
+#include <iostream>
 #include <limits>
 #include <memory>
 #include <span>
@@ -88,6 +89,10 @@ void VulkanSwapchain::render(const RenderFrame& renderFrame) {
         }
     }
 
+    if (const auto milliseconds = this->commands->gpu_time(imageIndex)) {
+        std::cout << "GPU render: " << *milliseconds << " ms\n";
+    }
+
     this->pipeline->update_camera(
         imageIndex, renderFrame.camera, renderFrame.view, renderFrame.cameraRevision, this->extent);
     this->pipeline->update_light(imageIndex, renderFrame.light);
@@ -121,6 +126,8 @@ void VulkanSwapchain::render(const RenderFrame& renderFrame) {
     if (result != VK_SUCCESS) {
         throw std::runtime_error("Failed to submit the Vulkan frame: " + std::to_string(result));
     }
+
+    this->commands->submitted(imageIndex);
 
     const VkSwapchainKHR swapchains[] {this->swapchain};
     const VkPresentInfoKHR presentInfo {

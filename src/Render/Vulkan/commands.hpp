@@ -1,11 +1,13 @@
 #pragma once
 
 #include "Render/Vulkan/Draw/batch.hpp"
+#include "Render/Vulkan/Timing/timer.hpp"
 
 #include <volk.h>
 
 #include <cstddef>
 #include <cstdint>
+#include <optional>
 #include <vector>
 
 namespace Northrend {
@@ -29,12 +31,15 @@ public:
 
     void record(std::size_t imageIndex, const RenderFrame& frame, const VulkanRenderTarget& target,
         VulkanMeshPipeline& pipeline, const VulkanMeshStore& meshes, const VkClearColorValue& clearColor);
+    void submitted(std::size_t imageIndex) noexcept;
 
     [[nodiscard]] VkCommandBuffer handle(std::size_t imageIndex) const noexcept;
+    [[nodiscard]] std::optional<double> gpu_time(std::size_t imageIndex);
 
 private:
     VulkanDevice& device;
     VulkanDrawBatch batch;
+    VulkanGpuTimer timer;
     VkCommandPool pool = VK_NULL_HANDLE;
     std::vector<VkCommandBuffer> buffers;
     std::vector<std::uint64_t> recordedInstanceRevisions;

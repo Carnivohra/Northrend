@@ -10,6 +10,7 @@
 
 namespace Northrend {
 
+struct Camera;
 class MapTile;
 class MeshHandleAllocator;
 class Renderer;
@@ -20,6 +21,7 @@ class PresentationMap final {
 public:
     void apply(TileChange change, MeshHandleAllocator& allocator, Renderer& renderer, RenderScene& scene);
     void clear(Renderer& renderer, RenderScene& scene);
+    void update(const Camera& camera, int width, int height, RenderScene& scene);
 
     [[nodiscard]] const MapTile* tile(std::size_t x, std::size_t y) const noexcept;
     [[nodiscard]] std::uint32_t generation() const noexcept;

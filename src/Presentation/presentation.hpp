@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Backend/Window/window.hpp"
 #include "Input/input.hpp"
 #include "Presentation/exchange.hpp"
 #include "Presentation/map.hpp"
@@ -18,8 +19,6 @@
 
 namespace Northrend {
 
-class Window;
-
 template <typename Type>
 concept PresentationRenderer = std::derived_from<Type, Renderer> && std::constructible_from<Type, const Window&>;
 
@@ -29,6 +28,7 @@ public:
 
     void start(const Window& window) {
         this->renderer.emplace(window);
+        this->window = &window;
     }
 
     void suspend() {
@@ -58,6 +58,7 @@ public:
         }
 
         this->control_camera(input, mapChanged);
+        this->map.update(this->scene.active_camera(), this->window->width(), this->window->height(), this->scene);
         this->renderer->frame(this->scene.frame());
     }
 
@@ -67,6 +68,7 @@ public:
         }
 
         this->renderer.reset();
+        this->window = nullptr;
     }
 
 private:
@@ -75,32 +77,9 @@ private:
     static constexpr std::size_t TileChangesPerFrame = 32;
     static constexpr float CameraPitchLimit = 1.55334306F;
 
-    [[nodiscard]] static Vector3 forward(const Quaternion& orientation) noexcept {
-        const float magnitude = orientation.x * orientation.x + orientation.y * orientation.y +
-            orientation.z * orientation.z + orientation.w * orientation.w;
-
-        if (magnitude <= 0.0F) {
-            return Vector3 {.x = 1.0F};
-        }
-
-        const float inverseMagnitude = 1.0F / std::sqrt(magnitude);
-        const float x = orientation.x * inverseMagnitude;
-        const float y = orientation.y * inverseMagnitude;
-        const float z = orientation.z * inverseMagnitude;
-        const float w = orientation.w * inverseMagnitude;
-
-        return Vector3 {
-            .x = -2.0F * (w * y + x * z),
-            .y = 2.0F * (w * x - y * z),
-            .z = -1.0F + 2.0F * (x * x + y * y)
-        };
-    }
-
     [[nodiscard]] static Vector3 direction(float yaw, float pitch) noexcept {
         const float horizontal = std::cos(pitch);
-        return Vector3 {
-            .x = horizontal * std::cos(yaw), .y = horizontal * std::sin(yaw), .z = std::sin(pitch)
-        };
+        return Vector3 {.x = horizontal * std::cos(yaw), .y = horizontal * std::sin(yaw), .z = std::sin(pitch)};
     }
 
     void control_camera(const Input& input, bool mapChanged) {
@@ -112,8 +91,7 @@ private:
         const Mouse& mouse = input.mouse();
         const bool movement = keyboard.down(Key::w) || keyboard.down(Key::s) || keyboard.down(Key::a) ||
             keyboard.down(Key::d) || keyboard.down(Key::space) || keyboard.down(Key::leftControl);
-        const bool rotation = mouse.down(MouseButton::right) &&
-            (mouse.delta_x() != 0.0F || mouse.delta_y() != 0.0F);
+        const bool rotation = mouse.down(MouseButton::right) && (mouse.delta_x() != 0.0F || mouse.delta_y() != 0.0F);
         const bool speedChanged = mouse.wheel_y() != 0.0F;
 
         if (!this->cameraControlled && !movement && !rotation && !speedChanged) {
@@ -122,7 +100,7 @@ private:
 
         if (!this->cameraControlled) {
             const Camera& camera = this->scene.active_camera();
-            const Vector3 view = forward(camera.orientation);
+            const Vector3 view = camera.forward();
             this->cameraPosition = camera.position;
             this->cameraYaw = std::atan2(view.y, view.x);
             this->cameraPitch = std::asin(std::clamp(view.z, -1.0F, 1.0F));
@@ -219,6 +197,7 @@ private:
     float cameraPitch = 0.0F;
     float cameraSpeed = 2'000.0F;
     bool cameraControlled = false;
+    const Window* window = nullptr;
 };
 
 }
