@@ -12,6 +12,7 @@ struct RenderInstance final {
     MeshHandle mesh;
     Matrix4 transform;
     std::uint8_t level = 0;
+    bool visible = true;
 };
 
 static_assert(std::is_trivially_copyable_v<RenderInstance>);

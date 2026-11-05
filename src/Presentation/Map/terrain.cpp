@@ -1,6 +1,7 @@
 #include "Presentation/Map/terrain.hpp"
 
 #include "Render/instance.hpp"
+#include "Render/frustum.hpp"
 #include "Render/Mesh/allocator.hpp"
 #include "Render/Mesh/data.hpp"
 #include "Render/Mesh/level.hpp"
@@ -83,6 +84,7 @@ void PresentationTerrain::load(const std::size_t x, const std::size_t y, const M
     this->minimums[tileIndex] = minimum;
     this->maximums[tileIndex] = maximum;
     this->levels[tileIndex] = UnsetLevel;
+    this->visibility[tileIndex] = true;
     this->levelsDirty = true;
 }
 
@@ -109,26 +111,41 @@ void PresentationTerrain::update(const Camera& camera, const int width, const in
         return;
     }
 
+    const float aspectRatio = static_cast<float>(width) / static_cast<float>(height);
+    const Frustum frustum(camera.projection(aspectRatio) * camera.view());
+
     for (std::size_t tile = 0; tile < TileGrid::TileCount; ++tile) {
         if (!this->entities[tile]) {
             continue;
         }
 
-        const float size = projected_size(camera, height, this->minimums[tile], this->maximums[tile]);
-        const std::uint8_t level = select_level(size, this->levels[tile]);
+        const bool visible = frustum.intersects(this->minimums[tile], this->maximums[tile]);
+        std::uint8_t level = this->levels[tile];
 
-        if (level == this->levels[tile]) {
+        if (visible) {
+            const float size = projected_size(camera, height, this->minimums[tile], this->maximums[tile]);
+            level = select_level(size, level);
+        }
+
+        if (visible == this->visibility[tile] && level == this->levels[tile]) {
             continue;
         }
 
         const bool modified = scene.registry().modify<RenderInstance>(
-            this->entities[tile], [level](RenderInstance& instance) { instance.level = level; });
+            this->entities[tile], [visible, level](RenderInstance& instance) {
+                instance.visible = visible;
+
+                if (visible) {
+                    instance.level = level;
+                }
+            });
 
         if (!modified) {
             throw std::runtime_error("Terrain render instance is missing");
         }
 
         this->levels[tile] = level;
+        this->visibility[tile] = visible;
     }
 
     this->cameraRevision = camera.revision;
@@ -152,6 +169,7 @@ void PresentationTerrain::release(const std::size_t tile, Renderer& renderer, Re
     }
 
     this->levels[tile] = UnsetLevel;
+    this->visibility[tile] = false;
     this->levelsDirty = true;
 }
 

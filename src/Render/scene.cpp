@@ -88,8 +88,11 @@ void RenderScene::refresh_instances() {
                 continue;
             }
 
-            const RenderInstance* begin = &field[0];
-            this->instances.insert(this->instances.end(), begin, begin + count);
+            for (std::size_t index = 0; index < count; ++index) {
+                if (field[index].visible) {
+                    this->instances.push_back(field[index]);
+                }
+            }
         }
     });
 

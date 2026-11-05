@@ -30,6 +30,7 @@ target_sources(Northrend
     Presentation/Map/terrain.cpp
     Presentation/map.cpp
     Render/camera.cpp
+    Render/frustum.cpp
     Render/Mesh/data.cpp
     Render/Mesh/allocator.cpp
     Render/scene.cpp
@@ -111,6 +112,7 @@ target_sources(Northrend
       Presentation/map.hpp
       Render/camera.hpp
       Render/frame.hpp
+      Render/frustum.hpp
       Render/instance.hpp
       Render/light.hpp
       Render/Mesh/data.hpp

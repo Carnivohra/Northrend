@@ -42,6 +42,7 @@ private:
     std::array<Vector3, TileGrid::TileCount> minimums;
     std::array<Vector3, TileGrid::TileCount> maximums;
     std::array<std::uint8_t, TileGrid::TileCount> levels;
+    std::array<bool, TileGrid::TileCount> visibility;
     std::uint64_t cameraRevision = 0;
     int viewportWidth = 0;
     int viewportHeight = 0;
