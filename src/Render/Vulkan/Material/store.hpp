@@ -38,7 +38,8 @@ private:
     std::vector<VkDescriptorSet> materials;
     VkDescriptorSetLayout descriptorLayout = VK_NULL_HANDLE;
     VkDescriptorPool descriptorPool = VK_NULL_HANDLE;
-    VkSampler sampler = VK_NULL_HANDLE;
+    VkSampler textureSampler = VK_NULL_HANDLE;
+    VkSampler alphaSampler = VK_NULL_HANDLE;
 };
 
 }

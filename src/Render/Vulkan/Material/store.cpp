@@ -14,19 +14,28 @@ namespace Northrend {
 VulkanMaterialStore::VulkanMaterialStore(VulkanDevice& device, const VulkanTextureStore& textures) :
     device(device), textures(textures) {
     try {
-        const VkDescriptorSetLayoutBinding binding {
-            .binding = 0,
-            .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-            .descriptorCount = MaximumTextures,
-            .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
-            .pImmutableSamplers = nullptr
+        const std::array<VkDescriptorSetLayoutBinding, 2> bindings {
+            VkDescriptorSetLayoutBinding {
+                .binding = 0,
+                .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                .descriptorCount = MaximumTextures,
+                .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
+                .pImmutableSamplers = nullptr
+            },
+            VkDescriptorSetLayoutBinding {
+                .binding = 1,
+                .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                .descriptorCount = 1,
+                .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
+                .pImmutableSamplers = nullptr
+            }
         };
         const VkDescriptorSetLayoutCreateInfo layoutInfo {
             .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
             .pNext = nullptr,
             .flags = 0,
-            .bindingCount = 1,
-            .pBindings = &binding
+            .bindingCount = static_cast<std::uint32_t>(bindings.size()),
+            .pBindings = bindings.data()
         };
         VkResult result =
             vkCreateDescriptorSetLayout(this->device.handle(), &layoutInfo, nullptr, &this->descriptorLayout);
@@ -37,7 +46,8 @@ VulkanMaterialStore::VulkanMaterialStore(VulkanDevice& device, const VulkanTextu
         }
 
         const VkDescriptorPoolSize poolSize {
-            .type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, .descriptorCount = MaximumMaterials * MaximumTextures
+            .type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+            .descriptorCount = MaximumMaterials * (MaximumTextures + 1)
         };
         const VkDescriptorPoolCreateInfo poolInfo {
             .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
@@ -73,10 +83,21 @@ VulkanMaterialStore::VulkanMaterialStore(VulkanDevice& device, const VulkanTextu
             .borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK,
             .unnormalizedCoordinates = VK_FALSE
         };
-        result = vkCreateSampler(this->device.handle(), &samplerInfo, nullptr, &this->sampler);
+        result = vkCreateSampler(this->device.handle(), &samplerInfo, nullptr, &this->textureSampler);
 
         if (result != VK_SUCCESS) {
-            throw std::runtime_error("Failed to create the Vulkan material sampler: " + std::to_string(result));
+            throw std::runtime_error("Failed to create the Vulkan texture sampler: " + std::to_string(result));
+        }
+
+        VkSamplerCreateInfo alphaSamplerInfo = samplerInfo;
+        alphaSamplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+        alphaSamplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+        alphaSamplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+        alphaSamplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+        result = vkCreateSampler(this->device.handle(), &alphaSamplerInfo, nullptr, &this->alphaSampler);
+
+        if (result != VK_SUCCESS) {
+            throw std::runtime_error("Failed to create the Vulkan alpha sampler: " + std::to_string(result));
         }
     } catch (...) {
         this->destroy();
@@ -89,7 +110,7 @@ VulkanMaterialStore::~VulkanMaterialStore() {
 }
 
 void VulkanMaterialStore::store(const MaterialHandle handle, const MaterialData& data) {
-    if (!handle || data.textures().empty() || data.textures().size() > MaximumTextures) {
+    if (!handle || !data.alpha() || data.textures().empty() || data.textures().size() > MaximumTextures) {
         throw std::invalid_argument("Vulkan material data is invalid");
     }
 
@@ -132,7 +153,7 @@ void VulkanMaterialStore::store(const MaterialHandle handle, const MaterialData&
         }
 
         images.fill(VkDescriptorImageInfo {
-            .sampler = this->sampler,
+            .sampler = this->textureSampler,
             .imageView = fallback->view(),
             .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
         });
@@ -147,19 +168,45 @@ void VulkanMaterialStore::store(const MaterialHandle handle, const MaterialData&
             images[texture].imageView = image->view();
         }
 
-        const VkWriteDescriptorSet write {
-            .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-            .pNext = nullptr,
-            .dstSet = descriptorSet,
-            .dstBinding = 0,
-            .dstArrayElement = 0,
-            .descriptorCount = MaximumTextures,
-            .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-            .pImageInfo = images.data(),
-            .pBufferInfo = nullptr,
-            .pTexelBufferView = nullptr
+        const VulkanTexture* alpha = this->textures.find(data.alpha());
+
+        if (!alpha) {
+            throw std::runtime_error("Vulkan material references a missing alpha texture");
+        }
+
+        const VkDescriptorImageInfo alphaImage {
+            .sampler = this->alphaSampler,
+            .imageView = alpha->view(),
+            .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
         };
-        vkUpdateDescriptorSets(this->device.handle(), 1, &write, 0, nullptr);
+        const std::array<VkWriteDescriptorSet, 2> writes {
+            VkWriteDescriptorSet {
+                .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+                .pNext = nullptr,
+                .dstSet = descriptorSet,
+                .dstBinding = 0,
+                .dstArrayElement = 0,
+                .descriptorCount = MaximumTextures,
+                .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                .pImageInfo = images.data(),
+                .pBufferInfo = nullptr,
+                .pTexelBufferView = nullptr
+            },
+            VkWriteDescriptorSet {
+                .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+                .pNext = nullptr,
+                .dstSet = descriptorSet,
+                .dstBinding = 1,
+                .dstArrayElement = 0,
+                .descriptorCount = 1,
+                .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                .pImageInfo = &alphaImage,
+                .pBufferInfo = nullptr,
+                .pTexelBufferView = nullptr
+            }
+        };
+        vkUpdateDescriptorSets(
+            this->device.handle(), static_cast<std::uint32_t>(writes.size()), writes.data(), 0, nullptr);
     } catch (...) {
         vkFreeDescriptorSets(this->device.handle(), this->descriptorPool, 1, &descriptorSet);
         throw;
@@ -204,9 +251,14 @@ VkDescriptorSetLayout VulkanMaterialStore::descriptor_layout() const noexcept {
 }
 
 void VulkanMaterialStore::destroy() noexcept {
-    if (this->sampler != VK_NULL_HANDLE) {
-        vkDestroySampler(this->device.handle(), this->sampler, nullptr);
-        this->sampler = VK_NULL_HANDLE;
+    if (this->alphaSampler != VK_NULL_HANDLE) {
+        vkDestroySampler(this->device.handle(), this->alphaSampler, nullptr);
+        this->alphaSampler = VK_NULL_HANDLE;
+    }
+
+    if (this->textureSampler != VK_NULL_HANDLE) {
+        vkDestroySampler(this->device.handle(), this->textureSampler, nullptr);
+        this->textureSampler = VK_NULL_HANDLE;
     }
 
     if (this->descriptorPool != VK_NULL_HANDLE) {

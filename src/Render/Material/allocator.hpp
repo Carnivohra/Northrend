@@ -2,8 +2,9 @@
 
 #include "Render/Material/material.hpp"
 
-#include <atomic>
 #include <cstdint>
+#include <mutex>
+#include <vector>
 
 namespace Northrend {
 
@@ -15,9 +16,12 @@ public:
     MaterialHandleAllocator& operator=(const MaterialHandleAllocator&) = delete;
 
     [[nodiscard]] MaterialHandle allocate();
+    void release(MaterialHandle handle);
 
 private:
-    std::atomic<std::uint64_t> nextValue = 1;
+    std::mutex access;
+    std::vector<std::uint64_t> availableValues;
+    std::uint64_t nextValue = 1;
 };
 
 }

@@ -1,6 +1,7 @@
 #include "World/Map/Tile/grid.hpp"
 
 #include "World/Map/layout.hpp"
+#include "World/Map/Tile/focus.hpp"
 #include "World/Map/Tile/result.hpp"
 
 #include <algorithm>
@@ -13,53 +14,81 @@ namespace Northrend {
 TileGrid::TileGrid(const std::uint32_t generation, std::shared_ptr<const MapLayout> layout) noexcept :
     mapLayout(std::move(layout)), currentGeneration(generation == 0 ? 1 : generation) {}
 
-void TileGrid::load_all() noexcept {
-    static constexpr std::size_t BackgroundDistance = 3;
+std::vector<std::pair<std::size_t, std::size_t>> TileGrid::focus(const TileFocus& focus) {
+    std::array<bool, TileCount> desired {};
+    std::vector<std::pair<std::size_t, std::size_t>> released;
+    this->requestPosition = 0;
+    this->requestCount = 0;
+
+    if (focus.active()) {
+        const std::size_t distanceLimit = std::min(focus.radius(), Size - 1);
+        const std::size_t squaredDistanceLimit = distanceLimit * distanceLimit;
+
+        for (std::size_t y = 0; y < Size; ++y) {
+            for (std::size_t x = 0; x < Size; ++x) {
+                const std::size_t deltaX = x > focus.x() ? x - focus.x() : focus.x() - x;
+                const std::size_t deltaY = y > focus.y() ? y - focus.y() : focus.y() - y;
+                const std::size_t squaredDistance = deltaX * deltaX + deltaY * deltaY;
+                desired[index(x, y)] =
+                    squaredDistance <= squaredDistanceLimit && this->mapLayout->has_tile(x, y);
+            }
+        }
+    }
 
     for (std::size_t y = 0; y < Size; ++y) {
         for (std::size_t x = 0; x < Size; ++x) {
-            this->enqueue(x, y, BackgroundDistance);
-        }
-    }
-}
+            const std::uint16_t tile = index(x, y);
+            TileState& state = this->states[tile];
 
-void TileGrid::focus(const std::size_t x, const std::size_t y, const std::size_t radius) {
-    if (x >= Size || y >= Size) {
-        throw std::out_of_range("Tile focus is outside the map");
-    }
+            if (desired[tile]) {
+                if (state == TileState::requested || state == TileState::failed) {
+                    state = TileState::missing;
+                }
 
-    for (TileState& state : this->states) {
-        if (state == TileState::requested) {
+                continue;
+            }
+
+            if (state == TileState::ready || state == TileState::active) {
+                this->tiles[tile].reset();
+                released.emplace_back(x, y);
+            }
+
             state = TileState::missing;
         }
     }
 
-    this->requestPosition = 0;
-    this->requestCount = 0;
-    const std::size_t distanceLimit = std::min(radius, Size - 1);
+    if (!focus.active()) {
+        return released;
+    }
+
+    const std::size_t x = focus.x();
+    const std::size_t y = focus.y();
+    const std::size_t distanceLimit = std::min(focus.radius(), Size - 1);
 
     for (std::size_t distance = 0; distance <= distanceLimit; ++distance) {
         const std::size_t minimumX = x > distance ? x - distance : 0;
         const std::size_t maximumX = std::min(x + distance, Size - 1);
         const std::size_t minimumY = y > distance ? y - distance : 0;
         const std::size_t maximumY = std::min(y + distance, Size - 1);
+        const std::size_t outerSquared = distance * distance;
+        const std::size_t innerSquared = distance == 0 ? 0 : (distance - 1) * (distance - 1);
 
-        for (std::size_t tileX = minimumX; tileX <= maximumX; ++tileX) {
-            this->enqueue(tileX, minimumY, distance);
+        for (std::size_t tileY = minimumY; tileY <= maximumY; ++tileY) {
+            for (std::size_t tileX = minimumX; tileX <= maximumX; ++tileX) {
+                const std::size_t deltaX = tileX > x ? tileX - x : x - tileX;
+                const std::size_t deltaY = tileY > y ? tileY - y : y - tileY;
+                const std::size_t squaredDistance = deltaX * deltaX + deltaY * deltaY;
 
-            if (maximumY != minimumY) {
-                this->enqueue(tileX, maximumY, distance);
-            }
-        }
+                if (squaredDistance > outerSquared || (distance != 0 && squaredDistance <= innerSquared)) {
+                    continue;
+                }
 
-        for (std::size_t tileY = minimumY + 1; tileY < maximumY; ++tileY) {
-            this->enqueue(minimumX, tileY, distance);
-
-            if (maximumX != minimumX) {
-                this->enqueue(maximumX, tileY, distance);
+                this->enqueue(tileX, tileY, distance);
             }
         }
     }
+
+    return released;
 }
 
 std::optional<TileRequest> TileGrid::next_request() noexcept {

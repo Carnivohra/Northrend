@@ -7,6 +7,8 @@
 #include "Render/Vulkan/device.hpp"
 #include "Render/frame.hpp"
 
+#include <algorithm>
+#include <array>
 #include <limits>
 #include <span>
 #include <stdexcept>
@@ -61,6 +63,7 @@ void VulkanDrawBatch::update(const std::size_t imageIndex, const RenderFrame& fr
         if (instance.worldSpace) {
             auto& pages = mesh->index_type() == VK_INDEX_TYPE_UINT16 ? target.worldUnsigned16 : target.worldUnsigned32;
             VulkanDraw draw = mesh->draw(0, instance.level);
+            draw.detailLevel = instance.level;
             draw.material = instance.material;
             pages[mesh->page()].push_back(draw);
             target.worldDraws = true;
@@ -193,8 +196,15 @@ VkDeviceSize VulkanDrawBatch::capacity(const VkDeviceSize current, const VkDevic
 
 void VulkanDrawBatch::draw_group(const VkCommandBuffer commandBuffer, const std::vector<VulkanDraw>& draws,
     const VulkanMaterialStore* materials, const VkPipelineLayout pipelineLayout) noexcept {
+    static constexpr std::array<float, 3> TextureMipBias {0.0F, 0.75F, 1.5F};
+    static constexpr std::array<float, 3> AlphaMipBias {0.0F, 1.0F, 2.0F};
+
     for (const VulkanDraw& draw : draws) {
         if (materials != nullptr) {
+            const std::size_t level = std::min<std::size_t>(draw.detailLevel, TextureMipBias.size() - 1);
+            const std::array<float, 2> detail {TextureMipBias[level], AlphaMipBias[level]};
+            vkCmdPushConstants(
+                commandBuffer, pipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(detail), detail.data());
             materials->bind(commandBuffer, pipelineLayout, draw.material);
         }
 

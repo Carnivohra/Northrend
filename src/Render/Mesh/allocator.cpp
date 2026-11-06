@@ -6,16 +6,28 @@
 namespace Northrend {
 
 MeshHandle MeshHandleAllocator::allocate() {
-    std::uint64_t value = this->nextValue.load(std::memory_order_relaxed);
+    const std::scoped_lock lock(this->access);
 
-    while (value != std::numeric_limits<std::uint64_t>::max()) {
-        if (this->nextValue.compare_exchange_weak(
-                value, value + 1, std::memory_order_relaxed, std::memory_order_relaxed)) {
-            return MeshHandle(value);
-        }
+    if (!this->availableValues.empty()) {
+        const std::uint64_t value = this->availableValues.back();
+        this->availableValues.pop_back();
+        return MeshHandle(value);
     }
 
-    throw std::overflow_error("Mesh handle space is exhausted");
+    if (this->nextValue == std::numeric_limits<std::uint64_t>::max()) {
+        throw std::overflow_error("Mesh handle space is exhausted");
+    }
+
+    return MeshHandle(this->nextValue++);
+}
+
+void MeshHandleAllocator::release(const MeshHandle handle) {
+    if (!handle) {
+        return;
+    }
+
+    const std::scoped_lock lock(this->access);
+    this->availableValues.push_back(handle.id());
 }
 
 }

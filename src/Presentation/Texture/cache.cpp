@@ -28,10 +28,26 @@ void PresentationTextureCache::retain(AssetId asset) {
     }
 
     AssetRequest request = this->assets.request(std::move(asset), AssetPriority::background);
-    auto entry = std::make_unique<PresentationTextureEntry>(std::move(request), this->handles.allocate());
-    PresentationTextureEntry* pending = entry.get();
-    this->entries.emplace(key, std::move(entry));
-    this->pending.push_back(pending);
+    const TextureHandle texture = this->handles.allocate();
+
+    try {
+        auto entry = std::make_unique<PresentationTextureEntry>(std::move(request), texture);
+        const auto [stored, inserted] = this->entries.emplace(key, std::move(entry));
+
+        if (!inserted) {
+            throw std::runtime_error("Texture cache entry already exists");
+        }
+
+        try {
+            this->pending.push_back(stored->second.get());
+        } catch (...) {
+            this->entries.erase(stored);
+            throw;
+        }
+    } catch (...) {
+        this->handles.release(texture);
+        throw;
+    }
 }
 
 void PresentationTextureCache::release(const AssetId& asset, Renderer& renderer) {
@@ -53,6 +69,7 @@ void PresentationTextureCache::release(const AssetId& asset, Renderer& renderer)
         this->remove_pending(entry);
     }
 
+    this->handles.release(entry.texture);
     this->entries.erase(existing);
 }
 
@@ -97,18 +114,41 @@ void PresentationTextureCache::tick(Renderer& renderer) {
 }
 
 void PresentationTextureCache::clear(Renderer& renderer) {
-    std::vector<TextureHandle> textures;
-    textures.reserve(this->entries.size());
+    std::vector<TextureHandle> uploaded;
+    uploaded.reserve(this->entries.size());
 
     for (const auto& entryPair : this->entries) {
         if (entryPair.second->uploaded) {
-            textures.push_back(entryPair.second->texture);
+            uploaded.push_back(entryPair.second->texture);
         }
     }
 
-    renderer.remove_textures(textures);
+    renderer.remove_textures(uploaded);
+
+    for (const auto& entryPair : this->entries) {
+        this->handles.release(entryPair.second->texture);
+    }
+
     this->pending.clear();
     this->entries.clear();
+}
+
+TextureHandle PresentationTextureCache::store(const TextureData& data, Renderer& renderer) {
+    const TextureHandle texture = this->handles.allocate();
+
+    try {
+        renderer.store_texture(texture, data);
+    } catch (...) {
+        this->handles.release(texture);
+        throw;
+    }
+
+    return texture;
+}
+
+void PresentationTextureCache::remove(const TextureHandle texture, Renderer& renderer) {
+    renderer.remove_texture(texture);
+    this->handles.release(texture);
 }
 
 TextureHandle PresentationTextureCache::find(const AssetId& asset) const {

@@ -120,12 +120,12 @@ void VulkanDevice::copy_buffer(VkBuffer source, VkBuffer destination, VkDeviceSi
 }
 
 void VulkanDevice::copy_texture(const VkBuffer source, const VkImage destination,
-    const std::span<const VkBufferImageCopy> regions, const std::uint32_t mipLevels) {
+    const std::span<const VkBufferImageCopy> regions, const std::uint32_t mipLevels, const std::uint32_t layers) {
     if (!this->transfer) {
         this->transfer = std::make_unique<VulkanTransferContext>(*this);
     }
 
-    this->transfer->copy_texture(source, destination, regions, mipLevels);
+    this->transfer->copy_texture(source, destination, regions, mipLevels, layers);
 }
 
 void VulkanDevice::wait_idle() const noexcept {

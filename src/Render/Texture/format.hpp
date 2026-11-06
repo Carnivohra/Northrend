@@ -4,6 +4,6 @@
 
 namespace Northrend {
 
-enum class TextureFormat : std::uint8_t { bc1Srgb, bc2Srgb, bc3Srgb, r8Unorm };
+enum class TextureFormat : std::uint8_t { bc1Srgb, bc2Srgb, bc3Srgb, r8Unorm, rgba8Unorm };
 
 }

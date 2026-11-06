@@ -8,8 +8,21 @@ namespace Northrend {
 
 TextureData::TextureData(const TextureFormat format, const std::uint32_t width, const std::uint32_t height,
     const std::span<const std::span<const std::byte>> mips) :
-    mipData(mips.begin(), mips.end()), pixelFormat(format), imageWidth(width), imageHeight(height) {
-    if (this->imageWidth == 0 || this->imageHeight == 0 || this->mipData.empty()) {
+    TextureData(format, width, height, 1, mips, false) {}
+
+TextureData::TextureData(const TextureFormat format, const std::uint32_t width, const std::uint32_t height,
+    const std::uint32_t layers, const std::span<const std::span<const std::byte>> mips) :
+    TextureData(format, width, height, layers, mips, true) {}
+
+TextureData::TextureData(const TextureFormat format, const std::uint32_t width, const std::uint32_t height,
+    const std::uint32_t layers, const std::span<const std::span<const std::byte>> mips, const bool array) :
+    mipData(mips.begin(), mips.end()),
+    pixelFormat(format),
+    imageWidth(width),
+    imageHeight(height),
+    imageLayers(layers),
+    imageArray(array) {
+    if (this->imageWidth == 0 || this->imageHeight == 0 || this->imageLayers == 0 || this->mipData.empty()) {
         throw std::invalid_argument("Texture data is incomplete");
     }
 
@@ -38,6 +51,14 @@ std::uint32_t TextureData::height() const noexcept {
     return this->imageHeight;
 }
 
+std::uint32_t TextureData::layers() const noexcept {
+    return this->imageLayers;
+}
+
+bool TextureData::array() const noexcept {
+    return this->imageArray;
+}
+
 std::size_t TextureData::mip_count() const noexcept {
     return this->mipData.size();
 }
@@ -63,14 +84,20 @@ std::span<const std::byte> TextureData::mip(const std::size_t mip) const {
 }
 
 std::size_t TextureData::mip_size(const std::uint32_t width, const std::uint32_t height) const noexcept {
+    std::size_t layerSize = 0;
+
     if (this->pixelFormat == TextureFormat::r8Unorm) {
-        return static_cast<std::size_t>(width) * height;
+        layerSize = static_cast<std::size_t>(width) * height;
+    } else if (this->pixelFormat == TextureFormat::rgba8Unorm) {
+        layerSize = static_cast<std::size_t>(width) * height * 4;
+    } else {
+        const std::size_t blocksX = (static_cast<std::size_t>(width) + 3) / 4;
+        const std::size_t blocksY = (static_cast<std::size_t>(height) + 3) / 4;
+        const std::size_t bytesPerBlock = this->pixelFormat == TextureFormat::bc1Srgb ? 8 : 16;
+        layerSize = blocksX * blocksY * bytesPerBlock;
     }
 
-    const std::size_t blocksX = (static_cast<std::size_t>(width) + 3) / 4;
-    const std::size_t blocksY = (static_cast<std::size_t>(height) + 3) / 4;
-    const std::size_t bytesPerBlock = this->pixelFormat == TextureFormat::bc1Srgb ? 8 : 16;
-    return blocksX * blocksY * bytesPerBlock;
+    return layerSize * this->imageLayers;
 }
 
 }

@@ -23,6 +23,21 @@ void World::tick(const ThreadDuration delta) {
     this->request_tiles();
 }
 
+void World::focus(TileFocus focus) {
+    this->tileFocus = focus;
+    TileGrid* tiles = this->worldMap.tiles();
+
+    if (!tiles) {
+        return;
+    }
+
+    const std::uint32_t generation = tiles->generation();
+
+    for (const auto [x, y] : tiles->focus(focus)) {
+        this->tileChanges.emplace_back(x, y, generation);
+    }
+}
+
 std::optional<TileChange> World::next_tile_change() {
     if (this->tileChangePosition >= this->tileChanges.size()) {
         this->tileChanges.clear();
@@ -71,10 +86,8 @@ void World::receive_map() {
         return;
     }
 
-    TileGrid* tiles = this->worldMap.tiles();
-
-    if (tiles) {
-        tiles->load_all();
+    if (this->tileFocus) {
+        this->focus(*this->tileFocus);
     }
 }
 
@@ -91,9 +104,10 @@ void World::receive_tiles() {
         if (tiles) {
             const TileRequest request = result->request();
             std::shared_ptr<const MapTile> tile = result->data();
+            std::unique_ptr<TerrainPayload> payload = std::move(*result).payload();
 
-            if (tiles->complete(std::move(*result)) && tile) {
-                this->tileChanges.emplace_back(request, std::move(tile));
+            if (tiles->complete(std::move(*result)) && tile && payload) {
+                this->tileChanges.emplace_back(request, std::move(tile), std::move(payload));
             }
         }
     }

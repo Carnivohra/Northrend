@@ -68,14 +68,19 @@ void VulkanMeshPipeline::create_layout() {
     const VkDescriptorSetLayout descriptorLayouts[] {
         this->camera.descriptor_layout(), this->light.descriptor_layout(), this->materials.descriptor_layout()
     };
+    const VkPushConstantRange detailRange {
+        .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
+        .offset = 0,
+        .size = sizeof(float) * 2
+    };
     const VkPipelineLayoutCreateInfo createInfo {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
         .pNext = nullptr,
         .flags = 0,
         .setLayoutCount = 3,
         .pSetLayouts = descriptorLayouts,
-        .pushConstantRangeCount = 0,
-        .pPushConstantRanges = nullptr
+        .pushConstantRangeCount = 1,
+        .pPushConstantRanges = &detailRange
     };
     const VkResult result = vkCreatePipelineLayout(this->device.handle(), &createInfo, nullptr, &this->layout);
 
@@ -148,7 +153,7 @@ VkPipeline VulkanMeshPipeline::create_graphics_pipeline(const VkRenderPass rende
             .location = 5, .binding = 1, .format = VK_FORMAT_R32G32B32A32_SFLOAT, .offset = sizeof(float) * 12
         }
     };
-    const std::array<VkVertexInputAttributeDescription, 4> worldAttributes {
+    const std::array<VkVertexInputAttributeDescription, 5> worldAttributes {
         VkVertexInputAttributeDescription {
             .location = 0, .binding = 0, .format = VK_FORMAT_R32G32B32_SFLOAT, .offset = 0
         },
@@ -162,7 +167,10 @@ VkPipeline VulkanMeshPipeline::create_graphics_pipeline(const VkRenderPass rende
             .offset = offsetof(MeshVertex, textureCoordinates)
         },
         VkVertexInputAttributeDescription {
-            .location = 3, .binding = 0, .format = VK_FORMAT_R32_UINT, .offset = offsetof(MeshVertex, texture)
+            .location = 3, .binding = 0, .format = VK_FORMAT_R8G8B8A8_UINT, .offset = offsetof(MeshVertex, textures)
+        },
+        VkVertexInputAttributeDescription {
+            .location = 4, .binding = 0, .format = VK_FORMAT_R32_UINT, .offset = offsetof(MeshVertex, material)
         }
     };
     const VkPipelineVertexInputStateCreateInfo vertexInput {

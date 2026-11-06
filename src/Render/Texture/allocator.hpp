@@ -2,8 +2,9 @@
 
 #include "Render/Texture/texture.hpp"
 
-#include <atomic>
 #include <cstdint>
+#include <mutex>
+#include <vector>
 
 namespace Northrend {
 
@@ -15,9 +16,12 @@ public:
     TextureHandleAllocator& operator=(const TextureHandleAllocator&) = delete;
 
     [[nodiscard]] TextureHandle allocate();
+    void release(TextureHandle handle);
 
 private:
-    std::atomic<std::uint64_t> nextValue = 1;
+    std::mutex access;
+    std::vector<std::uint64_t> availableValues;
+    std::uint64_t nextValue = 1;
 };
 
 }

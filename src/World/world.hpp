@@ -3,6 +3,7 @@
 #include "Thread/task.hpp"
 #include "World/Map/map.hpp"
 #include "World/Map/Tile/change.hpp"
+#include "World/Map/Tile/focus.hpp"
 #include "World/registry.hpp"
 
 #include <cstddef>
@@ -23,6 +24,7 @@ public:
     World& operator=(World&&) = delete;
 
     void tick(ThreadDuration delta);
+    void focus(TileFocus focus);
     [[nodiscard]] std::optional<TileChange> next_tile_change();
 
     [[nodiscard]] WorldRegistry& registry() noexcept;
@@ -43,6 +45,7 @@ private:
     WorldRegistry worldRegistry;
     Map worldMap;
     std::vector<TileChange> tileChanges;
+    std::optional<TileFocus> tileFocus;
     std::size_t tileChangePosition = 0;
 };
 

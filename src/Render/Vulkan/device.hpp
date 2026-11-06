@@ -31,8 +31,8 @@ public:
 
     void copy_buffer(VkBuffer source, VkBuffer destination, VkDeviceSize size, VkDeviceSize sourceOffset = 0,
         VkDeviceSize destinationOffset = 0);
-    void copy_texture(
-        VkBuffer source, VkImage destination, std::span<const VkBufferImageCopy> regions, std::uint32_t mipLevels);
+    void copy_texture(VkBuffer source, VkImage destination, std::span<const VkBufferImageCopy> regions,
+        std::uint32_t mipLevels, std::uint32_t layers);
     void wait_idle() const noexcept;
 
 private:

@@ -2,6 +2,7 @@
 
 #include "Thread/pool.hpp"
 #include "Thread/work.hpp"
+#include "World/Map/Terrain/payload.hpp"
 #include "World/Map/Tile/tile.hpp"
 
 #include <exception>
@@ -63,8 +64,10 @@ void TileJob::execute(const std::stop_token stopToken) {
 
     TileResult result = [&] {
         try {
-            return TileResult(this->tileRequest,
-                std::make_shared<MapTile>(this->assetRequest.data(), this->tileRequest.high_resolution_alpha()));
+            const Adt adt(this->assetRequest.data());
+            auto payload = std::make_unique<TerrainPayload>(adt, this->tileRequest.high_resolution_alpha());
+            auto tile = std::make_shared<MapTile>(adt);
+            return TileResult(this->tileRequest, std::move(tile), std::move(payload));
         } catch (...) {
             return TileResult(this->tileRequest, std::current_exception());
         }

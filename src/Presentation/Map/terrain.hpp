@@ -4,6 +4,7 @@
 #include "Math/vector.hpp"
 #include "Render/Mesh/mesh.hpp"
 #include "Render/Material/material.hpp"
+#include "Render/Texture/texture.hpp"
 #include "World/Map/Tile/grid.hpp"
 
 #include <array>
@@ -14,6 +15,7 @@ namespace Northrend {
 
 struct Camera;
 class MapTile;
+class TerrainPayload;
 class MaterialHandleAllocator;
 class MeshHandleAllocator;
 class PresentationTextureCache;
@@ -22,11 +24,14 @@ class RenderScene;
 
 class PresentationTerrain final {
 public:
-    void load(std::size_t x, std::size_t y, const MapTile& tile, MeshHandleAllocator& meshAllocator,
-        MaterialHandleAllocator& materialAllocator, const PresentationTextureCache& textures, Renderer& renderer,
+    void load(std::size_t x, std::size_t y, const MapTile& tile, const TerrainPayload& payload,
+        MeshHandleAllocator& meshAllocator, MaterialHandleAllocator& materialAllocator,
+        PresentationTextureCache& textures, Renderer& renderer, RenderScene& scene);
+    void unload(std::size_t x, std::size_t y, MeshHandleAllocator& meshAllocator,
+        MaterialHandleAllocator& materialAllocator, PresentationTextureCache& textures, Renderer& renderer,
         RenderScene& scene);
-    void unload(std::size_t x, std::size_t y, Renderer& renderer, RenderScene& scene);
-    void clear(Renderer& renderer, RenderScene& scene);
+    void clear(MeshHandleAllocator& meshAllocator, MaterialHandleAllocator& materialAllocator,
+        PresentationTextureCache& textures, Renderer& renderer, RenderScene& scene);
     void update(const Camera& camera, int width, int height, RenderScene& scene);
 
 private:
@@ -34,7 +39,8 @@ private:
         return y * TileGrid::Size + x;
     }
 
-    void release(std::size_t tile, Renderer& renderer, RenderScene& scene);
+    void release(std::size_t tile, MeshHandleAllocator& meshAllocator, MaterialHandleAllocator& materialAllocator,
+        PresentationTextureCache& textures, Renderer& renderer, RenderScene& scene);
     [[nodiscard]] static float projected_size(
         const Camera& camera, int height, const Vector3& minimum, const Vector3& maximum) noexcept;
     [[nodiscard]] static std::uint8_t select_level(float projectedSize, std::uint8_t current) noexcept;
@@ -43,6 +49,7 @@ private:
 
     std::array<MeshHandle, TileGrid::TileCount> meshes;
     std::array<MaterialHandle, TileGrid::TileCount> materials;
+    std::array<TextureHandle, TileGrid::TileCount> alphaTextures;
     std::array<Entity, TileGrid::TileCount> entities;
     std::array<Vector3, TileGrid::TileCount> minimums;
     std::array<Vector3, TileGrid::TileCount> maximums;

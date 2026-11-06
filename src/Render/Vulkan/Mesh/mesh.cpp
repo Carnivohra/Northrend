@@ -71,6 +71,7 @@ VulkanDraw VulkanMesh::draw(const std::uint32_t firstInstance, const std::size_t
         .firstIndex = static_cast<std::uint32_t>(firstIndex),
         .vertexOffset = static_cast<std::int32_t>(vertexOffset),
         .firstInstance = firstInstance,
+        .detailLevel = 0,
         .material = {}
     };
 }

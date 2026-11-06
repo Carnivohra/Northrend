@@ -14,6 +14,7 @@ Simulation::Simulation(PresentationExchange& presentationExchange, MapExchange& 
 void Simulation::start() {}
 
 void Simulation::tick(ThreadDuration delta) {
+    this->receive_tile_focus();
     this->state.tick(delta);
     this->receive_map_request();
 
@@ -35,6 +36,18 @@ void Simulation::tick(ThreadDuration delta) {
 
     this->presentationExchange.write() = WorldSnapshot {.sequence = ++this->sequence};
     this->presentationExchange.publish();
+}
+
+void Simulation::receive_tile_focus() {
+    std::optional<TileFocus> focus;
+
+    while (std::optional<TileFocus> current = this->presentationExchange.next_focus()) {
+        focus = std::move(current);
+    }
+
+    if (focus) {
+        this->state.focus(*focus);
+    }
 }
 
 void Simulation::stop() {}

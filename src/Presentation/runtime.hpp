@@ -3,6 +3,7 @@
 #include "Presentation/exchange.hpp"
 
 #include <concepts>
+#include <cstddef>
 
 namespace Northrend {
 
@@ -11,7 +12,7 @@ class AssetSystem;
 class Window;
 
 template <typename Type>
-concept PresentationModule = std::constructible_from<Type, PresentationExchange&, AssetSystem&> &&
+concept PresentationModule = std::constructible_from<Type, PresentationExchange&, AssetSystem&, std::size_t> &&
     requires(Type presentation, const Window& window, const Input& input) {
         { presentation.start(window) } -> std::same_as<void>;
         { presentation.suspend() } -> std::same_as<void>;
@@ -21,7 +22,8 @@ concept PresentationModule = std::constructible_from<Type, PresentationExchange&
 
 template <PresentationModule PresentationType> class PresentationRuntime final {
 public:
-    explicit PresentationRuntime(AssetSystem& assets) : presentation(this->presentationExchange, assets) {}
+    PresentationRuntime(AssetSystem& assets, const std::size_t renderDistance) :
+        presentation(this->presentationExchange, assets, renderDistance) {}
 
     PresentationRuntime(const PresentationRuntime&) = delete;
     PresentationRuntime& operator=(const PresentationRuntime&) = delete;

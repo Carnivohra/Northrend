@@ -41,7 +41,19 @@ std::span<const std::uint16_t> TerrainGeometry::indices(const std::size_t level)
 void TerrainGeometry::append_vertices(const Adt& adt, const std::size_t chunkX, const std::size_t chunkY) {
     const float baseX = adt.position_x(chunkX, chunkY);
     const float baseY = adt.position_y(chunkX, chunkY);
-    const std::uint32_t texture = adt.layer_count(chunkX, chunkY) == 0 ? 0 : adt.layer_texture(chunkX, chunkY, 0);
+    const std::size_t layerCount = adt.layer_count(chunkX, chunkY);
+    const std::uint32_t baseTexture = layerCount == 0 ? 0 : adt.layer_texture(chunkX, chunkY, 0);
+    std::array<std::uint8_t, Adt::MaximumLayers> textures;
+
+    for (std::size_t layer = 0; layer < textures.size(); ++layer) {
+        const std::uint32_t texture = layer < layerCount ? adt.layer_texture(chunkX, chunkY, layer) : baseTexture;
+
+        if (texture > std::numeric_limits<std::uint8_t>::max()) {
+            throw std::overflow_error("ADT terrain texture index exceeds the vertex layout");
+        }
+
+        textures[layer] = static_cast<std::uint8_t>(texture);
+    }
 
     for (std::size_t row = 0; row <= CellsPerChunk; ++row) {
         const float x = baseX - static_cast<float>(row) * CellSize;
@@ -60,7 +72,7 @@ void TerrainGeometry::append_vertices(const Adt& adt, const std::size_t chunkX, 
                 .normal = {normal[0], normal[1], normal[2], 0},
                 .textureCoordinates =
                     {static_cast<float>(column) / CellsPerChunk, static_cast<float>(row) / CellsPerChunk},
-                .texture = texture
+                .textures = textures
             });
         }
 
@@ -82,7 +94,7 @@ void TerrainGeometry::append_vertices(const Adt& adt, const std::size_t chunkX, 
                 .textureCoordinates =
                     {(static_cast<float>(column) + 0.5F) / CellsPerChunk,
                         (static_cast<float>(row) + 0.5F) / CellsPerChunk},
-                .texture = texture
+                .textures = textures
             });
         }
     }

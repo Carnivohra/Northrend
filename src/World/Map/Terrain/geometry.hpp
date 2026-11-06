@@ -16,7 +16,7 @@ class TerrainGeometry final {
 public:
     static constexpr std::size_t VertexCount = 16 * 16 * 145;
     static constexpr std::size_t MaximumIndexCount = 16 * 16 * 8 * 8 * 12;
-    static constexpr std::size_t LevelCount = 4;
+    static constexpr std::size_t LevelCount = 3;
 
     explicit TerrainGeometry(const Adt& adt);
 

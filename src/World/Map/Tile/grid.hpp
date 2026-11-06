@@ -7,12 +7,15 @@
 #include <cstdint>
 #include <memory>
 #include <optional>
+#include <utility>
+#include <vector>
 
 namespace Northrend {
 
 class Map;
 class MapLayout;
 class MapTile;
+class TileFocus;
 class TileResult;
 
 enum class TileState : std::uint8_t { missing, requested, loading, ready, active, failed };
@@ -25,8 +28,7 @@ public:
     TileGrid() = default;
     TileGrid(std::uint32_t generation, std::shared_ptr<const MapLayout> layout) noexcept;
 
-    void load_all() noexcept;
-    void focus(std::size_t x, std::size_t y, std::size_t radius);
+    [[nodiscard]] std::vector<std::pair<std::size_t, std::size_t>> focus(const TileFocus& focus);
     [[nodiscard]] std::optional<TileRequest> next_request() noexcept;
     [[nodiscard]] bool defer(const TileRequest& request) noexcept;
 
@@ -40,11 +42,11 @@ public:
     [[nodiscard]] TileState state(std::size_t x, std::size_t y) const noexcept;
     [[nodiscard]] const MapTile* tile(std::size_t x, std::size_t y) const noexcept;
     [[nodiscard]] std::size_t pending() const noexcept;
+    [[nodiscard]] std::uint32_t generation() const noexcept;
 
 private:
     friend class Map;
 
-    [[nodiscard]] std::uint32_t generation() const noexcept;
     [[nodiscard]] static constexpr std::uint16_t index(const std::size_t x, const std::size_t y) noexcept {
         return static_cast<std::uint16_t>(y * Size + x);
     }

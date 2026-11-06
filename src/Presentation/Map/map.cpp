@@ -1,5 +1,6 @@
 #include "Presentation/Map/map.hpp"
 
+#include "Presentation/exchange.hpp"
 #include "Presentation/Texture/cache.hpp"
 #include "Render/renderer.hpp"
 #include "World/Map/Terrain/material.hpp"
@@ -10,12 +11,19 @@
 
 namespace Northrend {
 
-void PresentationMap::apply(
-    TileChange change, PresentationTextureCache& textures, Renderer& renderer, RenderScene& scene) {
+void PresentationMap::apply(TileChange change, MeshHandleAllocator& meshAllocator,
+    MaterialHandleAllocator& materialAllocator, PresentationTextureCache& textures, Renderer& renderer,
+    RenderScene& scene) {
     if (change.kind() == TileChange::Kind::reset) {
-        this->terrain.clear(renderer, scene);
+        this->terrain.clear(meshAllocator, materialAllocator, textures, renderer, scene);
         this->tiles.fill(nullptr);
+
+        for (std::unique_ptr<TerrainPayload>& payload : this->payloads) {
+            payload.reset();
+        }
+
         this->pending.fill(false);
+        this->tileFocus.reset();
         textures.clear(renderer);
         this->currentGeneration = change.generation();
         return;
@@ -32,38 +40,53 @@ void PresentationMap::apply(
 
     if (change.kind() == TileChange::Kind::unloaded) {
         if (this->tiles[tile]) {
-            this->terrain.unload(x, y, renderer, scene);
+            this->terrain.unload(x, y, meshAllocator, materialAllocator, textures, renderer, scene);
             release_textures(*this->tiles[tile], textures, renderer);
         }
 
         this->tiles[tile].reset();
+        this->payloads[tile].reset();
         this->pending[tile] = false;
         return;
     }
 
     std::shared_ptr<const MapTile> mapTile = std::move(change).tile();
+    std::unique_ptr<TerrainPayload> payload = std::move(change).payload();
 
-    if (!mapTile) {
+    if (!mapTile || !payload) {
         return;
     }
 
     if (this->tiles[tile]) {
-        this->terrain.unload(x, y, renderer, scene);
+        this->terrain.unload(x, y, meshAllocator, materialAllocator, textures, renderer, scene);
         release_textures(*this->tiles[tile], textures, renderer);
     }
 
     retain_textures(*mapTile, textures, renderer);
     this->tiles[tile] = std::move(mapTile);
+    this->payloads[tile] = std::move(payload);
     this->pending[tile] = true;
 }
 
+void PresentationMap::focus(const Vector3& position, const std::size_t radius, PresentationExchange& exchange) {
+    const TileFocus focus = TileFocus::from_world(position.x, position.y, radius);
+
+    if (this->tileFocus && *this->tileFocus == focus) {
+        return;
+    }
+
+    if (exchange.publish(focus)) {
+        this->tileFocus = focus;
+    }
+}
+
 void PresentationMap::prepare(MeshHandleAllocator& meshAllocator, MaterialHandleAllocator& materialAllocator,
-    const PresentationTextureCache& textures, Renderer& renderer, RenderScene& scene) {
+    PresentationTextureCache& textures, Renderer& renderer, RenderScene& scene) {
     static constexpr std::size_t TilesPerFrame = 4;
     std::size_t prepared = 0;
 
     for (std::size_t tile = 0; tile < this->pending.size() && prepared < TilesPerFrame; ++tile) {
-        if (!this->pending[tile] || !this->tiles[tile]) {
+        if (!this->pending[tile] || !this->tiles[tile] || !this->payloads[tile]) {
             continue;
         }
 
@@ -83,16 +106,25 @@ void PresentationMap::prepare(MeshHandleAllocator& meshAllocator, MaterialHandle
 
         const std::size_t x = tile % TileGrid::Size;
         const std::size_t y = tile / TileGrid::Size;
-        this->terrain.load(x, y, *this->tiles[tile], meshAllocator, materialAllocator, textures, renderer, scene);
+        this->terrain.load(x, y, *this->tiles[tile], *this->payloads[tile], meshAllocator, materialAllocator, textures,
+            renderer, scene);
+        this->payloads[tile].reset();
         this->pending[tile] = false;
         ++prepared;
     }
 }
 
-void PresentationMap::clear(PresentationTextureCache& textures, Renderer& renderer, RenderScene& scene) {
-    this->terrain.clear(renderer, scene);
+void PresentationMap::clear(MeshHandleAllocator& meshAllocator, MaterialHandleAllocator& materialAllocator,
+    PresentationTextureCache& textures, Renderer& renderer, RenderScene& scene) {
+    this->terrain.clear(meshAllocator, materialAllocator, textures, renderer, scene);
     this->tiles.fill(nullptr);
+
+    for (std::unique_ptr<TerrainPayload>& payload : this->payloads) {
+        payload.reset();
+    }
+
     this->pending.fill(false);
+    this->tileFocus.reset();
     textures.clear(renderer);
     this->currentGeneration = 0;
 }

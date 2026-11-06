@@ -8,12 +8,14 @@ namespace Northrend {
 
 class MaterialData final {
 public:
-    explicit MaterialData(std::span<const TextureHandle> textures) noexcept;
+    MaterialData(std::span<const TextureHandle> textures, TextureHandle alpha) noexcept;
 
     [[nodiscard]] std::span<const TextureHandle> textures() const noexcept;
+    [[nodiscard]] TextureHandle alpha() const noexcept;
 
 private:
     std::span<const TextureHandle> materialTextures;
+    TextureHandle alphaTexture;
 };
 
 }

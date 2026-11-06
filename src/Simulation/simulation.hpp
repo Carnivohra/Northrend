@@ -32,6 +32,7 @@ private:
     static constexpr std::size_t TileChangesPerTick = 32;
 
     void receive_map_request();
+    void receive_tile_focus();
 
     PresentationExchange& presentationExchange;
     MapExchange& mapExchange;

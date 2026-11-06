@@ -9,9 +9,10 @@
 namespace Northrend {
 
 VulkanTexture::VulkanTexture(VulkanDevice& device, const TextureFormat format, const std::uint32_t width,
-    const std::uint32_t height, const std::size_t mipCount) :
+    const std::uint32_t height, const std::uint32_t layers, const std::size_t mipCount, const bool array) :
     device(device) {
-    if (width == 0 || height == 0 || mipCount == 0 || mipCount > std::numeric_limits<std::uint32_t>::max()) {
+    if (width == 0 || height == 0 || layers == 0 || mipCount == 0 ||
+        mipCount > std::numeric_limits<std::uint32_t>::max()) {
         throw std::invalid_argument("Vulkan texture dimensions are invalid");
     }
 
@@ -31,7 +32,7 @@ VulkanTexture::VulkanTexture(VulkanDevice& device, const TextureFormat format, c
         .format = vkFormat,
         .extent = VkExtent3D {.width = width, .height = height, .depth = 1},
         .mipLevels = static_cast<std::uint32_t>(mipCount),
-        .arrayLayers = 1,
+        .arrayLayers = layers,
         .samples = VK_SAMPLE_COUNT_1_BIT,
         .tiling = VK_IMAGE_TILING_OPTIMAL,
         .usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
@@ -74,7 +75,7 @@ VulkanTexture::VulkanTexture(VulkanDevice& device, const TextureFormat format, c
             .pNext = nullptr,
             .flags = 0,
             .image = this->image,
-            .viewType = VK_IMAGE_VIEW_TYPE_2D,
+            .viewType = array ? VK_IMAGE_VIEW_TYPE_2D_ARRAY : VK_IMAGE_VIEW_TYPE_2D,
             .format = vkFormat,
             .components =
                 VkComponentMapping {
@@ -88,7 +89,7 @@ VulkanTexture::VulkanTexture(VulkanDevice& device, const TextureFormat format, c
                 .baseMipLevel = 0,
                 .levelCount = static_cast<std::uint32_t>(mipCount),
                 .baseArrayLayer = 0,
-                .layerCount = 1
+                .layerCount = layers
             }
         };
         result = vkCreateImageView(this->device.handle(), &viewInfo, nullptr, &this->imageView);
@@ -124,6 +125,8 @@ VkFormat VulkanTexture::vulkan_format(const TextureFormat format) noexcept {
         return VK_FORMAT_BC3_SRGB_BLOCK;
     case TextureFormat::r8Unorm:
         return VK_FORMAT_R8_UNORM;
+    case TextureFormat::rgba8Unorm:
+        return VK_FORMAT_R8G8B8A8_UNORM;
     }
 
     return VK_FORMAT_UNDEFINED;

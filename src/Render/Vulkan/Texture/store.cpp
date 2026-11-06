@@ -61,7 +61,7 @@ void VulkanTextureStore::store(const TextureHandle handle, const TextureData& da
                     .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
                     .mipLevel = static_cast<std::uint32_t>(mip),
                     .baseArrayLayer = 0,
-                    .layerCount = 1
+                    .layerCount = data.layers()
                 },
             .imageOffset = VkOffset3D {.x = 0, .y = 0, .z = 0},
             .imageExtent = VkExtent3D {.width = data.mip_width(mip), .height = data.mip_height(mip), .depth = 1}
@@ -77,10 +77,10 @@ void VulkanTextureStore::store(const TextureHandle handle, const TextureData& da
         this->staging->write(data.mip(mip), regions[mip].bufferOffset);
     }
 
-    auto texture =
-        std::make_unique<VulkanTexture>(this->device, data.format(), data.width(), data.height(), data.mip_count());
-    this->device.copy_texture(
-        this->staging->handle(), texture->handle(), regions, static_cast<std::uint32_t>(data.mip_count()));
+    auto texture = std::make_unique<VulkanTexture>(
+        this->device, data.format(), data.width(), data.height(), data.layers(), data.mip_count(), data.array());
+    this->device.copy_texture(this->staging->handle(), texture->handle(), regions,
+        static_cast<std::uint32_t>(data.mip_count()), data.layers());
     this->textures[index] = std::move(texture);
 }
 

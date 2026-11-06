@@ -1,5 +1,6 @@
 #include "World/Map/Tile/change.hpp"
 
+#include "World/Map/Terrain/payload.hpp"
 #include "World/Map/Tile/request.hpp"
 
 #include <utility>
@@ -8,8 +9,10 @@ namespace Northrend {
 
 TileChange::TileChange(const std::uint32_t generation) noexcept : tileGeneration(generation), changeKind(Kind::reset) {}
 
-TileChange::TileChange(const TileRequest& request, std::shared_ptr<const MapTile> tile) noexcept :
+TileChange::TileChange(
+    const TileRequest& request, std::shared_ptr<const MapTile> tile, std::unique_ptr<TerrainPayload> payload) noexcept :
     mapTile(std::move(tile)),
+    terrainPayload(std::move(payload)),
     tileGeneration(request.generation()),
     tileX(static_cast<std::uint8_t>(request.x())),
     tileY(static_cast<std::uint8_t>(request.y())),
@@ -39,6 +42,10 @@ std::uint32_t TileChange::generation() const noexcept {
 
 std::shared_ptr<const MapTile> TileChange::tile() && noexcept {
     return std::move(this->mapTile);
+}
+
+std::unique_ptr<TerrainPayload> TileChange::payload() && noexcept {
+    return std::move(this->terrainPayload);
 }
 
 }

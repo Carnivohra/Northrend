@@ -19,8 +19,8 @@ public:
 
     void copy_buffer(VkBuffer source, VkBuffer destination, VkDeviceSize size, VkDeviceSize sourceOffset,
         VkDeviceSize destinationOffset);
-    void copy_texture(
-        VkBuffer source, VkImage destination, std::span<const VkBufferImageCopy> regions, std::uint32_t mipLevels);
+    void copy_texture(VkBuffer source, VkImage destination, std::span<const VkBufferImageCopy> regions,
+        std::uint32_t mipLevels, std::uint32_t layers);
 
 private:
     void begin();

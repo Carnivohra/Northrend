@@ -13,8 +13,8 @@ class VulkanDevice;
 
 class VulkanTexture final {
 public:
-    VulkanTexture(
-        VulkanDevice& device, TextureFormat format, std::uint32_t width, std::uint32_t height, std::size_t mipCount);
+    VulkanTexture(VulkanDevice& device, TextureFormat format, std::uint32_t width, std::uint32_t height,
+        std::uint32_t layers, std::size_t mipCount, bool array);
     ~VulkanTexture();
 
     VulkanTexture(const VulkanTexture&) = delete;

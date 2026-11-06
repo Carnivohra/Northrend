@@ -67,8 +67,8 @@ void VulkanTransferContext::copy_buffer(VkBuffer source, VkBuffer destination, V
 }
 
 void VulkanTransferContext::copy_texture(const VkBuffer source, const VkImage destination,
-    const std::span<const VkBufferImageCopy> regions, const std::uint32_t mipLevels) {
-    if (source == VK_NULL_HANDLE || destination == VK_NULL_HANDLE || regions.empty() || mipLevels == 0) {
+    const std::span<const VkBufferImageCopy> regions, const std::uint32_t mipLevels, const std::uint32_t layers) {
+    if (source == VK_NULL_HANDLE || destination == VK_NULL_HANDLE || regions.empty() || mipLevels == 0 || layers == 0) {
         throw std::invalid_argument("Vulkan texture transfer is invalid");
     }
 
@@ -78,7 +78,7 @@ void VulkanTransferContext::copy_texture(const VkBuffer source, const VkImage de
         .baseMipLevel = 0,
         .levelCount = mipLevels,
         .baseArrayLayer = 0,
-        .layerCount = 1
+        .layerCount = layers
     };
     const VkImageMemoryBarrier transferBarrier {
         .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,

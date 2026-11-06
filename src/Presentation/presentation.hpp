@@ -26,8 +26,8 @@ concept PresentationRenderer = std::derived_from<Type, Renderer> && std::constru
 
 template <PresentationRenderer RendererType> class Presentation final {
 public:
-    Presentation(PresentationExchange& presentationExchange, AssetSystem& assets) :
-        presentationExchange(presentationExchange), textures(assets) {}
+    Presentation(PresentationExchange& presentationExchange, AssetSystem& assets, const std::size_t renderDistance) :
+        presentationExchange(presentationExchange), textures(assets), renderDistance(renderDistance) {}
 
     void start(const Window& window) {
         this->renderer.emplace(window);
@@ -50,12 +50,12 @@ public:
                 break;
             }
 
-            this->map.apply(std::move(*change), this->textures, *this->renderer, this->scene);
+            this->map.apply(std::move(*change), this->meshHandles, this->materialHandles, this->textures,
+                *this->renderer, this->scene);
             mapChanged = true;
         }
 
         this->textures.tick(*this->renderer);
-        this->map.prepare(this->meshHandles, this->materialHandles, this->textures, *this->renderer, this->scene);
 
         const WorldSnapshot& snapshot = this->presentationExchange.read_latest();
 
@@ -64,13 +64,17 @@ public:
         }
 
         this->control_camera(input, mapChanged);
-        this->map.update(this->scene.active_camera(), this->window->width(), this->window->height(), this->scene);
+        const Camera& camera = this->scene.active_camera();
+        this->map.focus(camera.position, this->renderDistance, this->presentationExchange);
+        this->map.prepare(this->meshHandles, this->materialHandles, this->textures, *this->renderer, this->scene);
+        this->map.update(camera, this->window->width(), this->window->height(), this->scene);
         this->renderer->frame(this->scene.frame());
     }
 
     void stop() {
         if (this->renderer) {
-            this->map.clear(this->textures, *this->renderer, this->scene);
+            this->map.clear(
+                this->meshHandles, this->materialHandles, this->textures, *this->renderer, this->scene);
         }
 
         this->renderer.reset();
@@ -204,6 +208,7 @@ private:
     float cameraYaw = 0.0F;
     float cameraPitch = 0.0F;
     float cameraSpeed = 2'000.0F;
+    std::size_t renderDistance;
     bool cameraControlled = false;
     const Window* window = nullptr;
 };

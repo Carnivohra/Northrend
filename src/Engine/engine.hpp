@@ -23,7 +23,7 @@ public:
     explicit Engine(const EnginePlan& plan) :
         threadPool(worker_count()),
         assets(plan.assets, this->threadPool),
-        presentation(this->assets),
+        presentation(this->assets, plan.renderDistance),
         simulation(this->presentation.exchange(), this->assets, this->threadPool) {}
 
     void started(const Window& window) override {

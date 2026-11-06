@@ -55,7 +55,9 @@ target_sources(Northrend
     World/Map/selection.cpp
     World/Map/Terrain/geometry.cpp
     World/Map/Terrain/material.cpp
+    World/Map/Terrain/payload.cpp
     World/Map/Tile/change.cpp
+    World/Map/Tile/focus.cpp
     World/Map/Tile/grid.cpp
     World/Map/Tile/job.cpp
     World/Map/Tile/request.cpp
@@ -159,7 +161,9 @@ target_sources(Northrend
       World/Map/selection.hpp
       World/Map/Terrain/geometry.hpp
       World/Map/Terrain/material.hpp
+      World/Map/Terrain/payload.hpp
       World/Map/Tile/change.hpp
+      World/Map/Tile/focus.hpp
       World/Map/Tile/grid.hpp
       World/Map/Tile/job.hpp
       World/Map/Tile/request.hpp

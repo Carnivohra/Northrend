@@ -2,6 +2,7 @@
 
 #include "Thread/mailbox.hpp"
 #include "World/Map/Tile/change.hpp"
+#include "World/Map/Tile/focus.hpp"
 #include "World/snapshot.hpp"
 
 #include <array>
@@ -56,6 +57,14 @@ public:
         return this->tileChanges.full();
     }
 
+    [[nodiscard]] bool publish(TileFocus focus) {
+        return this->tileFocuses.try_push(std::move(focus));
+    }
+
+    [[nodiscard]] std::optional<TileFocus> next_focus() {
+        return this->tileFocuses.try_pop();
+    }
+
 private:
     static constexpr std::uint8_t PendingBit = 0x80;
     static constexpr std::uint8_t IndexMask = 0x03;
@@ -74,6 +83,7 @@ private:
 
     std::array<WorldSnapshot, 3> snapshots {};
     Mailbox<TileChange, TileCapacity> tileChanges;
+    Mailbox<TileFocus, 8> tileFocuses;
     std::atomic<std::uint8_t> available = encode(1, false);
     std::size_t consumerIndex = 0;
     std::size_t producerIndex = 2;
