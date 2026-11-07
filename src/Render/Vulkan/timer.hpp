@@ -1,8 +1,9 @@
 #pragma once
 
+#include "Debug/timing.hpp"
+
 #include <volk.h>
 
-#include <chrono>
 #include <cstddef>
 #include <cstdint>
 #include <optional>
@@ -27,22 +28,17 @@ public:
     void end(VkCommandBuffer commandBuffer, std::size_t imageIndex) const noexcept;
     void submitted(std::size_t imageIndex) noexcept;
 
-    [[nodiscard]] std::optional<double> collect(std::size_t imageIndex);
+    [[nodiscard]] std::optional<Timing::Summary> collect(std::size_t imageIndex);
 
 private:
-    using Clock = std::chrono::steady_clock;
-    using TimePoint = Clock::time_point;
-
     [[nodiscard]] std::uint32_t first_query(std::size_t imageIndex) const noexcept;
 
     VulkanDevice& device;
     VkQueryPool pool = VK_NULL_HANDLE;
     std::vector<std::uint8_t> pending;
-    TimePoint interval = Clock::now();
+    Timing timing;
     double timestampPeriod = 0.0;
-    double elapsedMilliseconds = 0.0;
     std::uint64_t timestampMask = 0;
-    std::uint64_t samples = 0;
 };
 
 }

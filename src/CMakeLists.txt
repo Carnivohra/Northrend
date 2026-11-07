@@ -23,6 +23,7 @@ target_sources(Northrend
     Asset/system.cpp
     Backend/backend.cpp
     Config/config.cpp
+    Debug/timing.cpp
     ECS/registry.cpp
     Math/Glm/matrix.cpp
     Math/Glm/matrix.hpp
@@ -101,7 +102,7 @@ target_sources(Northrend
       ECS/entity.hpp
       ECS/registry.hpp
       Engine/engine.hpp
-      Debug/fps.hpp
+      Debug/timing.hpp
       Engine/plan.hpp
       Input/Gamepad/axis.hpp
       Input/Gamepad/button.hpp

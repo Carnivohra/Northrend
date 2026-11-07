@@ -94,8 +94,8 @@ void VulkanSwapchain::render(const RenderFrame& renderFrame) {
     }
 
 #ifdef NORTHREND_GPU_PROFILING
-    if (const auto milliseconds = this->commands->gpu_time(imageIndex)) {
-        std::cout << "GPU render: " << *milliseconds << " ms\n";
+    if (const auto summary = this->commands->gpu_time(imageIndex)) {
+        Timing::write(std::cout, "GPU render", *summary);
     }
 #endif
 

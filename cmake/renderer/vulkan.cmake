@@ -106,7 +106,7 @@ if(NORTHREND_GPU_PROFILING)
       Render/Vulkan/timer.hpp)
 
   target_compile_definitions(Northrend
-    PRIVATE
+    PUBLIC
       NORTHREND_GPU_PROFILING)
 endif()
 

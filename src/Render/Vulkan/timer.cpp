@@ -59,15 +59,12 @@ void VulkanGpuTimer::allocate(const std::size_t count) {
     }
 
     this->pending.assign(count, false);
-    this->interval = Clock::now();
-    this->elapsedMilliseconds = 0.0;
-    this->samples = 0;
+    this->timing.reset();
 }
 
 void VulkanGpuTimer::release() noexcept {
     this->pending.clear();
-    this->elapsedMilliseconds = 0.0;
-    this->samples = 0;
+    this->timing.reset();
 
     if (this->pool != VK_NULL_HANDLE) {
         vkDestroyQueryPool(this->device.handle(), this->pool, nullptr);
@@ -100,7 +97,7 @@ void VulkanGpuTimer::submitted(const std::size_t imageIndex) noexcept {
     }
 }
 
-std::optional<double> VulkanGpuTimer::collect(const std::size_t imageIndex) {
+std::optional<Timing::Summary> VulkanGpuTimer::collect(const std::size_t imageIndex) {
     if (this->pool == VK_NULL_HANDLE || !this->pending[imageIndex]) {
         return std::nullopt;
     }
@@ -120,21 +117,8 @@ std::optional<double> VulkanGpuTimer::collect(const std::size_t imageIndex) {
 
     this->pending[imageIndex] = false;
     const std::uint64_t ticks = (timestamps[1] - timestamps[0]) & this->timestampMask;
-    this->elapsedMilliseconds += static_cast<double>(ticks) * this->timestampPeriod / 1'000'000.0;
-    ++this->samples;
-
-    const TimePoint now = Clock::now();
-
-    if (now - this->interval < std::chrono::seconds(1)) {
-        return std::nullopt;
-    }
-
-    const double average = this->elapsedMilliseconds / static_cast<double>(this->samples);
-    this->interval = now;
-    this->elapsedMilliseconds = 0.0;
-    this->samples = 0;
-
-    return average;
+    const double milliseconds = static_cast<double>(ticks) * this->timestampPeriod / 1'000'000.0;
+    return this->timing.record(milliseconds);
 }
 
 std::uint32_t VulkanGpuTimer::first_query(const std::size_t imageIndex) const noexcept {

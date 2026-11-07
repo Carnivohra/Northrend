@@ -179,7 +179,7 @@ VkCommandBuffer VulkanCommandContext::handle(std::size_t imageIndex) const noexc
 }
 
 #ifdef NORTHREND_GPU_PROFILING
-std::optional<double> VulkanCommandContext::gpu_time(const std::size_t imageIndex) {
+std::optional<Timing::Summary> VulkanCommandContext::gpu_time(const std::size_t imageIndex) {
     return this->timer.collect(imageIndex);
 }
 #endif

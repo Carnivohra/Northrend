@@ -47,7 +47,7 @@ public:
     [[nodiscard]] VkCommandBuffer handle(std::size_t imageIndex) const noexcept;
 
 #ifdef NORTHREND_GPU_PROFILING
-    [[nodiscard]] std::optional<double> gpu_time(std::size_t imageIndex);
+    [[nodiscard]] std::optional<Timing::Summary> gpu_time(std::size_t imageIndex);
 #endif
 
 private:

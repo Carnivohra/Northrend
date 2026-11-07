@@ -2,7 +2,6 @@
 
 #include "Asset/system.hpp"
 #include "Backend/application.hpp"
-#include "Debug/fps.hpp"
 #include "Engine/plan.hpp"
 #include "Input/input.hpp"
 #include "Presentation/runtime.hpp"
@@ -15,6 +14,12 @@
 #include <exception>
 #include <iostream>
 #include <thread>
+
+#ifdef NORTHREND_GPU_PROFILING
+#include "Debug/timing.hpp"
+
+#include <chrono>
+#endif
 
 namespace Northrend {
 
@@ -45,7 +50,10 @@ public:
 
     void resumed() override {
         this->simulation.resume();
-        this->fps.reset();
+
+#ifdef NORTHREND_GPU_PROFILING
+        this->cpuTiming.reset();
+#endif
     }
 
     void suspended() override {
@@ -60,11 +68,21 @@ public:
     void tick(const Input& input) override {
         this->assets.tick();
         this->simulation.tick();
+
+#ifdef NORTHREND_GPU_PROFILING
+        const auto renderStart = std::chrono::steady_clock::now();
+#endif
+
         this->presentation.tick(input);
 
-        if (const auto currentFps = this->fps.record_frame()) {
-            std::cout << "FPS: " << static_cast<std::uint32_t>(*currentFps + 0.5) << '\n';
+#ifdef NORTHREND_GPU_PROFILING
+        const auto renderEnd = std::chrono::steady_clock::now();
+        const double milliseconds = std::chrono::duration<double, std::milli>(renderEnd - renderStart).count();
+
+        if (const auto summary = this->cpuTiming.record(milliseconds)) {
+            Timing::write(std::cout, "CPU render", *summary);
         }
+#endif
     }
 
     void stopped() override {
@@ -107,7 +125,10 @@ private:
         return std::clamp(concurrency / 4, std::size_t {1}, std::size_t {4});
     }
 
-    Fps fps;
+#ifdef NORTHREND_GPU_PROFILING
+    Timing cpuTiming;
+#endif
+
     ThreadPool threadPool;
     AssetSystem assets;
     PresentationRuntime<PresentationType> presentation;
