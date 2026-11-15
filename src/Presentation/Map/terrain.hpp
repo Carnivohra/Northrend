@@ -6,6 +6,7 @@
 #include "Render/Material/material.hpp"
 #include "Render/Texture/texture.hpp"
 #include "World/Map/Tile/grid.hpp"
+#include "World/Map/Terrain/geometry.hpp"
 
 #include <array>
 #include <cstddef>
@@ -41,6 +42,8 @@ private:
 
     void release(std::size_t tile, MeshHandleAllocator& meshAllocator, MaterialHandleAllocator& materialAllocator,
         PresentationTextureCache& textures, Renderer& renderer, RenderScene& scene);
+    void activate(std::size_t tile) noexcept;
+    void deactivate(std::size_t tile) noexcept;
     [[nodiscard]] static float projected_size(
         const Camera& camera, int height, const Vector3& minimum, const Vector3& maximum) noexcept;
     [[nodiscard]] static std::uint8_t select_level(float projectedSize, std::uint8_t current) noexcept;
@@ -53,8 +56,14 @@ private:
     std::array<Entity, TileGrid::TileCount> entities;
     std::array<Vector3, TileGrid::TileCount> minimums;
     std::array<Vector3, TileGrid::TileCount> maximums;
-    std::array<std::uint8_t, TileGrid::TileCount> levels;
-    std::array<bool, TileGrid::TileCount> visibility;
+    std::array<std::array<Vector3, TerrainGeometry::ClusterCount>, TileGrid::TileCount> clusterMinimums;
+    std::array<std::array<Vector3, TerrainGeometry::ClusterCount>, TileGrid::TileCount> clusterMaximums;
+    std::array<std::array<std::uint8_t, TerrainGeometry::ClusterCount>, TileGrid::TileCount> levels;
+    std::array<std::uint8_t, TileGrid::TileCount> selectedLevels;
+    std::array<std::array<bool, TerrainGeometry::ClusterCount>, TileGrid::TileCount> visibility;
+    std::array<std::uint16_t, TileGrid::TileCount> activeTiles;
+    std::array<std::uint16_t, TileGrid::TileCount> activePositions {};
+    std::size_t activeCount = 0;
     std::uint64_t cameraRevision = 0;
     int viewportWidth = 0;
     int viewportHeight = 0;

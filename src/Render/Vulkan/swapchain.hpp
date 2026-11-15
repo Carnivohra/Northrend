@@ -2,6 +2,7 @@
 
 #include <volk.h>
 
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <memory>
@@ -17,12 +18,13 @@ class VulkanMaterialStore;
 class VulkanMeshStore;
 class VulkanMeshPipeline;
 class VulkanRenderTarget;
+class VulkanTextureStore;
 class Window;
 
 class VulkanSwapchain final {
 public:
-    VulkanSwapchain(VulkanDevice& device, VulkanMeshStore& meshes, VulkanMaterialStore& materials, VkSurfaceKHR surface,
-        const Window& window, const VkClearColorValue& clearColor);
+    VulkanSwapchain(VulkanDevice& device, VulkanMeshStore& meshes, VulkanMaterialStore& materials,
+        VulkanTextureStore& textures, VkSurfaceKHR surface, const Window& window, const VkClearColorValue& clearColor);
     ~VulkanSwapchain();
 
     VulkanSwapchain(const VulkanSwapchain&) = delete;
@@ -30,6 +32,7 @@ public:
 
     void render(const RenderFrame& frame);
     void suspend() noexcept;
+    [[nodiscard]] std::uint64_t retirement_serial() const noexcept;
 
 private:
     static constexpr std::size_t FramesInFlight = 2;
@@ -43,12 +46,14 @@ private:
     void create_frame_resources();
     void create_swapchain_resources();
     void recreate();
+    void collect_retired(std::uint64_t completedSerial) noexcept;
     void destroy_swapchain_resources() noexcept;
     void destroy() noexcept;
 
     VulkanDevice& device;
     VulkanMeshStore& meshes;
     VulkanMaterialStore& materials;
+    VulkanTextureStore& textures;
     VkSurfaceKHR surface;
     const Window& window;
     VkClearColorValue clearColor;
@@ -59,11 +64,14 @@ private:
     int pixelHeight = 0;
     std::vector<VkImage> images;
     std::vector<std::unique_ptr<VulkanFrame>> frames;
+    std::array<std::uint64_t, FramesInFlight> frameSerials {};
     std::vector<VkFence> imagesInFlight;
     std::unique_ptr<VulkanRenderTarget> target;
     std::unique_ptr<VulkanMeshPipeline> pipeline;
     std::unique_ptr<VulkanCommandContext> commands;
     std::size_t currentFrame = 0;
+    std::uint64_t submittedSerial = 0;
+    std::uint64_t completedSerial = 0;
 };
 
 }

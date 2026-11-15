@@ -12,11 +12,13 @@ static_assert(TerrainGeometry::VertexCount - 1 <= std::numeric_limits<std::uint1
 TerrainGeometry::TerrainGeometry(const Adt& adt) {
     this->terrainVertices.reserve(VertexCount);
 
-    for (std::size_t level = 0; level < LevelCount; ++level) {
-        const std::size_t step = std::size_t {1} << level;
-        const std::size_t cells = CellsPerChunk / step;
-        const std::size_t indicesPerCell = level == 0 ? 12 : 6;
-        this->terrainIndices[level].reserve(Adt::ChunkCount * cells * cells * indicesPerCell);
+    for (auto& cluster : this->terrainIndices) {
+        for (std::size_t level = 0; level < LevelCount; ++level) {
+            const std::size_t step = std::size_t {1} << level;
+            const std::size_t cells = CellsPerChunk / step;
+            const std::size_t indicesPerCell = level == 0 ? 12 : 6;
+            cluster[level].reserve(ClusterSize * ClusterSize * cells * cells * indicesPerCell);
+        }
     }
 
     for (std::size_t chunkY = 0; chunkY < Adt::Size; ++chunkY) {
@@ -34,8 +36,9 @@ std::span<const MeshVertex> TerrainGeometry::vertices() const noexcept {
     return this->terrainVertices;
 }
 
-std::span<const std::uint16_t> TerrainGeometry::indices(const std::size_t level) const {
-    return this->terrainIndices.at(level);
+std::span<const std::uint16_t> TerrainGeometry::indices(
+    const std::size_t cluster, const std::size_t level) const {
+    return this->terrainIndices.at(cluster).at(level);
 }
 
 void TerrainGeometry::append_vertices(const Adt& adt, const std::size_t chunkX, const std::size_t chunkY) {
@@ -104,8 +107,11 @@ void TerrainGeometry::append_indices(
     const Adt& adt, const std::size_t chunkX, const std::size_t chunkY, const std::size_t level) {
     const std::size_t step = std::size_t {1} << level;
     const std::size_t chunk = chunkY * Adt::Size + chunkX;
+    const std::size_t cluster =
+        (chunkY / ClusterSize) * ClustersPerAxis + chunkX / ClusterSize;
     const std::uint16_t chunkOffset = static_cast<std::uint16_t>(chunk * VerticesPerChunk);
     const std::uint32_t holes = adt.holes(chunkX, chunkY);
+    std::vector<std::uint16_t>& indices = this->terrainIndices[cluster][level];
 
     for (std::size_t row = 0; row < CellsPerChunk; row += step) {
         const std::uint16_t rowOffset = static_cast<std::uint16_t>(chunkOffset + row * 17);
@@ -113,7 +119,7 @@ void TerrainGeometry::append_indices(
         for (std::size_t column = 0; column < CellsPerChunk; column += step) {
             if (level == 0) {
                 if (!has_hole(holes, row, column, 1)) {
-                    append_cell(this->terrainIndices[level], chunkOffset, row, column);
+                    append_cell(indices, chunkOffset, row, column);
                 }
 
                 continue;
@@ -123,7 +129,7 @@ void TerrainGeometry::append_indices(
                 for (std::size_t fineRow = row; fineRow < row + step; ++fineRow) {
                     for (std::size_t fineColumn = column; fineColumn < column + step; ++fineColumn) {
                         if (!has_hole(holes, fineRow, fineColumn, 1)) {
-                            append_cell(this->terrainIndices[level], chunkOffset, fineRow, fineColumn);
+                            append_cell(indices, chunkOffset, fineRow, fineColumn);
                         }
                     }
                 }
@@ -136,8 +142,8 @@ void TerrainGeometry::append_indices(
             const std::uint16_t bottomLeft = static_cast<std::uint16_t>(topLeft + step * 17);
             const std::uint16_t bottomRight = static_cast<std::uint16_t>(bottomLeft + step);
 
-            this->terrainIndices[level].insert(
-                this->terrainIndices[level].end(), {topLeft, bottomLeft, bottomRight, topLeft, bottomRight, topRight});
+            indices.insert(
+                indices.end(), {topLeft, bottomLeft, bottomRight, topLeft, bottomRight, topRight});
         }
     }
 }

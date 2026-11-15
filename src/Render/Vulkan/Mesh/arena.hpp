@@ -13,7 +13,6 @@
 
 namespace Northrend {
 
-class VulkanBuffer;
 class VulkanDevice;
 class VulkanMeshPage;
 
@@ -37,14 +36,11 @@ public:
 private:
     static constexpr VkDeviceSize Alignment = 32;
     static constexpr VkDeviceSize PageCapacity = 128ULL * 1024ULL * 1024ULL;
-    static constexpr VkDeviceSize InitialStagingCapacity = 1ULL * 1024ULL * 1024ULL;
 
     [[nodiscard]] static VkDeviceSize aligned(VkDeviceSize size);
     [[nodiscard]] VulkanMeshAllocation allocate_page(VkDeviceSize size);
-    void grow_staging(VkDeviceSize required);
 
     VulkanDevice& device;
-    std::unique_ptr<VulkanBuffer> staging;
     std::vector<std::unique_ptr<VulkanMeshPage>> pages;
     std::uint64_t currentRevision = 0;
 };

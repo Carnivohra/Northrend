@@ -9,7 +9,7 @@
 namespace Northrend {
 
 VulkanMesh::VulkanMesh(VulkanMeshArena& arena, const MeshData& data) :
-    arena(arena), allocation(), indexType(vulkan_index_type(data.index_type())) {
+    arena(arena), allocation(), levelsPerSection(data.level_count()), indexType(vulkan_index_type(data.index_type())) {
     const std::span<const std::byte> vertices = data.vertices();
     const std::span<const MeshLevel> sourceLevels = data.levels();
     const std::size_t indexSize =
@@ -48,8 +48,13 @@ VkIndexType VulkanMesh::vulkan_index_type(const MeshIndexType type) noexcept {
     return type == MeshIndexType::unsigned16 ? VK_INDEX_TYPE_UINT16 : VK_INDEX_TYPE_UINT32;
 }
 
-VulkanDraw VulkanMesh::draw(const std::uint32_t firstInstance, const std::size_t level) const {
-    const Level& selected = this->levels.at(level);
+VulkanDraw VulkanMesh::draw(
+    const std::uint32_t firstInstance, const std::size_t section, const std::size_t level) const {
+    if (section >= this->levels.size() / this->levelsPerSection || level >= this->levelsPerSection) {
+        throw std::out_of_range("Vulkan mesh section or level is outside the mesh");
+    }
+
+    const Level& selected = this->levels[section * this->levelsPerSection + level];
     const VkDeviceSize indexSize =
         this->indexType == VK_INDEX_TYPE_UINT16 ? sizeof(std::uint16_t) : sizeof(std::uint32_t);
     const VkDeviceSize absoluteIndexOffset = this->allocation.offset + selected.indexOffset;

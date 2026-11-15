@@ -85,6 +85,9 @@ target_sources(Northrend
     Render/Vulkan/Texture/texture.hpp
     Render/Vulkan/transfer.cpp
     Render/Vulkan/transfer.hpp
+    Render/Vulkan/Transfer/page.cpp
+    Render/Vulkan/Transfer/page.hpp
+    Render/Vulkan/Transfer/segment.hpp
     Render/Vulkan/Shader/Mesh/fragment.frag
     Render/Vulkan/Shader/Mesh/terrain.frag
     Render/Vulkan/Shader/Mesh/vertex.vert

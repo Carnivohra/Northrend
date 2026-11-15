@@ -1,6 +1,5 @@
 #include "Presentation/Map/terrain.hpp"
 
-#include "Render/instance.hpp"
 #include "Render/Material/allocator.hpp"
 #include "Render/Material/data.hpp"
 #include "Render/frustum.hpp"
@@ -8,6 +7,7 @@
 #include "Render/Mesh/data.hpp"
 #include "Render/Mesh/level.hpp"
 #include "Render/renderer.hpp"
+#include "Render/sections.hpp"
 #include "Render/Texture/data.hpp"
 #include "Render/Texture/format.hpp"
 #include "Render/camera.hpp"
@@ -17,6 +17,13 @@
 #include "World/Map/Terrain/material.hpp"
 #include "World/Map/Terrain/payload.hpp"
 #include "World/Map/Tile/tile.hpp"
+
+#ifdef NORTHREND_GPU_PROFILING
+#include "Debug/timing.hpp"
+
+#include <chrono>
+#include <iostream>
+#endif
 
 #include <algorithm>
 #include <array>
@@ -29,6 +36,9 @@
 #include <vector>
 
 namespace Northrend {
+
+static_assert(TerrainGeometry::ClusterCount == RenderSections::Count);
+static_assert(TileGrid::TileCount <= std::numeric_limits<std::uint16_t>::max());
 
 void PresentationTerrain::load(const std::size_t x, const std::size_t y, const MapTile& tile,
     const TerrainPayload& payload, MeshHandleAllocator& meshAllocator, MaterialHandleAllocator& materialAllocator,
@@ -108,12 +118,56 @@ void PresentationTerrain::load(const std::size_t x, const std::size_t y, const M
         maximum.z = std::max(maximum.z, position.z);
     }
 
-    std::array<MeshLevel, TerrainGeometry::LevelCount> levels;
+    std::array<Vector3, TerrainGeometry::ClusterCount> clusterMinimums;
+    std::array<Vector3, TerrainGeometry::ClusterCount> clusterMaximums;
 
-    for (std::size_t level = 0; level < levels.size(); ++level) {
-        const std::span<const std::uint16_t> indices = geometry.indices(level);
-        levels[level] =
-            MeshLevel {.indices = std::as_bytes(indices), .indexCount = static_cast<std::uint32_t>(indices.size())};
+    for (std::size_t clusterY = 0; clusterY < TerrainGeometry::ClustersPerAxis; ++clusterY) {
+        for (std::size_t clusterX = 0; clusterX < TerrainGeometry::ClustersPerAxis; ++clusterX) {
+            const std::size_t cluster = clusterY * TerrainGeometry::ClustersPerAxis + clusterX;
+            Vector3 clusterMinimum {
+                .x = std::numeric_limits<float>::max(),
+                .y = std::numeric_limits<float>::max(),
+                .z = std::numeric_limits<float>::max()
+            };
+            Vector3 clusterMaximum {
+                .x = std::numeric_limits<float>::lowest(),
+                .y = std::numeric_limits<float>::lowest(),
+                .z = std::numeric_limits<float>::lowest()
+            };
+
+            for (std::size_t localY = 0; localY < TerrainGeometry::ClusterSize; ++localY) {
+                for (std::size_t localX = 0; localX < TerrainGeometry::ClusterSize; ++localX) {
+                    const std::size_t chunkX = clusterX * TerrainGeometry::ClusterSize + localX;
+                    const std::size_t chunkY = clusterY * TerrainGeometry::ClusterSize + localY;
+                    const std::size_t chunk = chunkY * Adt::Size + chunkX;
+                    const std::size_t firstVertex = chunk * Adt::HeightsPerChunk;
+                    const std::size_t endVertex = firstVertex + Adt::HeightsPerChunk;
+
+                    for (std::size_t vertex = firstVertex; vertex < endVertex; ++vertex) {
+                        const Vector3& position = vertices[vertex].position;
+                        clusterMinimum.x = std::min(clusterMinimum.x, position.x);
+                        clusterMinimum.y = std::min(clusterMinimum.y, position.y);
+                        clusterMinimum.z = std::min(clusterMinimum.z, position.z);
+                        clusterMaximum.x = std::max(clusterMaximum.x, position.x);
+                        clusterMaximum.y = std::max(clusterMaximum.y, position.y);
+                        clusterMaximum.z = std::max(clusterMaximum.z, position.z);
+                    }
+                }
+            }
+
+            clusterMinimums[cluster] = clusterMinimum;
+            clusterMaximums[cluster] = clusterMaximum;
+        }
+    }
+
+    std::array<MeshLevel, TerrainGeometry::ClusterCount * TerrainGeometry::LevelCount> levels;
+
+    for (std::size_t cluster = 0; cluster < TerrainGeometry::ClusterCount; ++cluster) {
+        for (std::size_t level = 0; level < TerrainGeometry::LevelCount; ++level) {
+            const std::span<const std::uint16_t> indices = geometry.indices(cluster, level);
+            levels[cluster * TerrainGeometry::LevelCount + level] =
+                MeshLevel {.indices = std::as_bytes(indices), .indexCount = static_cast<std::uint32_t>(indices.size())};
+        }
     }
 
     std::array<std::span<const std::byte>, TerrainPayload::MaximumMipCount> alphaMips;
@@ -125,7 +179,8 @@ void PresentationTerrain::load(const std::size_t x, const std::size_t y, const M
     const TextureData alphaData(TextureFormat::rgba8Unorm, Adt::AlphaSize, Adt::AlphaSize,
         static_cast<std::uint32_t>(payload.alpha_layer_count()),
         std::span<const std::span<const std::byte>>(alphaMips.data(), payload.alpha_mip_count()));
-    const MeshData data(std::as_bytes(std::span<const MeshVertex>(vertices)), levels, MeshIndexType::unsigned16);
+    const MeshData data(std::as_bytes(std::span<const MeshVertex>(vertices)), levels, TerrainGeometry::LevelCount,
+        MeshIndexType::unsigned16);
     MaterialHandle renderMaterial;
     MeshHandle mesh;
     TextureHandle alphaTexture;
@@ -142,8 +197,12 @@ void PresentationTerrain::load(const std::size_t x, const std::size_t y, const M
         renderer.store_mesh(mesh, data);
         meshStored = true;
         entity = scene.registry().create();
-        scene.registry().emplace<RenderInstance>(
-            entity, RenderInstance {.mesh = mesh, .material = renderMaterial, .transform = {}, .worldSpace = true});
+        scene.registry().emplace<RenderSections>(entity,
+            RenderSections {
+                .mesh = mesh,
+                .material = renderMaterial,
+                .visibility = std::numeric_limits<std::uint16_t>::max()
+            });
     } catch (...) {
         if (entity) {
             scene.registry().destroy(entity);
@@ -178,8 +237,12 @@ void PresentationTerrain::load(const std::size_t x, const std::size_t y, const M
     this->entities[tileIndex] = entity;
     this->minimums[tileIndex] = minimum;
     this->maximums[tileIndex] = maximum;
-    this->levels[tileIndex] = UnsetLevel;
-    this->visibility[tileIndex] = true;
+    this->clusterMinimums[tileIndex] = clusterMinimums;
+    this->clusterMaximums[tileIndex] = clusterMaximums;
+    this->levels[tileIndex].fill(UnsetLevel);
+    this->selectedLevels[tileIndex] = UnsetLevel;
+    this->visibility[tileIndex].fill(true);
+    this->activate(tileIndex);
     this->levelsDirty = true;
 }
 
@@ -195,8 +258,9 @@ void PresentationTerrain::unload(const std::size_t x, const std::size_t y, MeshH
 
 void PresentationTerrain::clear(MeshHandleAllocator& meshAllocator, MaterialHandleAllocator& materialAllocator,
     PresentationTextureCache& textures, Renderer& renderer, RenderScene& scene) {
-    for (std::size_t tile = 0; tile < TileGrid::TileCount; ++tile) {
-        this->release(tile, meshAllocator, materialAllocator, textures, renderer, scene);
+    while (this->activeCount != 0) {
+        this->release(
+            this->activeTiles[this->activeCount - 1], meshAllocator, materialAllocator, textures, renderer, scene);
     }
 
     this->levelsDirty = true;
@@ -209,61 +273,106 @@ void PresentationTerrain::update(const Camera& camera, const int width, const in
         return;
     }
 
+#ifdef NORTHREND_GPU_PROFILING
+    static Timing cullingTiming;
+    const auto cullingStart = std::chrono::steady_clock::now();
+#endif
+
     const float aspectRatio = static_cast<float>(width) / static_cast<float>(height);
     const Frustum frustum(camera.projection(aspectRatio) * camera.view());
 
-    for (std::size_t tile = 0; tile < TileGrid::TileCount; ++tile) {
-        if (!this->entities[tile]) {
-            continue;
+    for (std::size_t active = 0; active < this->activeCount; ++active) {
+        const std::size_t tile = this->activeTiles[active];
+        std::array<bool, TerrainGeometry::ClusterCount> visible;
+        const Frustum::Relation relation = frustum.classify(this->minimums[tile], this->maximums[tile]);
+        bool tileVisible = relation != Frustum::Relation::outside;
+
+        if (relation == Frustum::Relation::inside) {
+            visible.fill(true);
+        } else if (relation == Frustum::Relation::outside) {
+            visible.fill(false);
+        } else {
+            tileVisible = false;
+
+            for (std::size_t cluster = 0; cluster < visible.size(); ++cluster) {
+                visible[cluster] =
+                    frustum.intersects(this->clusterMinimums[tile][cluster], this->clusterMaximums[tile][cluster]);
+                tileVisible = tileVisible || visible[cluster];
+            }
         }
 
-        const bool visible = frustum.intersects(this->minimums[tile], this->maximums[tile]);
-        std::uint8_t level = this->levels[tile];
+        std::uint8_t level = this->selectedLevels[tile];
 
-        if (visible) {
+        if (tileVisible) {
             const float size = projected_size(camera, height, this->minimums[tile], this->maximums[tile]);
             level = select_level(size, level);
         }
 
-        if (visible == this->visibility[tile] && level == this->levels[tile]) {
-            continue;
+        std::uint16_t visibility = 0;
+        bool changed = false;
+
+        for (std::size_t cluster = 0; cluster < visible.size(); ++cluster) {
+            if (visible[cluster]) {
+                visibility |= static_cast<std::uint16_t>(std::uint16_t {1} << cluster);
+            }
+
+            changed = changed || visible[cluster] != this->visibility[tile][cluster] ||
+                (visible[cluster] && level != this->levels[tile][cluster]);
+
+            if (visible[cluster]) {
+                this->levels[tile][cluster] = level;
+            }
+
+            this->visibility[tile][cluster] = visible[cluster];
         }
 
-        const bool modified =
-            scene.registry().modify<RenderInstance>(this->entities[tile], [visible, level](RenderInstance& instance) {
-                instance.visible = visible;
+        if (changed) {
+            const bool modified = scene.registry().modify<RenderSections>(this->entities[tile],
+                [visibility, level](RenderSections& sections) {
+                    sections.visibility = visibility;
 
-                if (visible) {
-                    instance.level = level;
-                }
-            });
+                    for (std::size_t cluster = 0; cluster < sections.levels.size(); ++cluster) {
+                        if ((visibility & (std::uint16_t {1} << cluster)) != 0) {
+                            sections.levels[cluster] = level;
+                        }
+                    }
+                });
 
-        if (!modified) {
-            throw std::runtime_error("Terrain render instance is missing");
+            if (!modified) {
+                throw std::runtime_error("Terrain render sections are missing");
+            }
         }
 
-        this->levels[tile] = level;
-        this->visibility[tile] = visible;
+        this->selectedLevels[tile] = level;
     }
 
     this->cameraRevision = camera.revision;
     this->viewportWidth = width;
     this->viewportHeight = height;
     this->levelsDirty = false;
+
+#ifdef NORTHREND_GPU_PROFILING
+    const auto cullingEnd = std::chrono::steady_clock::now();
+    const double milliseconds = std::chrono::duration<double, std::milli>(cullingEnd - cullingStart).count();
+
+    if (const auto summary = cullingTiming.record(milliseconds)) {
+        Timing::write(std::cout, "CPU terrain culling", *summary);
+    }
+#endif
 }
 
 void PresentationTerrain::release(const std::size_t tile, MeshHandleAllocator& meshAllocator,
     MaterialHandleAllocator& materialAllocator, PresentationTextureCache& textures, Renderer& renderer,
     RenderScene& scene) {
-    const Entity entity = this->entities[tile];
     const MeshHandle mesh = this->meshes[tile];
     const MaterialHandle material = this->materials[tile];
     const TextureHandle alphaTexture = this->alphaTextures[tile];
 
-    if (entity) {
-        scene.registry().destroy(entity);
-        this->entities[tile] = {};
+    if (this->entities[tile]) {
+        scene.registry().destroy(this->entities[tile]);
     }
+
+    this->entities[tile] = {};
 
     if (mesh) {
         renderer.remove_mesh(mesh);
@@ -282,9 +391,36 @@ void PresentationTerrain::release(const std::size_t tile, MeshHandleAllocator& m
         this->alphaTextures[tile] = {};
     }
 
-    this->levels[tile] = UnsetLevel;
-    this->visibility[tile] = false;
+    this->levels[tile].fill(UnsetLevel);
+    this->selectedLevels[tile] = UnsetLevel;
+    this->visibility[tile].fill(false);
+    this->deactivate(tile);
     this->levelsDirty = true;
+}
+
+void PresentationTerrain::activate(const std::size_t tile) noexcept {
+    if (this->activePositions[tile] != 0) {
+        return;
+    }
+
+    this->activeTiles[this->activeCount] = static_cast<std::uint16_t>(tile);
+    ++this->activeCount;
+    this->activePositions[tile] = static_cast<std::uint16_t>(this->activeCount);
+}
+
+void PresentationTerrain::deactivate(const std::size_t tile) noexcept {
+    const std::size_t encodedPosition = this->activePositions[tile];
+
+    if (encodedPosition == 0) {
+        return;
+    }
+
+    const std::size_t position = encodedPosition - 1;
+    const std::size_t lastTile = this->activeTiles[this->activeCount - 1];
+    this->activeTiles[position] = lastTile;
+    this->activePositions[lastTile] = static_cast<std::uint16_t>(position + 1);
+    --this->activeCount;
+    this->activePositions[tile] = 0;
 }
 
 float PresentationTerrain::projected_size(

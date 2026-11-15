@@ -5,7 +5,15 @@
 #include "Render/Vulkan/Material/store.hpp"
 #include "Render/Vulkan/buffer.hpp"
 #include "Render/Vulkan/device.hpp"
+#include "Render/Vulkan/Transfer/segment.hpp"
 #include "Render/frame.hpp"
+
+#ifdef NORTHREND_GPU_PROFILING
+#include "Debug/timing.hpp"
+
+#include <chrono>
+#include <iostream>
+#endif
 
 #include <algorithm>
 #include <array>
@@ -37,10 +45,17 @@ void VulkanDrawBatch::update(const std::size_t imageIndex, const RenderFrame& fr
         return;
     }
 
+#ifdef NORTHREND_GPU_PROFILING
+    static Timing rebuildTiming;
+    const auto rebuildStart = std::chrono::steady_clock::now();
+#endif
+
     std::vector<Matrix4> transforms;
     transforms.reserve(frame.instances.size());
     target.worldUnsigned16.resize(meshes.page_count());
     target.worldUnsigned32.resize(meshes.page_count());
+    target.worldUnsigned16Groups.resize(meshes.page_count());
+    target.worldUnsigned32Groups.resize(meshes.page_count());
     target.transformedUnsigned16.resize(meshes.page_count());
     target.transformedUnsigned32.resize(meshes.page_count());
     target.worldDraws = false;
@@ -49,6 +64,8 @@ void VulkanDrawBatch::update(const std::size_t imageIndex, const RenderFrame& fr
     for (std::size_t page = 0; page < meshes.page_count(); ++page) {
         target.worldUnsigned16[page].clear();
         target.worldUnsigned32[page].clear();
+        target.worldUnsigned16Groups[page].clear();
+        target.worldUnsigned32Groups[page].clear();
         target.transformedUnsigned16[page].clear();
         target.transformedUnsigned32[page].clear();
     }
@@ -62,11 +79,10 @@ void VulkanDrawBatch::update(const std::size_t imageIndex, const RenderFrame& fr
 
         if (instance.worldSpace) {
             auto& pages = mesh->index_type() == VK_INDEX_TYPE_UINT16 ? target.worldUnsigned16 : target.worldUnsigned32;
-            VulkanDraw draw = mesh->draw(0, instance.level);
+            VulkanDraw draw = mesh->draw(0, instance.section, instance.level);
             draw.detailLevel = instance.level;
             draw.material = instance.material;
             pages[mesh->page()].push_back(draw);
-            target.worldDraws = true;
             continue;
         }
 
@@ -79,8 +95,56 @@ void VulkanDrawBatch::update(const std::size_t imageIndex, const RenderFrame& fr
         auto& pages =
             mesh->index_type() == VK_INDEX_TYPE_UINT16 ? target.transformedUnsigned16 : target.transformedUnsigned32;
         auto& commands = pages[mesh->page()];
-        commands.push_back(mesh->draw(firstInstance, instance.level));
+        commands.push_back(mesh->draw(firstInstance, instance.section, instance.level));
         target.transformedDraws = true;
+    }
+
+    for (const RenderSections& sections : frame.sections) {
+        const VulkanMesh* mesh = meshes.find(sections.mesh);
+
+        if (!mesh) {
+            continue;
+        }
+
+        auto& pages = mesh->index_type() == VK_INDEX_TYPE_UINT16 ? target.worldUnsigned16 : target.worldUnsigned32;
+        auto& draws = pages[mesh->page()];
+
+        for (std::size_t section = 0; section < sections.levels.size(); ++section) {
+            if ((sections.visibility & (std::uint16_t {1} << section)) == 0) {
+                continue;
+            }
+
+            VulkanDraw draw = mesh->draw(0, section, sections.levels[section]);
+            draw.detailLevel = sections.levels[section];
+            draw.material = sections.material;
+            draws.push_back(draw);
+        }
+    }
+
+    std::vector<VkDrawIndexedIndirectCommand> indirectCommands;
+
+    for (std::size_t page = 0; page < meshes.page_count(); ++page) {
+        build_groups(target.worldUnsigned16[page], target.worldUnsigned16Groups[page], indirectCommands);
+        build_groups(target.worldUnsigned32[page], target.worldUnsigned32Groups[page], indirectCommands);
+    }
+
+    const VkDeviceSize indirectSize = indirectCommands.size() * sizeof(VkDrawIndexedIndirectCommand);
+
+    if (indirectSize != 0 && (!target.indirectBuffer || target.indirectBuffer->size() < indirectSize)) {
+        const VkDeviceSize byteCapacity =
+            capacity(target.indirectBuffer ? target.indirectBuffer->size() : 0, indirectSize);
+        target.indirectBuffer = std::make_unique<VulkanBuffer>(this->device, byteCapacity,
+            VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT,
+            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    }
+
+    if (indirectSize != 0) {
+        const VulkanTransferSegment segment {
+            .data = std::as_bytes(std::span<const VkDrawIndexedIndirectCommand>(indirectCommands)),
+            .offset = 0
+        };
+        this->device.upload_buffer(target.indirectBuffer->handle(), 0, indirectSize, std::span(&segment, 1));
+        target.worldDraws = true;
     }
 
     const VkDeviceSize required = transforms.size() * sizeof(Matrix4);
@@ -90,19 +154,28 @@ void VulkanDrawBatch::update(const std::size_t imageIndex, const RenderFrame& fr
             capacity(target.transformBuffer ? target.transformBuffer->size() : 0, required);
         target.transformBuffer = std::make_unique<VulkanBuffer>(this->device, byteCapacity,
             VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-        target.transformStaging =
-            std::make_unique<VulkanBuffer>(this->device, byteCapacity, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-                VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
     }
 
     if (required != 0) {
-        target.transformStaging->write(std::as_bytes(std::span<const Matrix4>(transforms)));
-        this->device.copy_buffer(target.transformStaging->handle(), target.transformBuffer->handle(), required);
+        const VulkanTransferSegment segment {
+            .data = std::as_bytes(std::span<const Matrix4>(transforms)),
+            .offset = 0
+        };
+        this->device.upload_buffer(target.transformBuffer->handle(), 0, required, std::span(&segment, 1));
     }
 
     target.instanceRevision = frame.instancesRevision;
     target.meshRevision = meshRevision;
     target.initialized = true;
+
+#ifdef NORTHREND_GPU_PROFILING
+    const auto rebuildEnd = std::chrono::steady_clock::now();
+    const double milliseconds = std::chrono::duration<double, std::milli>(rebuildEnd - rebuildStart).count();
+
+    if (const auto summary = rebuildTiming.record(milliseconds)) {
+        Timing::write(std::cout, "CPU draw batch rebuild", *summary);
+    }
+#endif
 }
 
 bool VulkanDrawBatch::has_world(const std::size_t imageIndex) const noexcept {
@@ -118,7 +191,7 @@ void VulkanDrawBatch::draw_world(const VkCommandBuffer commandBuffer, const std:
     const VkPipelineLayout pipelineLayout) const noexcept {
     const Store& source = this->stores[imageIndex];
 
-    if (!source.worldDraws) {
+    if (!source.worldDraws || !source.indirectBuffer) {
         return;
     }
 
@@ -137,12 +210,14 @@ void VulkanDrawBatch::draw_world(const VkCommandBuffer commandBuffer, const std:
 
         if (!unsigned16.empty()) {
             vkCmdBindIndexBuffer(commandBuffer, meshBuffer, 0, VK_INDEX_TYPE_UINT16);
-            draw_group(commandBuffer, unsigned16, &materials, pipelineLayout);
+            this->draw_world_groups(commandBuffer, source.worldUnsigned16Groups[page],
+                source.indirectBuffer->handle(), materials, pipelineLayout);
         }
 
         if (!unsigned32.empty()) {
             vkCmdBindIndexBuffer(commandBuffer, meshBuffer, 0, VK_INDEX_TYPE_UINT32);
-            draw_group(commandBuffer, unsigned32, &materials, pipelineLayout);
+            this->draw_world_groups(commandBuffer, source.worldUnsigned32Groups[page],
+                source.indirectBuffer->handle(), materials, pipelineLayout);
         }
     }
 }
@@ -192,6 +267,72 @@ VkDeviceSize VulkanDrawBatch::capacity(const VkDeviceSize current, const VkDevic
     }
 
     return result;
+}
+
+void VulkanDrawBatch::build_groups(std::vector<VulkanDraw>& draws, std::vector<WorldGroup>& groups,
+    std::vector<VkDrawIndexedIndirectCommand>& commands) {
+    std::ranges::sort(draws, [](const VulkanDraw& left, const VulkanDraw& right) {
+        if (left.material.id() != right.material.id()) {
+            return left.material.id() < right.material.id();
+        }
+
+        return left.detailLevel < right.detailLevel;
+    });
+
+    for (const VulkanDraw& draw : draws) {
+        if (draw.indexCount == 0) {
+            continue;
+        }
+
+        if (commands.size() >= std::numeric_limits<std::uint32_t>::max()) {
+            throw std::overflow_error("Vulkan indirect draw count exceeds the supported range");
+        }
+
+        if (groups.empty() || groups.back().material != draw.material ||
+            groups.back().detailLevel != draw.detailLevel) {
+            groups.push_back(WorldGroup {
+                .material = draw.material,
+                .firstCommand = static_cast<std::uint32_t>(commands.size()),
+                .commandCount = 0,
+                .detailLevel = static_cast<std::uint8_t>(draw.detailLevel)
+            });
+        }
+
+        commands.push_back(VkDrawIndexedIndirectCommand {
+            .indexCount = draw.indexCount,
+            .instanceCount = 1,
+            .firstIndex = draw.firstIndex,
+            .vertexOffset = draw.vertexOffset,
+            .firstInstance = draw.firstInstance
+        });
+        ++groups.back().commandCount;
+    }
+}
+
+void VulkanDrawBatch::draw_world_groups(const VkCommandBuffer commandBuffer,
+    const std::vector<WorldGroup>& groups, const VkBuffer indirectBuffer, const VulkanMaterialStore& materials,
+    const VkPipelineLayout pipelineLayout) const noexcept {
+    static constexpr std::array<float, 3> TextureMipBias {0.0F, 0.75F, 1.5F};
+    static constexpr std::array<float, 3> AlphaMipBias {0.0F, 1.0F, 2.0F};
+    static constexpr std::uint32_t CommandStride = sizeof(VkDrawIndexedIndirectCommand);
+
+    for (const WorldGroup& group : groups) {
+        const std::size_t level = std::min<std::size_t>(group.detailLevel, TextureMipBias.size() - 1);
+        const std::array<float, 2> detail {TextureMipBias[level], AlphaMipBias[level]};
+        vkCmdPushConstants(commandBuffer, pipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(detail), detail.data());
+        materials.bind(commandBuffer, pipelineLayout, group.material);
+        VkDeviceSize offset = static_cast<VkDeviceSize>(group.firstCommand) * CommandStride;
+
+        if (this->device.multi_draw_indirect()) {
+            vkCmdDrawIndexedIndirect(commandBuffer, indirectBuffer, offset, group.commandCount, CommandStride);
+            continue;
+        }
+
+        for (std::uint32_t command = 0; command < group.commandCount; ++command) {
+            vkCmdDrawIndexedIndirect(commandBuffer, indirectBuffer, offset, 1, CommandStride);
+            offset += CommandStride;
+        }
+    }
 }
 
 void VulkanDrawBatch::draw_group(const VkCommandBuffer commandBuffer, const std::vector<VulkanDraw>& draws,

@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <array>
 #include <cstring>
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -97,15 +98,19 @@ VulkanQueueFamilies VulkanPhysicalDevice::find_queue_families(VkPhysicalDevice d
     vkGetPhysicalDeviceQueueFamilyProperties(device, &count, properties.data());
 
     VulkanQueueFamilies families;
+    std::optional<std::uint32_t> combined;
+    std::uint32_t transferScore = 0;
 
     for (std::uint32_t index = 0; index < count; ++index) {
+        if (properties[index].queueCount == 0) {
+            continue;
+        }
+
         VkBool32 supportsPresent = VK_FALSE;
         vkGetPhysicalDeviceSurfaceSupportKHR(device, index, surface, &supportsPresent);
 
-        if ((properties[index].queueFlags & VK_QUEUE_GRAPHICS_BIT) && supportsPresent) {
-            families.graphics = index;
-            families.present = index;
-            return families;
+        if (!combined && (properties[index].queueFlags & VK_QUEUE_GRAPHICS_BIT) && supportsPresent) {
+            combined = index;
         }
 
         if (!families.graphics && (properties[index].queueFlags & VK_QUEUE_GRAPHICS_BIT)) {
@@ -115,6 +120,34 @@ VulkanQueueFamilies VulkanPhysicalDevice::find_queue_families(VkPhysicalDevice d
         if (!families.present && supportsPresent) {
             families.present = index;
         }
+
+        if ((properties[index].queueFlags & VK_QUEUE_TRANSFER_BIT) == 0) {
+            continue;
+        }
+
+        std::uint32_t score = 1;
+
+        if ((properties[index].queueFlags & VK_QUEUE_GRAPHICS_BIT) == 0) {
+            score = 2;
+        }
+
+        if ((properties[index].queueFlags & (VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT)) == 0) {
+            score = 3;
+        }
+
+        if (!families.transfer || score > transferScore) {
+            families.transfer = index;
+            transferScore = score;
+        }
+    }
+
+    if (combined) {
+        families.graphics = combined;
+        families.present = combined;
+    }
+
+    if (!families.transfer) {
+        families.transfer = families.graphics;
     }
 
     return families;

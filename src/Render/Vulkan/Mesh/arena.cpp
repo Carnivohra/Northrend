@@ -1,8 +1,8 @@
 #include "Render/Vulkan/Mesh/arena.hpp"
 
-#include "Render/Vulkan/buffer.hpp"
 #include "Render/Vulkan/device.hpp"
 #include "Render/Vulkan/Mesh/page.hpp"
+#include "Render/Vulkan/Transfer/segment.hpp"
 
 #include <algorithm>
 #include <limits>
@@ -44,11 +44,18 @@ void VulkanMeshArena::upload(const VulkanMeshAllocation& allocation, const std::
         throw std::invalid_argument("Vulkan mesh arena upload is invalid");
     }
 
+    std::vector<VulkanTransferSegment> segments;
+    segments.reserve(levels.size() + 1);
+    segments.push_back(VulkanTransferSegment {.data = vertices, .offset = 0});
     VkDeviceSize size = indexOffset;
 
     for (const MeshLevel& level : levels) {
-        if (level.indices.empty() || size > std::numeric_limits<VkDeviceSize>::max() - level.indices.size_bytes()) {
+        if (size > std::numeric_limits<VkDeviceSize>::max() - level.indices.size_bytes()) {
             throw std::overflow_error("Vulkan mesh arena upload size overflow");
+        }
+
+        if (!level.indices.empty()) {
+            segments.push_back(VulkanTransferSegment {.data = level.indices, .offset = size});
         }
 
         size += level.indices.size_bytes();
@@ -58,20 +65,7 @@ void VulkanMeshArena::upload(const VulkanMeshAllocation& allocation, const std::
         throw std::out_of_range("Vulkan mesh arena upload exceeds its allocation");
     }
 
-    if (!this->staging || this->staging->size() < size) {
-        this->grow_staging(size);
-    }
-
-    this->staging->write(vertices);
-    VkDeviceSize offset = indexOffset;
-
-    for (const MeshLevel& level : levels) {
-        this->staging->write(level.indices, offset);
-        offset += level.indices.size_bytes();
-    }
-
-    this->device.copy_buffer(
-        this->staging->handle(), this->pages[allocation.page]->handle(), size, 0, allocation.offset);
+    this->device.upload_buffer(this->pages[allocation.page]->handle(), allocation.offset, size, segments);
 }
 
 VkBuffer VulkanMeshArena::buffer(const std::size_t page) const noexcept {
@@ -112,22 +106,6 @@ VulkanMeshAllocation VulkanMeshArena::allocate_page(const VkDeviceSize size) {
     this->pages.push_back(std::move(added));
     ++this->currentRevision;
     return VulkanMeshAllocation {.page = page, .offset = *offset, .size = size};
-}
-
-void VulkanMeshArena::grow_staging(const VkDeviceSize required) {
-    VkDeviceSize capacity = this->staging ? this->staging->size() : InitialStagingCapacity;
-
-    while (capacity < required) {
-        if (capacity > std::numeric_limits<VkDeviceSize>::max() / 2) {
-            capacity = required;
-            break;
-        }
-
-        capacity *= 2;
-    }
-
-    this->staging = std::make_unique<VulkanBuffer>(this->device, capacity, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 }
 
 }

@@ -5,6 +5,7 @@
 #include "Render/Vulkan/Mesh/store.hpp"
 #include "Render/Vulkan/Material/store.hpp"
 #include "Render/Vulkan/target.hpp"
+#include "Render/Vulkan/Texture/store.hpp"
 #include "Render/Vulkan/device.hpp"
 #include "Render/Vulkan/frame.hpp"
 #include "Render/Vulkan/Mesh/pipeline.hpp"
@@ -27,9 +28,11 @@
 namespace Northrend {
 
 VulkanSwapchain::VulkanSwapchain(VulkanDevice& device, VulkanMeshStore& meshes, VulkanMaterialStore& materials,
-    VkSurfaceKHR surface, const Window& window, const VkClearColorValue& clearColor) :
-    device(device), meshes(meshes), materials(materials), surface(surface), window(window), clearColor(clearColor) {
+    VulkanTextureStore& textures, VkSurfaceKHR surface, const Window& window, const VkClearColorValue& clearColor) :
+    device(device), meshes(meshes), materials(materials), textures(textures), surface(surface), window(window),
+    clearColor(clearColor) {
     try {
+        this->device.prepare_transfers(FramesInFlight);
         this->commands = std::make_unique<VulkanCommandContext>(this->device);
         this->create_frame_resources();
         this->create_swapchain_resources();
@@ -41,6 +44,7 @@ VulkanSwapchain::VulkanSwapchain(VulkanDevice& device, VulkanMeshStore& meshes, 
 
 VulkanSwapchain::~VulkanSwapchain() {
     this->device.wait_idle();
+    this->collect_retired(this->submittedSerial);
     this->destroy();
 }
 
@@ -68,6 +72,9 @@ void VulkanSwapchain::render(const RenderFrame& renderFrame) {
     if (result != VK_SUCCESS) {
         throw std::runtime_error("Failed to wait for the Vulkan frame fence: " + std::to_string(result));
     }
+
+    this->completedSerial = std::max(this->completedSerial, this->frameSerials[this->currentFrame]);
+    this->collect_retired(this->completedSerial);
 
     std::uint32_t imageIndex = 0;
     result = vkAcquireNextImageKHR(this->device.handle(), this->swapchain, std::numeric_limits<std::uint64_t>::max(),
@@ -104,6 +111,38 @@ void VulkanSwapchain::render(const RenderFrame& renderFrame) {
     this->pipeline->update_light(imageIndex, renderFrame.light);
     this->commands->record(
         imageIndex, renderFrame, *this->target, *this->pipeline, this->meshes, this->materials, this->clearColor);
+    std::array<VkCommandBuffer, 2> submittedCommands;
+    std::uint32_t submittedCommandCount = 0;
+    const VkCommandBuffer transferCommand =
+        this->device.flush_transfers(this->currentFrame, this->submittedSerial + 1);
+    const bool separateTransfer =
+        transferCommand != VK_NULL_HANDLE && this->device.dedicated_transfer_queue();
+
+    if (transferCommand != VK_NULL_HANDLE && !separateTransfer) {
+        submittedCommands[submittedCommandCount++] = transferCommand;
+    }
+
+    submittedCommands[submittedCommandCount++] = this->commands->handle(imageIndex);
+
+    if (separateTransfer) {
+        const VkSemaphore transferSignal = frame.transfer_finished();
+        const VkSubmitInfo transferInfo {
+            .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
+            .pNext = nullptr,
+            .waitSemaphoreCount = 0,
+            .pWaitSemaphores = nullptr,
+            .pWaitDstStageMask = nullptr,
+            .commandBufferCount = 1,
+            .pCommandBuffers = &transferCommand,
+            .signalSemaphoreCount = 1,
+            .pSignalSemaphores = &transferSignal
+        };
+        result = vkQueueSubmit(this->device.transfer_queue(), 1, &transferInfo, VK_NULL_HANDLE);
+
+        if (result != VK_SUCCESS) {
+            throw std::runtime_error("Failed to submit Vulkan transfers: " + std::to_string(result));
+        }
+    }
 
     result = vkResetFences(this->device.handle(), 1, &frameFence);
 
@@ -112,18 +151,22 @@ void VulkanSwapchain::render(const RenderFrame& renderFrame) {
     }
 
     this->imagesInFlight[imageIndex] = frameFence;
-    const VkCommandBuffer commandBuffer = this->commands->handle(imageIndex);
-    const VkSemaphore waitSemaphores[] {frame.image_available()};
-    const VkPipelineStageFlags waitStages[] {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
+    const std::array<VkSemaphore, 2> waitSemaphores {frame.image_available(), frame.transfer_finished()};
+    const std::array<VkPipelineStageFlags, 2> waitStages {
+        VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+        VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT | VK_PIPELINE_STAGE_VERTEX_INPUT_BIT |
+            VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT
+    };
+    const std::uint32_t waitCount = separateTransfer ? 2 : 1;
     const VkSemaphore signalSemaphores[] {frame.render_finished()};
     const VkSubmitInfo submitInfo {
         .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
         .pNext = nullptr,
-        .waitSemaphoreCount = 1,
-        .pWaitSemaphores = waitSemaphores,
-        .pWaitDstStageMask = waitStages,
-        .commandBufferCount = 1,
-        .pCommandBuffers = &commandBuffer,
+        .waitSemaphoreCount = waitCount,
+        .pWaitSemaphores = waitSemaphores.data(),
+        .pWaitDstStageMask = waitStages.data(),
+        .commandBufferCount = submittedCommandCount,
+        .pCommandBuffers = submittedCommands.data(),
         .signalSemaphoreCount = 1,
         .pSignalSemaphores = signalSemaphores
     };
@@ -133,6 +176,8 @@ void VulkanSwapchain::render(const RenderFrame& renderFrame) {
     if (result != VK_SUCCESS) {
         throw std::runtime_error("Failed to submit the Vulkan frame: " + std::to_string(result));
     }
+
+    this->frameSerials[this->currentFrame] = ++this->submittedSerial;
 
 #ifdef NORTHREND_GPU_PROFILING
     this->commands->submitted(imageIndex);
@@ -165,6 +210,12 @@ void VulkanSwapchain::render(const RenderFrame& renderFrame) {
 
 void VulkanSwapchain::suspend() noexcept {
     this->device.wait_idle();
+    this->completedSerial = this->submittedSerial;
+    this->collect_retired(this->completedSerial);
+}
+
+std::uint64_t VulkanSwapchain::retirement_serial() const noexcept {
+    return this->submittedSerial + (this->device.transfers_pending() ? 1 : 0);
 }
 
 void VulkanSwapchain::create_frame_resources() {
@@ -294,9 +345,18 @@ void VulkanSwapchain::recreate() {
     }
 
     this->device.wait_idle();
+    this->completedSerial = this->submittedSerial;
+    this->collect_retired(this->completedSerial);
     this->destroy_swapchain_resources();
     this->create_swapchain_resources();
     this->currentFrame = 0;
+}
+
+void VulkanSwapchain::collect_retired(const std::uint64_t completedSerial) noexcept {
+    this->device.collect_transfers(completedSerial);
+    this->materials.collect(completedSerial);
+    this->textures.collect(completedSerial);
+    this->meshes.collect(completedSerial);
 }
 
 void VulkanSwapchain::destroy_swapchain_resources() noexcept {

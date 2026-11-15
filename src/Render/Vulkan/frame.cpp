@@ -20,6 +20,10 @@ VulkanFrame::VulkanFrame(VkDevice device) : device(device) {
     }
 
     if (result == VK_SUCCESS) {
+        result = vkCreateSemaphore(this->device, &semaphoreInfo, nullptr, &this->transferFinished);
+    }
+
+    if (result == VK_SUCCESS) {
         result = vkCreateFence(this->device, &fenceInfo, nullptr, &this->renderFence);
     }
 
@@ -41,6 +45,10 @@ VkSemaphore VulkanFrame::render_finished() const noexcept {
     return this->renderFinished;
 }
 
+VkSemaphore VulkanFrame::transfer_finished() const noexcept {
+    return this->transferFinished;
+}
+
 VkFence VulkanFrame::fence() const noexcept {
     return this->renderFence;
 }
@@ -54,6 +62,11 @@ void VulkanFrame::destroy() noexcept {
     if (this->renderFinished != VK_NULL_HANDLE) {
         vkDestroySemaphore(this->device, this->renderFinished, nullptr);
         this->renderFinished = VK_NULL_HANDLE;
+    }
+
+    if (this->transferFinished != VK_NULL_HANDLE) {
+        vkDestroySemaphore(this->device, this->transferFinished, nullptr);
+        this->transferFinished = VK_NULL_HANDLE;
     }
 
     if (this->imageAvailable != VK_NULL_HANDLE) {

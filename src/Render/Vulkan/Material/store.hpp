@@ -6,6 +6,8 @@
 #include <volk.h>
 
 #include <cstddef>
+#include <cstdint>
+#include <utility>
 #include <vector>
 
 namespace Northrend {
@@ -24,7 +26,8 @@ public:
     VulkanMaterialStore& operator=(const VulkanMaterialStore&) = delete;
 
     void store(MaterialHandle handle, const MaterialData& data);
-    void erase(MaterialHandle handle) noexcept;
+    void erase(MaterialHandle handle, std::uint64_t retirementSerial);
+    void collect(std::uint64_t completedSerial) noexcept;
     void bind(VkCommandBuffer commandBuffer, VkPipelineLayout pipelineLayout, MaterialHandle handle) const noexcept;
     [[nodiscard]] VkDescriptorSetLayout descriptor_layout() const noexcept;
 
@@ -36,6 +39,7 @@ private:
     VulkanDevice& device;
     const VulkanTextureStore& textures;
     std::vector<VkDescriptorSet> materials;
+    std::vector<std::pair<std::uint64_t, VkDescriptorSet>> retired;
     VkDescriptorSetLayout descriptorLayout = VK_NULL_HANDLE;
     VkDescriptorPool descriptorPool = VK_NULL_HANDLE;
     VkSampler textureSampler = VK_NULL_HANDLE;

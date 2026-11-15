@@ -2,6 +2,7 @@
 
 #include "Render/Vulkan/device.hpp"
 
+#include <array>
 #include <limits>
 #include <stdexcept>
 #include <string>
@@ -24,6 +25,10 @@ VulkanTexture::VulkanTexture(VulkanDevice& device, const TextureFormat format, c
         throw std::runtime_error("Vulkan device does not support the requested sampled texture format");
     }
 
+    const std::array<std::uint32_t, 2> queueFamilies {
+        this->device.graphics_family(), this->device.transfer_family()
+    };
+    const bool shared = this->device.dedicated_transfer_queue();
     const VkImageCreateInfo imageInfo {
         .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
         .pNext = nullptr,
@@ -36,9 +41,9 @@ VulkanTexture::VulkanTexture(VulkanDevice& device, const TextureFormat format, c
         .samples = VK_SAMPLE_COUNT_1_BIT,
         .tiling = VK_IMAGE_TILING_OPTIMAL,
         .usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
-        .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
-        .queueFamilyIndexCount = 0,
-        .pQueueFamilyIndices = nullptr,
+        .sharingMode = shared ? VK_SHARING_MODE_CONCURRENT : VK_SHARING_MODE_EXCLUSIVE,
+        .queueFamilyIndexCount = shared ? static_cast<std::uint32_t>(queueFamilies.size()) : 0,
+        .pQueueFamilyIndices = shared ? queueFamilies.data() : nullptr,
         .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED
     };
     VkResult result = vkCreateImage(this->device.handle(), &imageInfo, nullptr, &this->image);

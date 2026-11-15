@@ -4,6 +4,7 @@
 #include "Render/Vulkan/Texture/store.hpp"
 #include "Render/Vulkan/Texture/texture.hpp"
 
+#include <algorithm>
 #include <array>
 #include <limits>
 #include <stdexcept>
@@ -215,7 +216,7 @@ void VulkanMaterialStore::store(const MaterialHandle handle, const MaterialData&
     this->materials[index] = descriptorSet;
 }
 
-void VulkanMaterialStore::erase(const MaterialHandle handle) noexcept {
+void VulkanMaterialStore::erase(const MaterialHandle handle, const std::uint64_t retirementSerial) {
     if (!handle) {
         return;
     }
@@ -226,10 +227,21 @@ void VulkanMaterialStore::erase(const MaterialHandle handle) noexcept {
         return;
     }
 
-    this->device.wait_idle();
     VkDescriptorSet& material = this->materials[static_cast<std::size_t>(index)];
-    vkFreeDescriptorSets(this->device.handle(), this->descriptorPool, 1, &material);
+    this->retired.emplace_back(retirementSerial, material);
     material = VK_NULL_HANDLE;
+}
+
+void VulkanMaterialStore::collect(const std::uint64_t completedSerial) noexcept {
+    std::erase_if(this->retired, [this, completedSerial](const auto& entry) {
+        if (entry.first > completedSerial) {
+            return false;
+        }
+
+        const VkDescriptorSet descriptor = entry.second;
+        vkFreeDescriptorSets(this->device.handle(), this->descriptorPool, 1, &descriptor);
+        return true;
+    });
 }
 
 void VulkanMaterialStore::bind(const VkCommandBuffer commandBuffer, const VkPipelineLayout pipelineLayout,
@@ -251,6 +263,8 @@ VkDescriptorSetLayout VulkanMaterialStore::descriptor_layout() const noexcept {
 }
 
 void VulkanMaterialStore::destroy() noexcept {
+    this->retired.clear();
+
     if (this->alphaSampler != VK_NULL_HANDLE) {
         vkDestroySampler(this->device.handle(), this->alphaSampler, nullptr);
         this->alphaSampler = VK_NULL_HANDLE;

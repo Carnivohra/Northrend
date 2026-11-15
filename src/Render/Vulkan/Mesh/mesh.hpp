@@ -22,7 +22,7 @@ public:
     VulkanMesh(const VulkanMesh&) = delete;
     VulkanMesh& operator=(const VulkanMesh&) = delete;
 
-    [[nodiscard]] VulkanDraw draw(std::uint32_t firstInstance, std::size_t level) const;
+    [[nodiscard]] VulkanDraw draw(std::uint32_t firstInstance, std::size_t section, std::size_t level) const;
     [[nodiscard]] VkIndexType index_type() const noexcept;
     [[nodiscard]] std::size_t page() const noexcept;
 
@@ -37,6 +37,7 @@ private:
     VulkanMeshArena& arena;
     VulkanMeshAllocation allocation;
     std::vector<Level> levels;
+    std::size_t levelsPerSection;
     VkIndexType indexType;
 };
 

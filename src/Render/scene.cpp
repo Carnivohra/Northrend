@@ -1,10 +1,19 @@
 #include "Render/scene.hpp"
 
+#ifdef NORTHREND_GPU_PROFILING
+#include "Debug/timing.hpp"
+
+#include <chrono>
+#include <iostream>
+#endif
+
 #include <cstddef>
 
 namespace Northrend {
 
-RenderScene::RenderScene() : instanceQuery(this->state.tracked_query<const RenderInstance>()) {
+RenderScene::RenderScene() :
+    instanceQuery(this->state.tracked_query<const RenderInstance>()),
+    sectionQuery(this->state.tracked_query<const RenderSections>()) {
     this->cameraEntity = this->state.create();
 
     const Camera& camera = this->state.emplace<Camera>(this->cameraEntity);
@@ -58,6 +67,7 @@ RenderFrame RenderScene::frame() {
 
     return {
         .instances = this->instances,
+        .sections = this->sections,
         .instancesRevision = this->instancesRevision,
         .camera = this->cachedCamera,
         .view = this->cachedView,
@@ -67,36 +77,78 @@ RenderFrame RenderScene::frame() {
 }
 
 void RenderScene::refresh_instances() {
-    if (!this->instanceQuery.changed()) {
+    const bool instancesChanged = this->instanceQuery.changed();
+    const bool sectionsChanged = this->sectionQuery.changed();
+
+    if (!instancesChanged && !sectionsChanged) {
         return;
     }
 
-    this->instances.clear();
+#ifdef NORTHREND_GPU_PROFILING
+    static Timing snapshotTiming;
+    const auto snapshotStart = std::chrono::steady_clock::now();
+#endif
 
-    const std::size_t instanceCount = static_cast<std::size_t>(this->instanceQuery.count());
+    if (instancesChanged) {
+        this->instances.clear();
 
-    if (this->instances.capacity() < instanceCount) {
-        this->instances.reserve(instanceCount);
-    }
+        const std::size_t instanceCount = static_cast<std::size_t>(this->instanceQuery.count());
 
-    this->instanceQuery.run([this](flecs::iter& iterator) {
-        while (iterator.next()) {
-            const auto field = iterator.field<const RenderInstance>(0);
-            const std::size_t count = iterator.count();
+        if (this->instances.capacity() < instanceCount) {
+            this->instances.reserve(instanceCount);
+        }
 
-            if (count == 0) {
-                continue;
-            }
+        this->instanceQuery.run([this](flecs::iter& iterator) {
+            while (iterator.next()) {
+                const auto field = iterator.field<const RenderInstance>(0);
+                const std::size_t count = iterator.count();
 
-            for (std::size_t index = 0; index < count; ++index) {
-                if (field[index].visible) {
-                    this->instances.push_back(field[index]);
+                if (count == 0) {
+                    continue;
+                }
+
+                for (std::size_t index = 0; index < count; ++index) {
+                    if (field[index].visible) {
+                        this->instances.push_back(field[index]);
+                    }
                 }
             }
+        });
+    }
+
+    if (sectionsChanged) {
+        this->sections.clear();
+
+        const std::size_t sectionCount = static_cast<std::size_t>(this->sectionQuery.count());
+
+        if (this->sections.capacity() < sectionCount) {
+            this->sections.reserve(sectionCount);
         }
-    });
+
+        this->sectionQuery.run([this](flecs::iter& iterator) {
+            while (iterator.next()) {
+                const auto field = iterator.field<const RenderSections>(0);
+                const std::size_t count = iterator.count();
+
+                for (std::size_t index = 0; index < count; ++index) {
+                    if (field[index].visibility != 0) {
+                        this->sections.push_back(field[index]);
+                    }
+                }
+            }
+        });
+    }
 
     ++this->instancesRevision;
+
+#ifdef NORTHREND_GPU_PROFILING
+    const auto snapshotEnd = std::chrono::steady_clock::now();
+    const double milliseconds = std::chrono::duration<double, std::milli>(snapshotEnd - snapshotStart).count();
+
+    if (const auto summary = snapshotTiming.record(milliseconds)) {
+        Timing::write(std::cout, "CPU scene snapshot", *summary);
+    }
+#endif
 }
 
 }

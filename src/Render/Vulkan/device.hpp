@@ -1,9 +1,11 @@
 #pragma once
 
 #include "Render/Vulkan/physical.hpp"
+#include "Render/Vulkan/Transfer/segment.hpp"
 
 #include <volk.h>
 
+#include <cstddef>
 #include <cstdint>
 #include <memory>
 #include <span>
@@ -24,15 +26,23 @@ public:
     [[nodiscard]] VkDevice handle() const noexcept;
     [[nodiscard]] VkQueue graphics_queue() const noexcept;
     [[nodiscard]] VkQueue present_queue() const noexcept;
+    [[nodiscard]] VkQueue transfer_queue() const noexcept;
     [[nodiscard]] std::uint32_t graphics_family() const noexcept;
     [[nodiscard]] std::uint32_t present_family() const noexcept;
+    [[nodiscard]] std::uint32_t transfer_family() const noexcept;
+    [[nodiscard]] bool dedicated_transfer_queue() const noexcept;
+    [[nodiscard]] bool multi_draw_indirect() const noexcept;
     [[nodiscard]] VkFormat depth_format() const;
     [[nodiscard]] std::uint32_t memory_type(std::uint32_t typeBits, VkMemoryPropertyFlags properties) const;
 
-    void copy_buffer(VkBuffer source, VkBuffer destination, VkDeviceSize size, VkDeviceSize sourceOffset = 0,
-        VkDeviceSize destinationOffset = 0);
-    void copy_texture(VkBuffer source, VkImage destination, std::span<const VkBufferImageCopy> regions,
-        std::uint32_t mipLevels, std::uint32_t layers);
+    void prepare_transfers(std::size_t batchCount);
+    void upload_buffer(VkBuffer destination, VkDeviceSize destinationOffset, VkDeviceSize size,
+        std::span<const VulkanTransferSegment> segments);
+    void upload_texture(VkImage destination, std::span<const VkBufferImageCopy> regions, std::uint32_t mipLevels,
+        std::uint32_t layers, VkDeviceSize size, std::span<const VulkanTransferSegment> segments);
+    [[nodiscard]] VkCommandBuffer flush_transfers(std::size_t batch, std::uint64_t submissionSerial);
+    void collect_transfers(std::uint64_t completedSerial) noexcept;
+    [[nodiscard]] bool transfers_pending() const noexcept;
     void wait_idle() const noexcept;
 
 private:
@@ -40,6 +50,8 @@ private:
     VkDevice device = VK_NULL_HANDLE;
     VkQueue graphicsQueue = VK_NULL_HANDLE;
     VkQueue presentQueue = VK_NULL_HANDLE;
+    VkQueue transferQueue = VK_NULL_HANDLE;
+    bool supportsMultiDrawIndirect = false;
     std::unique_ptr<VulkanTransferContext> transfer;
 };
 

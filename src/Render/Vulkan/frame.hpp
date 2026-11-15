@@ -14,6 +14,7 @@ public:
 
     VkSemaphore image_available() const noexcept;
     VkSemaphore render_finished() const noexcept;
+    VkSemaphore transfer_finished() const noexcept;
     VkFence fence() const noexcept;
 
 private:
@@ -22,6 +23,7 @@ private:
     VkDevice device = VK_NULL_HANDLE;
     VkSemaphore imageAvailable = VK_NULL_HANDLE;
     VkSemaphore renderFinished = VK_NULL_HANDLE;
+    VkSemaphore transferFinished = VK_NULL_HANDLE;
     VkFence renderFence = VK_NULL_HANDLE;
 };
 

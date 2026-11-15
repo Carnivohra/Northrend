@@ -144,6 +144,7 @@ target_sources(Northrend
       Render/Texture/texture.hpp
       Render/renderer.hpp
       Render/scene.hpp
+      Render/sections.hpp
       Simulation/runtime.hpp
       Simulation/simulation.hpp
       Thread/pool.hpp

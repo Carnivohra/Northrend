@@ -28,7 +28,7 @@ VulkanRenderer::VulkanRenderer(const Window& window) {
     this->textures = std::make_unique<VulkanTextureStore>(*this->device);
     this->materials = std::make_unique<VulkanMaterialStore>(*this->device, *this->textures);
     this->swapchain = std::make_unique<VulkanSwapchain>(
-        *this->device, *this->meshes, *this->materials, this->surface->handle(), window, ClearColor);
+        *this->device, *this->meshes, *this->materials, *this->textures, this->surface->handle(), window, ClearColor);
 }
 
 VulkanRenderer::~VulkanRenderer() = default;
@@ -38,7 +38,7 @@ void VulkanRenderer::store_mesh(const MeshHandle handle, const MeshData& data) {
 }
 
 void VulkanRenderer::remove_mesh(const MeshHandle handle) {
-    this->meshes->erase(handle);
+    this->meshes->erase(handle, this->swapchain->retirement_serial());
 }
 
 void VulkanRenderer::store_material(const MaterialHandle handle, const MaterialData& data) {
@@ -46,7 +46,7 @@ void VulkanRenderer::store_material(const MaterialHandle handle, const MaterialD
 }
 
 void VulkanRenderer::remove_material(const MaterialHandle handle) {
-    this->materials->erase(handle);
+    this->materials->erase(handle, this->swapchain->retirement_serial());
 }
 
 void VulkanRenderer::store_texture(const TextureHandle handle, const TextureData& data) {
@@ -54,11 +54,11 @@ void VulkanRenderer::store_texture(const TextureHandle handle, const TextureData
 }
 
 void VulkanRenderer::remove_texture(const TextureHandle handle) {
-    this->textures->erase(handle);
+    this->textures->erase(handle, this->swapchain->retirement_serial());
 }
 
 void VulkanRenderer::remove_textures(const std::span<const TextureHandle> handles) {
-    this->textures->erase(handles);
+    this->textures->erase(handles, this->swapchain->retirement_serial());
 }
 
 void VulkanRenderer::frame(const RenderFrame& frame) {

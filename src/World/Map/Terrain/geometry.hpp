@@ -17,11 +17,14 @@ public:
     static constexpr std::size_t VertexCount = 16 * 16 * 145;
     static constexpr std::size_t MaximumIndexCount = 16 * 16 * 8 * 8 * 12;
     static constexpr std::size_t LevelCount = 3;
+    static constexpr std::size_t ClusterSize = 4;
+    static constexpr std::size_t ClustersPerAxis = 4;
+    static constexpr std::size_t ClusterCount = ClustersPerAxis * ClustersPerAxis;
 
     explicit TerrainGeometry(const Adt& adt);
 
     [[nodiscard]] std::span<const MeshVertex> vertices() const noexcept;
-    [[nodiscard]] std::span<const std::uint16_t> indices(std::size_t level) const;
+    [[nodiscard]] std::span<const std::uint16_t> indices(std::size_t cluster, std::size_t level) const;
 
 private:
     static constexpr std::size_t CellsPerChunk = 8;
@@ -36,7 +39,7 @@ private:
     [[nodiscard]] static bool has_hole(std::uint32_t holes, std::size_t row, std::size_t column, std::size_t step);
 
     std::vector<MeshVertex> terrainVertices;
-    std::array<std::vector<std::uint16_t>, LevelCount> terrainIndices;
+    std::array<std::array<std::vector<std::uint16_t>, LevelCount>, ClusterCount> terrainIndices;
 };
 
 }

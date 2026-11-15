@@ -7,6 +7,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <memory>
+#include <utility>
 #include <vector>
 
 namespace Northrend {
@@ -23,16 +24,17 @@ public:
     VulkanMeshStore& operator=(const VulkanMeshStore&) = delete;
 
     void store(MeshHandle handle, const MeshData& data);
-    void erase(MeshHandle handle) noexcept;
+    void erase(MeshHandle handle, std::uint64_t retirementSerial);
+    void collect(std::uint64_t completedSerial) noexcept;
     [[nodiscard]] const VulkanMesh* find(MeshHandle handle) const noexcept;
     [[nodiscard]] VkBuffer buffer(std::size_t page) const noexcept;
     [[nodiscard]] std::size_t page_count() const noexcept;
     [[nodiscard]] std::uint64_t revision() const noexcept;
 
 private:
-    VulkanDevice& device;
     VulkanMeshArena arena;
     std::vector<std::unique_ptr<VulkanMesh>> meshes;
+    std::vector<std::pair<std::uint64_t, std::unique_ptr<VulkanMesh>>> retired;
     std::uint64_t currentRevision = 0;
 };
 

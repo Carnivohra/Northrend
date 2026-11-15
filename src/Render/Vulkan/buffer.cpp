@@ -2,6 +2,7 @@
 
 #include "Render/Vulkan/device.hpp"
 
+#include <array>
 #include <cstring>
 #include <stdexcept>
 #include <string>
@@ -15,15 +16,19 @@ VulkanBuffer::VulkanBuffer(
         throw std::invalid_argument("Vulkan buffer size must be positive");
     }
 
+    const std::array<std::uint32_t, 2> queueFamilies {
+        this->device.graphics_family(), this->device.transfer_family()
+    };
+    const bool shared = (usage & VK_BUFFER_USAGE_TRANSFER_DST_BIT) != 0 && this->device.dedicated_transfer_queue();
     const VkBufferCreateInfo bufferInfo {
         .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
         .pNext = nullptr,
         .flags = 0,
         .size = this->byteSize,
         .usage = usage,
-        .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
-        .queueFamilyIndexCount = 0,
-        .pQueueFamilyIndices = nullptr
+        .sharingMode = shared ? VK_SHARING_MODE_CONCURRENT : VK_SHARING_MODE_EXCLUSIVE,
+        .queueFamilyIndexCount = shared ? static_cast<std::uint32_t>(queueFamilies.size()) : 0,
+        .pQueueFamilyIndices = shared ? queueFamilies.data() : nullptr
     };
     VkResult result = vkCreateBuffer(this->device.handle(), &bufferInfo, nullptr, &this->buffer);
 

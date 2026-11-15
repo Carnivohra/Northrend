@@ -3,12 +3,14 @@
 #include "Render/Vulkan/device.hpp"
 #include "Render/Vulkan/Mesh/mesh.hpp"
 
+#include <algorithm>
 #include <limits>
 #include <stdexcept>
+#include <utility>
 
 namespace Northrend {
 
-VulkanMeshStore::VulkanMeshStore(VulkanDevice& device) noexcept : device(device), arena(device) {}
+VulkanMeshStore::VulkanMeshStore(VulkanDevice& device) noexcept : arena(device) {}
 
 VulkanMeshStore::~VulkanMeshStore() = default;
 
@@ -37,7 +39,7 @@ void VulkanMeshStore::store(const MeshHandle handle, const MeshData& data) {
     ++this->currentRevision;
 }
 
-void VulkanMeshStore::erase(const MeshHandle handle) noexcept {
+void VulkanMeshStore::erase(const MeshHandle handle, const std::uint64_t retirementSerial) {
     if (!handle) {
         return;
     }
@@ -48,9 +50,12 @@ void VulkanMeshStore::erase(const MeshHandle handle) noexcept {
         return;
     }
 
-    this->device.wait_idle();
-    this->meshes[static_cast<std::size_t>(index)].reset();
+    this->retired.emplace_back(retirementSerial, std::move(this->meshes[static_cast<std::size_t>(index)]));
     ++this->currentRevision;
+}
+
+void VulkanMeshStore::collect(const std::uint64_t completedSerial) noexcept {
+    std::erase_if(this->retired, [completedSerial](const auto& entry) { return entry.first <= completedSerial; });
 }
 
 const VulkanMesh* VulkanMeshStore::find(MeshHandle handle) const noexcept {
