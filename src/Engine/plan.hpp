@@ -11,7 +11,7 @@ namespace Northrend {
 struct EnginePlan final {
     std::optional<ConfigPlan> config;
     AssetPlan assets;
-    std::size_t renderDistance = 12;
+    std::size_t renderDistance = 10;
 };
 
 }

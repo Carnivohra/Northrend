@@ -54,6 +54,11 @@ void PresentationTerrain::load(const std::size_t x, const std::size_t y, const M
 
     const TerrainGeometry& geometry = tile.terrain();
     const TerrainMaterial& material = tile.material();
+
+    if (material.texture_count() == 0) {
+        return;
+    }
+
     std::vector<MeshVertex> vertices(geometry.vertices().begin(), geometry.vertices().end());
     std::vector<TextureHandle> materialTextures;
     materialTextures.reserve(material.texture_count());
