@@ -19,6 +19,12 @@ Adt::Adt(std::shared_ptr<const AssetData> data) : data(std::move(data)) {
     static constexpr ChunkId HeaderId {'R', 'D', 'H', 'M'};
     static constexpr ChunkId IndexId {'N', 'I', 'C', 'M'};
     static constexpr ChunkId TexturesId {'X', 'E', 'T', 'M'};
+    static constexpr ChunkId M2NamesId {'X', 'D', 'M', 'M'};
+    static constexpr ChunkId M2OffsetsId {'D', 'I', 'M', 'M'};
+    static constexpr ChunkId WmoNamesId {'O', 'M', 'W', 'M'};
+    static constexpr ChunkId WmoOffsetsId {'D', 'I', 'W', 'M'};
+    static constexpr ChunkId M2PlacementsId {'F', 'D', 'D', 'M'};
+    static constexpr ChunkId WmoPlacementsId {'F', 'D', 'O', 'M'};
     static constexpr ChunkId TerrainId {'K', 'N', 'C', 'M'};
     static constexpr ChunkId HeightsId {'T', 'V', 'C', 'M'};
     static constexpr ChunkId NormalsId {'R', 'N', 'C', 'M'};
@@ -30,6 +36,8 @@ Adt::Adt(std::shared_ptr<const AssetData> data) : data(std::move(data)) {
     static constexpr std::size_t TerrainHeaderSize = 128;
     static constexpr std::size_t HeightDataSize = HeightsPerChunk * sizeof(float);
     static constexpr std::size_t NormalDataSize = HeightsPerChunk * 3;
+    static constexpr std::size_t M2PlacementSize = 36;
+    static constexpr std::size_t WmoPlacementSize = 64;
 
     if (this->data == nullptr || this->data->empty()) {
         throw std::invalid_argument("ADT data is empty");
@@ -38,12 +46,21 @@ Adt::Adt(std::shared_ptr<const AssetData> data) : data(std::move(data)) {
     const std::span<const std::byte> bytes = this->data->bytes();
     std::array<std::uint32_t, ChunkCount> indexedOffsets {};
     std::array<std::uint32_t, ChunkCount> indexedSizes {};
+    std::span<const std::byte> m2Names;
+    std::span<const std::byte> m2Offsets;
+    std::span<const std::byte> m2PlacementData;
+    std::span<const std::byte> wmoNames;
+    std::span<const std::byte> wmoOffsets;
+    std::span<const std::byte> wmoPlacementData;
     std::bitset<ChunkCount> terrainChunks;
     ChunkReader reader(bytes);
     std::size_t indexChunkOffset = 0;
     std::size_t actualIndexChunkOffset = 0;
     std::size_t textureChunkOffset = 0;
     std::size_t actualTextureChunkOffset = 0;
+    std::array<std::size_t, 6> objectChunkOffsets {};
+    std::array<std::size_t, 6> actualObjectChunkOffsets {};
+    std::array<bool, 6> objectChunksFound {};
     bool versionFound = false;
     bool headerFound = false;
     bool indexFound = false;
@@ -77,6 +94,15 @@ Adt::Adt(std::shared_ptr<const AssetData> data) : data(std::move(data)) {
 
             indexChunkOffset = referencedIndexOffset;
             textureChunkOffset = referencedTextureOffset;
+
+            for (std::size_t object = 0; object < objectChunkOffsets.size(); ++object) {
+                const std::uint32_t relative = read_uint32(chunk->bytes(), 12 + object * sizeof(std::uint32_t));
+
+                if (relative != 0) {
+                    objectChunkOffsets[object] = chunkOffset + ChunkHeaderSize + relative;
+                }
+            }
+
             headerFound = true;
             continue;
         }
@@ -136,6 +162,50 @@ Adt::Adt(std::shared_ptr<const AssetData> data) : data(std::move(data)) {
 
             actualTextureChunkOffset = chunkOffset;
             texturesFound = true;
+            continue;
+        }
+
+        const auto objectChunk = [&](const std::size_t index, std::span<const std::byte>& destination) {
+            if (objectChunksFound[index]) {
+                throw std::runtime_error("ADT contains a duplicate map object chunk");
+            }
+
+            if (headerFound && objectChunkOffsets[index] != 0 && objectChunkOffsets[index] != chunkOffset) {
+                throw std::runtime_error("ADT header does not reference the expected map object chunk");
+            }
+
+            destination = chunk->bytes();
+            actualObjectChunkOffsets[index] = chunkOffset;
+            objectChunksFound[index] = true;
+        };
+
+        if (chunk->id() == M2NamesId) {
+            objectChunk(0, m2Names);
+            continue;
+        }
+
+        if (chunk->id() == M2OffsetsId) {
+            objectChunk(1, m2Offsets);
+            continue;
+        }
+
+        if (chunk->id() == WmoNamesId) {
+            objectChunk(2, wmoNames);
+            continue;
+        }
+
+        if (chunk->id() == WmoOffsetsId) {
+            objectChunk(3, wmoOffsets);
+            continue;
+        }
+
+        if (chunk->id() == M2PlacementsId) {
+            objectChunk(4, m2PlacementData);
+            continue;
+        }
+
+        if (chunk->id() == WmoPlacementsId) {
+            objectChunk(5, wmoPlacementData);
             continue;
         }
 
@@ -270,8 +340,85 @@ Adt::Adt(std::shared_ptr<const AssetData> data) : data(std::move(data)) {
         throw std::runtime_error("ADT header does not reference the expected chunks");
     }
 
+    for (std::size_t object = 0; object < objectChunkOffsets.size(); ++object) {
+        if (objectChunkOffsets[object] != 0 &&
+            (!objectChunksFound[object] || objectChunkOffsets[object] != actualObjectChunkOffsets[object])) {
+            throw std::runtime_error("ADT header references a missing map object chunk");
+        }
+    }
+
     if (this->fileVersion != 18) {
         throw std::runtime_error("Unsupported ADT version");
+    }
+
+    if (m2Offsets.size() % sizeof(std::uint32_t) != 0 || wmoOffsets.size() % sizeof(std::uint32_t) != 0 ||
+        m2PlacementData.size() % M2PlacementSize != 0 || wmoPlacementData.size() % WmoPlacementSize != 0) {
+        throw std::runtime_error("ADT map object data has an invalid size");
+    }
+
+    for (std::size_t name = 0; name < m2Offsets.size() / sizeof(std::uint32_t); ++name) {
+        static_cast<void>(read_name(m2Names, m2Offsets, name));
+    }
+
+    for (std::size_t name = 0; name < wmoOffsets.size() / sizeof(std::uint32_t); ++name) {
+        static_cast<void>(read_name(wmoNames, wmoOffsets, name));
+    }
+
+    const auto vector = [](const std::span<const std::byte> source, const std::size_t offset) {
+        return Vector3 {
+            .x = read_float(source, offset),
+            .y = read_float(source, offset + sizeof(float)),
+            .z = read_float(source, offset + sizeof(float) * 2)
+        };
+    };
+    const auto finite = [](const Vector3& value) {
+        return std::isfinite(value.x) && std::isfinite(value.y) && std::isfinite(value.z);
+    };
+
+    this->m2Placements.reserve(m2PlacementData.size() / M2PlacementSize);
+
+    for (std::size_t offset = 0; offset < m2PlacementData.size(); offset += M2PlacementSize) {
+        const Vector3 position = vector(m2PlacementData, offset + 8);
+        const Vector3 rotation = vector(m2PlacementData, offset + 20);
+
+        if (!finite(position) || !finite(rotation)) {
+            throw std::runtime_error("ADT M2 placement contains an invalid transform");
+        }
+
+        this->m2Placements.push_back(M2Placement {
+            .asset = read_name(m2Names, m2Offsets, read_uint32(m2PlacementData, offset)),
+            .position = position,
+            .rotation = rotation,
+            .id = read_uint32(m2PlacementData, offset + 4),
+            .scale = read_uint16(m2PlacementData, offset + 32),
+            .flags = read_uint16(m2PlacementData, offset + 34)
+        });
+    }
+
+    this->wmoPlacements.reserve(wmoPlacementData.size() / WmoPlacementSize);
+
+    for (std::size_t offset = 0; offset < wmoPlacementData.size(); offset += WmoPlacementSize) {
+        const Vector3 position = vector(wmoPlacementData, offset + 8);
+        const Vector3 rotation = vector(wmoPlacementData, offset + 20);
+        const Vector3 minimum = vector(wmoPlacementData, offset + 32);
+        const Vector3 maximum = vector(wmoPlacementData, offset + 44);
+
+        if (!finite(position) || !finite(rotation) || !finite(minimum) || !finite(maximum)) {
+            throw std::runtime_error("ADT WMO placement contains invalid spatial data");
+        }
+
+        this->wmoPlacements.push_back(WmoPlacement {
+            .asset = read_name(wmoNames, wmoOffsets, read_uint32(wmoPlacementData, offset)),
+            .position = position,
+            .rotation = rotation,
+            .minimum = minimum,
+            .maximum = maximum,
+            .id = read_uint32(wmoPlacementData, offset + 4),
+            .flags = read_uint16(wmoPlacementData, offset + 56),
+            .doodadSet = read_uint16(wmoPlacementData, offset + 58),
+            .nameSet = read_uint16(wmoPlacementData, offset + 60),
+            .scale = 1.0F
+        });
     }
 
     if (terrainChunks.count() != ChunkCount) {
@@ -404,6 +551,14 @@ std::span<const std::byte> Adt::alpha_data(const std::size_t x, const std::size_
     return this->alphaData[cell].subspan(begin, end - begin);
 }
 
+std::span<const Adt::M2Placement> Adt::m2_placements() const noexcept {
+    return this->m2Placements;
+}
+
+std::span<const Adt::WmoPlacement> Adt::wmo_placements() const noexcept {
+    return this->wmoPlacements;
+}
+
 void Adt::decode_alpha(const std::size_t x, const std::size_t y, const std::size_t layer, const bool highResolution,
     const std::span<std::uint8_t, AlphaTexels> output) const {
     const std::size_t cell = index(x, y);
@@ -515,6 +670,44 @@ std::size_t Adt::layer_offset(const std::size_t x, const std::size_t y, const st
     }
 
     return layer * LayerSize;
+}
+
+std::string_view Adt::read_name(const std::span<const std::byte> names,
+    const std::span<const std::byte> offsets, const std::size_t index) {
+    if (offsets.size() % sizeof(std::uint32_t) != 0 || index >= offsets.size() / sizeof(std::uint32_t)) {
+        throw std::out_of_range("ADT map object name index exceeds the offset table");
+    }
+
+    const std::size_t begin = read_uint32(offsets, index * sizeof(std::uint32_t));
+
+    if (begin >= names.size()) {
+        throw std::runtime_error("ADT map object name offset exceeds the name block");
+    }
+
+    std::size_t end = begin;
+
+    while (end < names.size() && names[end] != std::byte {0}) {
+        ++end;
+    }
+
+    if (end == names.size()) {
+        throw std::runtime_error("ADT map object name is not terminated");
+    }
+
+    if (end == begin) {
+        throw std::runtime_error("ADT contains an empty map object name");
+    }
+
+    return {reinterpret_cast<const char*>(names.data() + begin), end - begin};
+}
+
+std::uint16_t Adt::read_uint16(const std::span<const std::byte> bytes, const std::size_t offset) {
+    if (offset > bytes.size() || bytes.size() - offset < sizeof(std::uint16_t)) {
+        throw std::out_of_range("ADT value exceeds the available data");
+    }
+
+    return std::to_integer<std::uint16_t>(bytes[offset]) |
+        std::to_integer<std::uint16_t>(bytes[offset + 1]) << 8U;
 }
 
 std::uint32_t Adt::read_uint32(const std::span<const std::byte> bytes, const std::size_t offset) {

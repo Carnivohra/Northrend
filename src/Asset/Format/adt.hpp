@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Asset/data.hpp"
+#include "Math/vector.hpp"
 
 #include <array>
 #include <cstddef>
@@ -14,6 +15,28 @@ namespace Northrend {
 
 class Adt final {
 public:
+    struct M2Placement final {
+        std::string_view asset;
+        Vector3 position;
+        Vector3 rotation;
+        std::uint32_t id;
+        std::uint16_t scale;
+        std::uint16_t flags;
+    };
+
+    struct WmoPlacement final {
+        std::string_view asset;
+        Vector3 position;
+        Vector3 rotation;
+        Vector3 minimum;
+        Vector3 maximum;
+        std::uint32_t id;
+        std::uint16_t flags;
+        std::uint16_t doodadSet;
+        std::uint16_t nameSet;
+        float scale;
+    };
+
     static constexpr std::size_t Size = 16;
     static constexpr std::size_t ChunkCount = Size * Size;
     static constexpr std::size_t HeightsPerChunk = 145;
@@ -38,6 +61,8 @@ public:
     [[nodiscard]] std::uint32_t layer_flags(std::size_t x, std::size_t y, std::size_t layer) const;
     [[nodiscard]] std::uint32_t layer_effect(std::size_t x, std::size_t y, std::size_t layer) const;
     [[nodiscard]] std::span<const std::byte> alpha_data(std::size_t x, std::size_t y, std::size_t layer) const;
+    [[nodiscard]] std::span<const M2Placement> m2_placements() const noexcept;
+    [[nodiscard]] std::span<const WmoPlacement> wmo_placements() const noexcept;
     void decode_alpha(std::size_t x, std::size_t y, std::size_t layer, bool highResolution,
         std::span<std::uint8_t, AlphaTexels> output) const;
 
@@ -52,6 +77,9 @@ private:
     static void decode_alpha_rle(std::span<const std::byte> input, std::span<std::uint8_t, AlphaTexels> output);
     static void decode_alpha_packed(std::span<const std::byte> input, std::span<std::uint8_t, AlphaTexels> output);
     static void correct_alpha_edges(std::span<std::uint8_t, AlphaTexels> alpha) noexcept;
+    [[nodiscard]] static std::string_view read_name(
+        std::span<const std::byte> names, std::span<const std::byte> offsets, std::size_t index);
+    [[nodiscard]] static std::uint16_t read_uint16(std::span<const std::byte> bytes, std::size_t offset);
     [[nodiscard]] static std::uint32_t read_uint32(std::span<const std::byte> bytes, std::size_t offset);
     [[nodiscard]] static float read_float(std::span<const std::byte> bytes, std::size_t offset);
 
@@ -67,6 +95,8 @@ private:
     std::array<std::uint32_t, ChunkCount> terrainFlags {};
     std::array<std::uint8_t, ChunkCount> layerCounts {};
     std::vector<std::string_view> textureNames;
+    std::vector<M2Placement> m2Placements;
+    std::vector<WmoPlacement> wmoPlacements;
     std::uint32_t fileVersion = 0;
 };
 

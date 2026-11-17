@@ -8,6 +8,7 @@
 #include "Render/Vulkan/device.hpp"
 #include "Render/Vulkan/Material/store.hpp"
 
+#include <algorithm>
 #include <array>
 #include <cstddef>
 #include <cstdint>
@@ -23,8 +24,11 @@ VulkanMeshPipeline::VulkanMeshPipeline(VulkanDevice& device, const VulkanMateria
         this->create_layout();
         this->worldPipeline = this->create_graphics_pipeline(
             renderPass, extent, VulkanShader::MeshWorldVertex, VulkanShader::MeshTerrainFragment, false);
-        this->transformedPipeline = this->create_graphics_pipeline(
-            renderPass, extent, VulkanShader::MeshVertex, VulkanShader::MeshFragment, true);
+
+        for (std::uint32_t blendMode = 0; blendMode < this->transformedPipelines.size(); ++blendMode) {
+            this->transformedPipelines[blendMode] = this->create_graphics_pipeline(
+                renderPass, extent, VulkanShader::MeshVertex, VulkanShader::MeshFragment, true, blendMode);
+        }
     } catch (...) {
         this->destroy();
         throw;
@@ -49,8 +53,9 @@ void VulkanMeshPipeline::bind_world(const VkCommandBuffer commandBuffer, const s
 }
 
 void VulkanMeshPipeline::bind_transformed(
-    const VkCommandBuffer commandBuffer, const std::size_t imageIndex) const noexcept {
-    this->bind(commandBuffer, imageIndex, this->transformedPipeline);
+    const VkCommandBuffer commandBuffer, const std::size_t imageIndex, const std::uint32_t blendMode) const noexcept {
+    const std::size_t index = std::min<std::size_t>(blendMode, this->transformedPipelines.size() - 1);
+    this->bind(commandBuffer, imageIndex, this->transformedPipelines[index]);
 }
 
 VkPipelineLayout VulkanMeshPipeline::pipeline_layout() const noexcept {
@@ -71,7 +76,7 @@ void VulkanMeshPipeline::create_layout() {
     const VkPushConstantRange detailRange {
         .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
         .offset = 0,
-        .size = sizeof(float) * 2
+        .size = sizeof(float) * 2 + sizeof(std::uint32_t) * 4
     };
     const VkPipelineLayoutCreateInfo createInfo {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
@@ -91,7 +96,7 @@ void VulkanMeshPipeline::create_layout() {
 
 VkPipeline VulkanMeshPipeline::create_graphics_pipeline(const VkRenderPass renderPass, const VkExtent2D extent,
     const std::span<const unsigned char> vertexCode, const std::span<const unsigned char> fragmentCode,
-    const bool transformed) const {
+    const bool transformed, const std::uint32_t blendMode) const {
     const VkShaderModule vertexShader = this->create_shader_module(vertexCode);
     VkShaderModule fragmentShader = VK_NULL_HANDLE;
 
@@ -133,7 +138,7 @@ VkPipeline VulkanMeshPipeline::create_graphics_pipeline(const VkRenderPass rende
     const VkVertexInputBindingDescription worldBinding {
         .binding = 0, .stride = sizeof(MeshVertex), .inputRate = VK_VERTEX_INPUT_RATE_VERTEX
     };
-    const std::array<VkVertexInputAttributeDescription, 6> transformedAttributes {
+    const std::array<VkVertexInputAttributeDescription, 7> transformedAttributes {
         VkVertexInputAttributeDescription {
             .location = 0, .binding = 0, .format = VK_FORMAT_R32G32B32_SFLOAT, .offset = 0
         },
@@ -141,16 +146,22 @@ VkPipeline VulkanMeshPipeline::create_graphics_pipeline(const VkRenderPass rende
             .location = 1, .binding = 0, .format = VK_FORMAT_R8G8B8A8_SNORM, .offset = offsetof(MeshVertex, normal)
         },
         VkVertexInputAttributeDescription {
-            .location = 2, .binding = 1, .format = VK_FORMAT_R32G32B32A32_SFLOAT, .offset = sizeof(float) * 0
+            .location = 2,
+            .binding = 0,
+            .format = VK_FORMAT_R32G32_SFLOAT,
+            .offset = offsetof(MeshVertex, textureCoordinates)
         },
         VkVertexInputAttributeDescription {
-            .location = 3, .binding = 1, .format = VK_FORMAT_R32G32B32A32_SFLOAT, .offset = sizeof(float) * 4
+            .location = 3, .binding = 1, .format = VK_FORMAT_R32G32B32A32_SFLOAT, .offset = sizeof(float) * 0
         },
         VkVertexInputAttributeDescription {
-            .location = 4, .binding = 1, .format = VK_FORMAT_R32G32B32A32_SFLOAT, .offset = sizeof(float) * 8
+            .location = 4, .binding = 1, .format = VK_FORMAT_R32G32B32A32_SFLOAT, .offset = sizeof(float) * 4
         },
         VkVertexInputAttributeDescription {
-            .location = 5, .binding = 1, .format = VK_FORMAT_R32G32B32A32_SFLOAT, .offset = sizeof(float) * 12
+            .location = 5, .binding = 1, .format = VK_FORMAT_R32G32B32A32_SFLOAT, .offset = sizeof(float) * 8
+        },
+        VkVertexInputAttributeDescription {
+            .location = 6, .binding = 1, .format = VK_FORMAT_R32G32B32A32_SFLOAT, .offset = sizeof(float) * 12
         }
     };
     const std::array<VkVertexInputAttributeDescription, 5> worldAttributes {
@@ -215,7 +226,7 @@ VkPipeline VulkanMeshPipeline::create_graphics_pipeline(const VkRenderPass rende
         .depthClampEnable = VK_FALSE,
         .rasterizerDiscardEnable = VK_FALSE,
         .polygonMode = VK_POLYGON_MODE_FILL,
-        .cullMode = VK_CULL_MODE_BACK_BIT,
+        .cullMode = transformed ? VK_CULL_MODE_NONE : VK_CULL_MODE_BACK_BIT,
         .frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE,
         .depthBiasEnable = VK_FALSE,
         .depthBiasConstantFactor = 0.0F,
@@ -239,7 +250,7 @@ VkPipeline VulkanMeshPipeline::create_graphics_pipeline(const VkRenderPass rende
         .pNext = nullptr,
         .flags = 0,
         .depthTestEnable = VK_TRUE,
-        .depthWriteEnable = VK_TRUE,
+        .depthWriteEnable = blendMode < 2 ? VK_TRUE : VK_FALSE,
         .depthCompareOp = VK_COMPARE_OP_GREATER,
         .depthBoundsTestEnable = VK_FALSE,
         .stencilTestEnable = VK_FALSE,
@@ -248,10 +259,39 @@ VkPipeline VulkanMeshPipeline::create_graphics_pipeline(const VkRenderPass rende
         .minDepthBounds = 0.0F,
         .maxDepthBounds = 1.0F
     };
+    static constexpr std::array<VkBlendFactor, 12> SourceBlend {
+        VK_BLEND_FACTOR_ONE,
+        VK_BLEND_FACTOR_ONE,
+        VK_BLEND_FACTOR_SRC_ALPHA,
+        VK_BLEND_FACTOR_SRC_ALPHA,
+        VK_BLEND_FACTOR_DST_COLOR,
+        VK_BLEND_FACTOR_DST_COLOR,
+        VK_BLEND_FACTOR_DST_COLOR,
+        VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
+        VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
+        VK_BLEND_FACTOR_SRC_ALPHA,
+        VK_BLEND_FACTOR_ONE,
+        VK_BLEND_FACTOR_CONSTANT_ALPHA
+    };
+    static constexpr std::array<VkBlendFactor, 12> DestinationBlend {
+        VK_BLEND_FACTOR_ZERO,
+        VK_BLEND_FACTOR_ZERO,
+        VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
+        VK_BLEND_FACTOR_ONE,
+        VK_BLEND_FACTOR_ZERO,
+        VK_BLEND_FACTOR_SRC_COLOR,
+        VK_BLEND_FACTOR_ONE,
+        VK_BLEND_FACTOR_ONE,
+        VK_BLEND_FACTOR_ZERO,
+        VK_BLEND_FACTOR_ZERO,
+        VK_BLEND_FACTOR_ONE,
+        VK_BLEND_FACTOR_ONE_MINUS_CONSTANT_ALPHA
+    };
+    const std::size_t blendIndex = std::min<std::size_t>(blendMode, SourceBlend.size() - 1);
     const VkPipelineColorBlendAttachmentState colorAttachment {
-        .blendEnable = VK_FALSE,
-        .srcColorBlendFactor = VK_BLEND_FACTOR_ONE,
-        .dstColorBlendFactor = VK_BLEND_FACTOR_ZERO,
+        .blendEnable = blendMode >= 2 ? VK_TRUE : VK_FALSE,
+        .srcColorBlendFactor = SourceBlend[blendIndex],
+        .dstColorBlendFactor = DestinationBlend[blendIndex],
         .colorBlendOp = VK_BLEND_OP_ADD,
         .srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE,
         .dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO,
@@ -305,9 +345,11 @@ VkPipeline VulkanMeshPipeline::create_graphics_pipeline(const VkRenderPass rende
 }
 
 void VulkanMeshPipeline::destroy() noexcept {
-    if (this->transformedPipeline != VK_NULL_HANDLE) {
-        vkDestroyPipeline(this->device.handle(), this->transformedPipeline, nullptr);
-        this->transformedPipeline = VK_NULL_HANDLE;
+    for (VkPipeline& pipeline : this->transformedPipelines) {
+        if (pipeline != VK_NULL_HANDLE) {
+            vkDestroyPipeline(this->device.handle(), pipeline, nullptr);
+            pipeline = VK_NULL_HANDLE;
+        }
     }
 
     if (this->worldPipeline != VK_NULL_HANDLE) {

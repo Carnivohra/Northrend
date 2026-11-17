@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Asset/Stream/request.hpp"
+#include "Asset/Stream/priority.hpp"
 #include "World/Map/Tile/request.hpp"
 #include "World/Map/Tile/result.hpp"
 
@@ -12,10 +13,11 @@ namespace Northrend {
 
 class ThreadPool;
 class Work;
+class MapObjectLoader;
 
 class TileJob final {
 public:
-    TileJob(TileRequest request, AssetRequest assetRequest) noexcept;
+    TileJob(TileRequest request, AssetRequest assetRequest, MapObjectLoader& objects, AssetPriority priority) noexcept;
     ~TileJob();
 
     TileJob(const TileJob&) = delete;
@@ -33,6 +35,8 @@ private:
 
     TileRequest tileRequest;
     AssetRequest assetRequest;
+    MapObjectLoader& objects;
+    AssetPriority objectPriority;
     std::optional<TileResult> tileResult;
     std::shared_ptr<Work> work;
 };

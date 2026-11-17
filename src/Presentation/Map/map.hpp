@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Presentation/Map/objects.hpp"
 #include "Presentation/Map/terrain.hpp"
 #include "World/Map/Terrain/payload.hpp"
 #include "World/Map/Tile/focus.hpp"
@@ -48,7 +49,9 @@ private:
     std::array<std::shared_ptr<const MapTile>, TileGrid::TileCount> tiles;
     std::array<std::unique_ptr<TerrainPayload>, TileGrid::TileCount> payloads;
     std::array<bool, TileGrid::TileCount> pending;
+    std::array<bool, TileGrid::TileCount> objectPending;
     PresentationTerrain terrain;
+    PresentationMapObjects objects;
     std::optional<TileFocus> tileFocus;
     std::uint32_t currentGeneration = 0;
 };

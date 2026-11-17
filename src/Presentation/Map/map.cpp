@@ -16,6 +16,7 @@ void PresentationMap::apply(TileChange change, MeshHandleAllocator& meshAllocato
     RenderScene& scene) {
     if (change.kind() == TileChange::Kind::reset) {
         this->terrain.clear(meshAllocator, materialAllocator, textures, renderer, scene);
+        this->objects.clear(meshAllocator, materialAllocator, textures, renderer, scene);
         this->tiles.fill(nullptr);
 
         for (std::unique_ptr<TerrainPayload>& payload : this->payloads) {
@@ -23,6 +24,7 @@ void PresentationMap::apply(TileChange change, MeshHandleAllocator& meshAllocato
         }
 
         this->pending.fill(false);
+        this->objectPending.fill(false);
         this->tileFocus.reset();
         textures.clear(renderer);
         this->currentGeneration = change.generation();
@@ -41,12 +43,14 @@ void PresentationMap::apply(TileChange change, MeshHandleAllocator& meshAllocato
     if (change.kind() == TileChange::Kind::unloaded) {
         if (this->tiles[tile]) {
             this->terrain.unload(x, y, meshAllocator, materialAllocator, textures, renderer, scene);
+            this->objects.unload(x, y, meshAllocator, materialAllocator, textures, renderer, scene);
             release_textures(*this->tiles[tile], textures, renderer);
         }
 
         this->tiles[tile].reset();
         this->payloads[tile].reset();
         this->pending[tile] = false;
+        this->objectPending[tile] = false;
         return;
     }
 
@@ -59,6 +63,7 @@ void PresentationMap::apply(TileChange change, MeshHandleAllocator& meshAllocato
 
     if (this->tiles[tile]) {
         this->terrain.unload(x, y, meshAllocator, materialAllocator, textures, renderer, scene);
+        this->objects.unload(x, y, meshAllocator, materialAllocator, textures, renderer, scene);
         release_textures(*this->tiles[tile], textures, renderer);
     }
 
@@ -66,6 +71,8 @@ void PresentationMap::apply(TileChange change, MeshHandleAllocator& meshAllocato
     this->tiles[tile] = std::move(mapTile);
     this->payloads[tile] = std::move(payload);
     this->pending[tile] = true;
+    this->objects.load(x, y, *this->tiles[tile]);
+    this->objectPending[tile] = !this->tiles[tile]->objects().empty();
 }
 
 void PresentationMap::focus(const Vector3& position, const std::size_t radius, PresentationExchange& exchange) {
@@ -83,7 +90,20 @@ void PresentationMap::focus(const Vector3& position, const std::size_t radius, P
 void PresentationMap::prepare(MeshHandleAllocator& meshAllocator, MaterialHandleAllocator& materialAllocator,
     PresentationTextureCache& textures, Renderer& renderer, RenderScene& scene) {
     static constexpr std::size_t TilesPerFrame = 4;
+    static constexpr std::size_t ObjectsPerFrame = 4;
     std::size_t prepared = 0;
+    std::size_t objectBudget = ObjectsPerFrame;
+
+    for (std::size_t tile = 0; tile < this->objectPending.size() && objectBudget != 0; ++tile) {
+        if (!this->objectPending[tile] || !this->tiles[tile]) {
+            continue;
+        }
+
+        const std::size_t x = tile % TileGrid::Size;
+        const std::size_t y = tile / TileGrid::Size;
+        this->objectPending[tile] = !this->objects.prepare(x, y, *this->tiles[tile], objectBudget, meshAllocator,
+            materialAllocator, textures, renderer, scene);
+    }
 
     for (std::size_t tile = 0; tile < this->pending.size() && prepared < TilesPerFrame; ++tile) {
         if (!this->pending[tile] || !this->tiles[tile] || !this->payloads[tile]) {
@@ -117,6 +137,7 @@ void PresentationMap::prepare(MeshHandleAllocator& meshAllocator, MaterialHandle
 void PresentationMap::clear(MeshHandleAllocator& meshAllocator, MaterialHandleAllocator& materialAllocator,
     PresentationTextureCache& textures, Renderer& renderer, RenderScene& scene) {
     this->terrain.clear(meshAllocator, materialAllocator, textures, renderer, scene);
+    this->objects.clear(meshAllocator, materialAllocator, textures, renderer, scene);
     this->tiles.fill(nullptr);
 
     for (std::unique_ptr<TerrainPayload>& payload : this->payloads) {
@@ -124,6 +145,7 @@ void PresentationMap::clear(MeshHandleAllocator& meshAllocator, MaterialHandleAl
     }
 
     this->pending.fill(false);
+    this->objectPending.fill(false);
     this->tileFocus.reset();
     textures.clear(renderer);
     this->currentGeneration = 0;

@@ -3,6 +3,7 @@
 #include "Asset/Stream/request.hpp"
 #include "Asset/id.hpp"
 #include "World/Map/selection.hpp"
+#include "World/Map/Object/loader.hpp"
 #include "World/Map/Tile/request.hpp"
 
 #include <cstddef>
@@ -37,6 +38,7 @@ public:
 private:
     [[nodiscard]] static AssetId map_asset(std::string_view map);
     [[nodiscard]] static AssetId tile_asset(std::string_view map, const TileRequest& request);
+    [[nodiscard]] static AssetPriority tile_priority(const TileRequest& request) noexcept;
     static void stop_work(std::shared_ptr<Work>& work) noexcept;
     void finish_catalog();
     void start_catalog();
@@ -52,6 +54,7 @@ private:
     AssetSystem& assets;
     ThreadPool& threadPool;
     MapExchange& exchange;
+    MapObjectLoader objectLoader;
     std::optional<std::pair<MapSelection, AssetRequest>> mapLoading;
     std::vector<std::pair<TileRequest, AssetRequest>> tileLoading;
     std::vector<std::unique_ptr<TileJob>> tileParsing;

@@ -29,6 +29,7 @@ public:
     void erase(MaterialHandle handle, std::uint64_t retirementSerial);
     void collect(std::uint64_t completedSerial) noexcept;
     void bind(VkCommandBuffer commandBuffer, VkPipelineLayout pipelineLayout, MaterialHandle handle) const noexcept;
+    [[nodiscard]] MaterialProperties properties(MaterialHandle handle) const noexcept;
     [[nodiscard]] VkDescriptorSetLayout descriptor_layout() const noexcept;
 
 private:
@@ -39,6 +40,7 @@ private:
     VulkanDevice& device;
     const VulkanTextureStore& textures;
     std::vector<VkDescriptorSet> materials;
+    std::vector<MaterialProperties> materialProperties;
     std::vector<std::pair<std::uint64_t, VkDescriptorSet>> retired;
     VkDescriptorSetLayout descriptorLayout = VK_NULL_HANDLE;
     VkDescriptorPool descriptorPool = VK_NULL_HANDLE;

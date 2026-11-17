@@ -118,8 +118,7 @@ VulkanMaterialStore::~VulkanMaterialStore() {
 }
 
 void VulkanMaterialStore::store(const MaterialHandle handle, const MaterialData& data) {
-    if (!handle || !data.alpha() || !data.blended() || data.textures().empty() ||
-        data.textures().size() > MaximumTextures) {
+    if (!handle || data.textures().empty() || data.textures().size() > MaximumTextures) {
         throw std::invalid_argument("Vulkan material data is invalid");
     }
 
@@ -133,6 +132,7 @@ void VulkanMaterialStore::store(const MaterialHandle handle, const MaterialData&
 
     if (this->materials.size() <= index) {
         this->materials.resize(index + 1, VK_NULL_HANDLE);
+        this->materialProperties.resize(index + 1);
     }
 
     if (this->materials[index] != VK_NULL_HANDLE) {
@@ -177,8 +177,8 @@ void VulkanMaterialStore::store(const MaterialHandle handle, const MaterialData&
             images[texture].imageView = image->view();
         }
 
-        const VulkanTexture* alpha = this->textures.find(data.alpha());
-        const VulkanTexture* blended = this->textures.find(data.blended());
+        const VulkanTexture* alpha = data.alpha() ? this->textures.find(data.alpha()) : fallback;
+        const VulkanTexture* blended = data.blended() ? this->textures.find(data.blended()) : fallback;
 
         if (!alpha || !blended) {
             throw std::runtime_error("Vulkan material references a missing alpha texture");
@@ -240,6 +240,8 @@ void VulkanMaterialStore::store(const MaterialHandle handle, const MaterialData&
     }
 
     this->materials[index] = descriptorSet;
+    this->materialProperties[index] = data.properties();
+    this->materialProperties[index].textureCount = static_cast<std::uint32_t>(data.textures().size());
 }
 
 void VulkanMaterialStore::erase(const MaterialHandle handle, const std::uint64_t retirementSerial) {
@@ -256,6 +258,7 @@ void VulkanMaterialStore::erase(const MaterialHandle handle, const std::uint64_t
     VkDescriptorSet& material = this->materials[static_cast<std::size_t>(index)];
     this->retired.emplace_back(retirementSerial, material);
     material = VK_NULL_HANDLE;
+    this->materialProperties[static_cast<std::size_t>(index)] = {};
 }
 
 void VulkanMaterialStore::collect(const std::uint64_t completedSerial) noexcept {
@@ -288,8 +291,17 @@ VkDescriptorSetLayout VulkanMaterialStore::descriptor_layout() const noexcept {
     return this->descriptorLayout;
 }
 
+MaterialProperties VulkanMaterialStore::properties(const MaterialHandle handle) const noexcept {
+    if (!handle || handle.id() - 1 >= this->materialProperties.size()) {
+        return {};
+    }
+
+    return this->materialProperties[static_cast<std::size_t>(handle.id() - 1)];
+}
+
 void VulkanMaterialStore::destroy() noexcept {
     this->retired.clear();
+    this->materialProperties.clear();
 
     if (this->alphaSampler != VK_NULL_HANDLE) {
         vkDestroySampler(this->device.handle(), this->alphaSampler, nullptr);

@@ -21,7 +21,11 @@
 namespace Northrend {
 
 MapLoader::MapLoader(AssetSystem& assets, ThreadPool& threadPool, MapExchange& exchange) noexcept :
-    assets(assets), threadPool(threadPool), exchange(exchange), parseCapacity(threadPool.worker_count()) {
+    assets(assets),
+    threadPool(threadPool),
+    exchange(exchange),
+    objectLoader(assets, threadPool),
+    parseCapacity(threadPool.worker_count()) {
     this->tileLoading.reserve(MapExchange::TileCapacity);
     this->tileParsing.reserve(this->parseCapacity);
 }
@@ -43,6 +47,7 @@ void MapLoader::tick() {
     this->finish_parse();
     this->receive_tile_requests();
     this->start_parse();
+    this->objectLoader.tick();
 }
 
 void MapLoader::stop() noexcept {
@@ -59,6 +64,7 @@ void MapLoader::stop() noexcept {
     }
 
     this->tileParsing.clear();
+    this->objectLoader.stop();
     this->mapLoading.reset();
     this->tileLoading.clear();
     this->loadingPosition = 0;
@@ -98,6 +104,14 @@ AssetId MapLoader::tile_asset(const std::string_view map, const TileRequest& req
     path.append(std::to_string(request.y()));
     path.append(".adt");
     return AssetId(path);
+}
+
+AssetPriority MapLoader::tile_priority(const TileRequest& request) noexcept {
+    if (request.distance() == 0) {
+        return AssetPriority::critical;
+    }
+
+    return request.distance() <= 2 ? AssetPriority::normal : AssetPriority::background;
 }
 
 void MapLoader::stop_work(std::shared_ptr<Work>& work) noexcept {
@@ -174,6 +188,7 @@ void MapLoader::receive_selections() {
 
     this->mapLoading.reset();
     this->activeMap = std::move(selection->second);
+    this->objectLoader.reset(selection->first.generation());
     this->mapLoading.emplace(
         selection->first, this->assets.request(map_asset(this->activeMap), AssetPriority::critical));
     this->tileLoading.clear();
@@ -228,14 +243,7 @@ void MapLoader::receive_tile_requests() {
             return;
         }
 
-        AssetPriority priority = AssetPriority::background;
-
-        if (request->distance() == 0) {
-            priority = AssetPriority::critical;
-        } else if (request->distance() <= 2) {
-            priority = AssetPriority::normal;
-        }
-
+        const AssetPriority priority = tile_priority(*request);
         this->tileLoading.emplace_back(*request, this->assets.request(tile_asset(this->activeMap, *request), priority));
     }
 }
@@ -297,7 +305,8 @@ void MapLoader::start_parse() {
                 this->loadingPosition = 0;
             }
 
-            auto job = std::make_unique<TileJob>(request, std::move(assetRequest));
+            auto job = std::make_unique<TileJob>(
+                request, std::move(assetRequest), this->objectLoader, tile_priority(request));
             job->start(this->threadPool);
             this->tileParsing.push_back(std::move(job));
             started = true;

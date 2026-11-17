@@ -147,8 +147,7 @@ void VulkanCommandContext::record(std::size_t imageIndex, const RenderFrame& ren
     }
 
     if (this->batch.has_transformed(imageIndex)) {
-        pipeline.bind_transformed(commandBuffer, imageIndex);
-        this->batch.draw_transformed(commandBuffer, imageIndex, meshes);
+        this->batch.draw_transformed(commandBuffer, imageIndex, meshes, materials, pipeline);
     }
 
     vkCmdEndRenderPass(commandBuffer);

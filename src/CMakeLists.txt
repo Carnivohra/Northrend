@@ -15,6 +15,10 @@ target_sources(Northrend
     Asset/Format/blp.cpp
     Asset/Format/dbc.cpp
     Asset/Format/mpq.cpp
+    Asset/Format/Wmo/group.cpp
+    Asset/Format/Wmo/wmo.cpp
+    Asset/Format/Wmo/V17/group.cpp
+    Asset/Format/Wmo/V17/wmo.cpp
     Asset/Format/wtf.cpp
     Asset/Format/wdt.cpp
     Asset/Stream/request.cpp
@@ -35,6 +39,11 @@ target_sources(Northrend
     Math/Glm/matrix.hpp
     Math/matrix.cpp
     Presentation/Map/map.cpp
+    Presentation/Map/Object/geometry.cpp
+    Presentation/Map/Object/instance.cpp
+    Presentation/Map/Object/model.cpp
+    Presentation/Map/Object/resource.cpp
+    Presentation/Map/objects.cpp
     Presentation/Map/terrain.cpp
     Presentation/Camera/route.cpp
     Presentation/Texture/cache.cpp
@@ -60,6 +69,10 @@ target_sources(Northrend
     World/Map/layout.cpp
     World/Map/loader.cpp
     World/Map/map.cpp
+    World/Map/Object/asset.cpp
+    World/Map/Object/handle.cpp
+    World/Map/Object/loader.cpp
+    World/Map/Object/state.cpp
     World/Map/result.cpp
     World/Map/selection.cpp
     World/Map/Terrain/geometry.cpp
@@ -86,6 +99,8 @@ target_sources(Northrend
       Asset/Format/blp.hpp
       Asset/Format/dbc.hpp
       Asset/Format/mpq.hpp
+      Asset/Format/Wmo/group.hpp
+      Asset/Format/Wmo/wmo.hpp
       Asset/Format/wtf.hpp
       Asset/Format/wdt.hpp
       Asset/Stream/priority.hpp
@@ -129,6 +144,12 @@ target_sources(Northrend
       Math/quaternion.hpp
       Math/vector.hpp
       Presentation/Map/map.hpp
+      Presentation/Map/Object/geometry.hpp
+      Presentation/Map/Object/instance.hpp
+      Presentation/Map/Object/material.hpp
+      Presentation/Map/Object/model.hpp
+      Presentation/Map/Object/resource.hpp
+      Presentation/Map/objects.hpp
       Presentation/Map/terrain.hpp
       Presentation/Camera/route.hpp
       Presentation/Texture/cache.hpp
@@ -171,6 +192,11 @@ target_sources(Northrend
       World/Map/layout.hpp
       World/Map/loader.hpp
       World/Map/map.hpp
+      World/Map/Object/asset.hpp
+      World/Map/Object/handle.hpp
+      World/Map/Object/loader.hpp
+      World/Map/Object/placement.hpp
+      World/Map/Object/state.hpp
       World/Map/result.hpp
       World/Map/selection.hpp
       World/Map/Terrain/geometry.hpp

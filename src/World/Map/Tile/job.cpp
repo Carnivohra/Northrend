@@ -2,6 +2,7 @@
 
 #include "Thread/pool.hpp"
 #include "Thread/work.hpp"
+#include "World/Map/Object/loader.hpp"
 #include "World/Map/Terrain/payload.hpp"
 #include "World/Map/Tile/tile.hpp"
 
@@ -11,8 +12,9 @@
 
 namespace Northrend {
 
-TileJob::TileJob(TileRequest request, AssetRequest assetRequest) noexcept :
-    tileRequest(request), assetRequest(std::move(assetRequest)) {}
+TileJob::TileJob(TileRequest request, AssetRequest assetRequest, MapObjectLoader& objects,
+    const AssetPriority priority) noexcept :
+    tileRequest(request), assetRequest(std::move(assetRequest)), objects(objects), objectPriority(priority) {}
 
 TileJob::~TileJob() {
     this->stop();
@@ -66,7 +68,8 @@ void TileJob::execute(const std::stop_token stopToken) {
         try {
             const Adt adt(this->assetRequest.data());
             auto payload = std::make_unique<TerrainPayload>(adt, this->tileRequest.high_resolution_alpha());
-            auto tile = std::make_shared<MapTile>(adt);
+            auto tile = std::make_shared<MapTile>(
+                adt, this->objects, this->objectPriority, this->tileRequest.generation());
             return TileResult(this->tileRequest, std::move(tile), std::move(payload));
         } catch (...) {
             return TileResult(this->tileRequest, std::current_exception());

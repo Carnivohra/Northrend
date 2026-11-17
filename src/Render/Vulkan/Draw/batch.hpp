@@ -16,6 +16,7 @@ class VulkanBuffer;
 class VulkanDevice;
 class VulkanMeshStore;
 class VulkanMaterialStore;
+class VulkanMeshPipeline;
 
 class VulkanDrawBatch final {
 public:
@@ -32,8 +33,8 @@ public:
     [[nodiscard]] bool has_transformed(std::size_t imageIndex) const noexcept;
     void draw_world(VkCommandBuffer commandBuffer, std::size_t imageIndex, const VulkanMeshStore& meshes,
         const VulkanMaterialStore& materials, VkPipelineLayout pipelineLayout) const noexcept;
-    void draw_transformed(
-        VkCommandBuffer commandBuffer, std::size_t imageIndex, const VulkanMeshStore& meshes) const noexcept;
+    void draw_transformed(VkCommandBuffer commandBuffer, std::size_t imageIndex, const VulkanMeshStore& meshes,
+        const VulkanMaterialStore& materials, VulkanMeshPipeline& pipeline) const noexcept;
 
 private:
     struct WorldGroup final {
@@ -71,8 +72,9 @@ private:
         std::vector<VkDrawIndexedIndirectCommand>& commands);
     void draw_world_groups(VkCommandBuffer commandBuffer, const std::vector<WorldGroup>& groups,
         VkBuffer indirectBuffer, const VulkanMaterialStore& materials, VkPipelineLayout pipelineLayout) const noexcept;
-    static void draw_group(VkCommandBuffer commandBuffer, const std::vector<VulkanDraw>& draws,
-        const VulkanMaterialStore* materials = nullptr, VkPipelineLayout pipelineLayout = VK_NULL_HANDLE) noexcept;
+    static void draw_transformed_group(VkCommandBuffer commandBuffer, std::size_t imageIndex,
+        const std::vector<VulkanDraw>& draws, const VulkanMaterialStore& materials, VulkanMeshPipeline& pipeline,
+        std::uint32_t& activeBlendMode) noexcept;
 
     VulkanDevice& device;
     std::vector<Store> stores;

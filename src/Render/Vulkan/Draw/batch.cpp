@@ -3,6 +3,8 @@
 #include "Render/Vulkan/Mesh/mesh.hpp"
 #include "Render/Vulkan/Mesh/store.hpp"
 #include "Render/Vulkan/Material/store.hpp"
+#include "Render/Vulkan/Material/constants.hpp"
+#include "Render/Vulkan/Mesh/pipeline.hpp"
 #include "Render/Vulkan/buffer.hpp"
 #include "Render/Vulkan/device.hpp"
 #include "Render/Vulkan/Transfer/segment.hpp"
@@ -96,7 +98,9 @@ void VulkanDrawBatch::update(const std::size_t imageIndex, const RenderFrame& fr
         auto& pages =
             mesh->index_type() == VK_INDEX_TYPE_UINT16 ? target.transformedUnsigned16 : target.transformedUnsigned32;
         auto& commands = pages[mesh->page()];
-        commands.push_back(mesh->draw(firstInstance, instance.section, instance.level));
+        VulkanDraw draw = mesh->draw(firstInstance, instance.section, instance.level);
+        draw.material = instance.material;
+        commands.push_back(draw);
         target.transformedDraws = true;
     }
 
@@ -249,8 +253,9 @@ void VulkanDrawBatch::draw_world(const VkCommandBuffer commandBuffer, const std:
     }
 }
 
-void VulkanDrawBatch::draw_transformed(
-    const VkCommandBuffer commandBuffer, const std::size_t imageIndex, const VulkanMeshStore& meshes) const noexcept {
+void VulkanDrawBatch::draw_transformed(const VkCommandBuffer commandBuffer, const std::size_t imageIndex,
+    const VulkanMeshStore& meshes, const VulkanMaterialStore& materials,
+    VulkanMeshPipeline& pipeline) const noexcept {
     const Store& source = this->stores[imageIndex];
 
     if (!source.transformedDraws || !source.transformBuffer) {
@@ -258,6 +263,7 @@ void VulkanDrawBatch::draw_transformed(
     }
 
     constexpr VkDeviceSize offsets[] {0, 0};
+    std::uint32_t activeBlendMode = std::numeric_limits<std::uint32_t>::max();
 
     for (std::size_t page = 0; page < meshes.page_count(); ++page) {
         const auto& unsigned16 = source.transformedUnsigned16[page];
@@ -272,12 +278,14 @@ void VulkanDrawBatch::draw_transformed(
 
         if (!unsigned16.empty()) {
             vkCmdBindIndexBuffer(commandBuffer, vertexBuffers[0], 0, VK_INDEX_TYPE_UINT16);
-            draw_group(commandBuffer, unsigned16);
+            draw_transformed_group(
+                commandBuffer, imageIndex, unsigned16, materials, pipeline, activeBlendMode);
         }
 
         if (!unsigned32.empty()) {
             vkCmdBindIndexBuffer(commandBuffer, vertexBuffers[0], 0, VK_INDEX_TYPE_UINT32);
-            draw_group(commandBuffer, unsigned32);
+            draw_transformed_group(
+                commandBuffer, imageIndex, unsigned32, materials, pipeline, activeBlendMode);
         }
     }
 }
@@ -362,20 +370,28 @@ void VulkanDrawBatch::draw_world_groups(const VkCommandBuffer commandBuffer,
     }
 }
 
-void VulkanDrawBatch::draw_group(const VkCommandBuffer commandBuffer, const std::vector<VulkanDraw>& draws,
-    const VulkanMaterialStore* materials, const VkPipelineLayout pipelineLayout) noexcept {
-    static constexpr std::array<float, 3> TextureMipBias {0.0F, 0.75F, 1.5F};
-    static constexpr std::array<float, 3> AlphaMipBias {0.0F, 1.0F, 2.0F};
+void VulkanDrawBatch::draw_transformed_group(const VkCommandBuffer commandBuffer, const std::size_t imageIndex,
+    const std::vector<VulkanDraw>& draws, const VulkanMaterialStore& materials, VulkanMeshPipeline& pipeline,
+    std::uint32_t& activeBlendMode) noexcept {
+    const VkPipelineLayout pipelineLayout = pipeline.pipeline_layout();
 
     for (const VulkanDraw& draw : draws) {
-        if (materials != nullptr) {
-            const std::size_t level = std::min<std::size_t>(draw.detailLevel, TextureMipBias.size() - 1);
-            const std::array<float, 2> detail {TextureMipBias[level], AlphaMipBias[level]};
-            vkCmdPushConstants(
-                commandBuffer, pipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(detail), detail.data());
-            materials->bind(commandBuffer, pipelineLayout, draw.material);
+        const MaterialProperties properties = materials.properties(draw.material);
+
+        if (properties.blendMode != activeBlendMode) {
+            pipeline.bind_transformed(commandBuffer, imageIndex, properties.blendMode);
+            activeBlendMode = properties.blendMode;
         }
 
+        const VulkanMaterialConstants constants {
+            .shader = properties.shader,
+            .blendMode = properties.blendMode,
+            .flags = properties.flags,
+            .textureCount = properties.textureCount
+        };
+        vkCmdPushConstants(
+            commandBuffer, pipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(constants), &constants);
+        materials.bind(commandBuffer, pipelineLayout, draw.material);
         vkCmdDrawIndexed(commandBuffer, draw.indexCount, 1, draw.firstIndex, draw.vertexOffset, draw.firstInstance);
     }
 }
