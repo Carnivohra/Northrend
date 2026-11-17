@@ -9,6 +9,7 @@
 #include "Render/renderer.hpp"
 #include "Render/sections.hpp"
 #include "Render/Texture/data.hpp"
+#include "Render/Texture/blend.hpp"
 #include "Render/Texture/format.hpp"
 #include "Render/camera.hpp"
 #include "Render/scene.hpp"
@@ -19,6 +20,7 @@
 #include "World/Map/Tile/tile.hpp"
 
 #ifdef NORTHREND_GPU_PROFILING
+#include "Debug/interval.hpp"
 #include "Debug/timing.hpp"
 
 #include <chrono>
@@ -74,8 +76,16 @@ void PresentationTerrain::load(const std::size_t x, const std::size_t y, const M
         }
     }
 
+    if (materialTextures.size() > 64) {
+        throw std::overflow_error("Terrain material exceeds the descriptor capacity");
+    }
+
     static constexpr std::uint32_t AlphaLayerBits = 8;
     static constexpr std::uint32_t MaximumAlphaLayer = (std::uint32_t {1} << AlphaLayerBits) - 1;
+    static constexpr std::uint32_t LayerCountShift = AlphaLayerBits;
+    static constexpr std::uint32_t ChunkXShift = LayerCountShift + 2;
+    static constexpr std::uint32_t ChunkYShift = ChunkXShift + 4;
+    std::array<TextureBlendData::Cell, Adt::ChunkCount> blendCells;
 
     for (std::size_t chunkY = 0; chunkY < Adt::Size; ++chunkY) {
         for (std::size_t chunkX = 0; chunkX < Adt::Size; ++chunkX) {
@@ -87,13 +97,24 @@ void PresentationTerrain::load(const std::size_t x, const std::size_t y, const M
                 throw std::overflow_error("Terrain material exceeds the packed vertex layout");
             }
 
-            const std::uint32_t materialData =
-                alphaLayer | static_cast<std::uint32_t>(layerCount - 1) << AlphaLayerBits;
+            const std::uint32_t materialData = alphaLayer |
+                static_cast<std::uint32_t>(layerCount - 1) << LayerCountShift |
+                static_cast<std::uint32_t>(chunkX) << ChunkXShift | static_cast<std::uint32_t>(chunkY) << ChunkYShift;
             const std::size_t firstVertex = chunk * Adt::HeightsPerChunk;
             const std::size_t endVertex = firstVertex + Adt::HeightsPerChunk;
+            TextureBlendData::Cell& blendCell = blendCells[chunk];
+            const MeshVertex& source = vertices[firstVertex];
+            blendCell.alphaLayer = alphaLayer;
+            blendCell.layerCount = static_cast<std::uint32_t>(layerCount);
+
+            for (std::size_t layer = 0; layer < source.textures.size(); ++layer) {
+                blendCell.textures[layer] = source.textures[layer];
+            }
 
             for (std::size_t vertex = firstVertex; vertex < endVertex; ++vertex) {
-                vertices[vertex].material = materialData;
+                MeshVertex& target = vertices[vertex];
+
+                target.material = materialData;
             }
         }
     }
@@ -184,6 +205,7 @@ void PresentationTerrain::load(const std::size_t x, const std::size_t y, const M
     MaterialHandle renderMaterial;
     MeshHandle mesh;
     TextureHandle alphaTexture;
+    TextureHandle blendedTexture;
     Entity entity;
     bool materialStored = false;
     bool meshStored = false;
@@ -192,17 +214,16 @@ void PresentationTerrain::load(const std::size_t x, const std::size_t y, const M
         renderMaterial = materialAllocator.allocate();
         mesh = meshAllocator.allocate();
         alphaTexture = textures.store(alphaData, renderer);
-        renderer.store_material(renderMaterial, MaterialData(materialTextures, alphaTexture));
+        const TextureBlendData blendData(
+            materialTextures, alphaTexture, blendCells, Adt::Size, Adt::Size, Adt::AlphaSize / 2, 8.0F);
+        blendedTexture = textures.store(blendData, renderer);
+        renderer.store_material(renderMaterial, MaterialData(materialTextures, alphaTexture, blendedTexture));
         materialStored = true;
         renderer.store_mesh(mesh, data);
         meshStored = true;
         entity = scene.registry().create();
-        scene.registry().emplace<RenderSections>(entity,
-            RenderSections {
-                .mesh = mesh,
-                .material = renderMaterial,
-                .visibility = std::numeric_limits<std::uint16_t>::max()
-            });
+        scene.registry().emplace<RenderSections>(
+            entity, RenderSections {.mesh = mesh, .material = renderMaterial, .visibility = 0});
     } catch (...) {
         if (entity) {
             scene.registry().destroy(entity);
@@ -210,6 +231,10 @@ void PresentationTerrain::load(const std::size_t x, const std::size_t y, const M
 
         if (meshStored) {
             renderer.remove_mesh(mesh);
+        }
+
+        if (blendedTexture) {
+            textures.remove(blendedTexture, renderer);
         }
 
         if (materialStored) {
@@ -234,6 +259,8 @@ void PresentationTerrain::load(const std::size_t x, const std::size_t y, const M
     this->meshes[tileIndex] = mesh;
     this->materials[tileIndex] = renderMaterial;
     this->alphaTextures[tileIndex] = alphaTexture;
+    this->blendedTextures[tileIndex] = blendedTexture;
+    this->blendedReady[tileIndex] = false;
     this->entities[tileIndex] = entity;
     this->minimums[tileIndex] = minimum;
     this->maximums[tileIndex] = maximum;
@@ -241,7 +268,7 @@ void PresentationTerrain::load(const std::size_t x, const std::size_t y, const M
     this->clusterMaximums[tileIndex] = clusterMaximums;
     this->levels[tileIndex].fill(UnsetLevel);
     this->selectedLevels[tileIndex] = UnsetLevel;
-    this->visibility[tileIndex].fill(true);
+    this->visibility[tileIndex].fill(false);
     this->activate(tileIndex);
     this->levelsDirty = true;
 }
@@ -266,10 +293,20 @@ void PresentationTerrain::clear(MeshHandleAllocator& meshAllocator, MaterialHand
     this->levelsDirty = true;
 }
 
-void PresentationTerrain::update(const Camera& camera, const int width, const int height, RenderScene& scene) {
+void PresentationTerrain::update(
+    const Camera& camera, const int width, const int height, Renderer& renderer, RenderScene& scene) {
+    bool blendsPending = false;
+
+    for (std::size_t active = 0; active < this->activeCount; ++active) {
+        if (!this->blendedReady[this->activeTiles[active]]) {
+            blendsPending = true;
+            break;
+        }
+    }
+
     if (width <= 0 || height <= 0 ||
-        (!this->levelsDirty && camera.revision == this->cameraRevision && width == this->viewportWidth &&
-            height == this->viewportHeight)) {
+        (!blendsPending && !this->levelsDirty && camera.revision == this->cameraRevision &&
+            width == this->viewportWidth && height == this->viewportHeight)) {
         return;
     }
 
@@ -280,9 +317,28 @@ void PresentationTerrain::update(const Camera& camera, const int width, const in
 
     const float aspectRatio = static_cast<float>(width) / static_cast<float>(height);
     const Frustum frustum(camera.projection(aspectRatio) * camera.view());
+    blendsPending = false;
+#ifdef NORTHREND_GPU_PROFILING
+    std::size_t visibleTiles = 0;
+    std::size_t visibleClusters = 0;
+    std::size_t pendingBlends = 0;
+#endif
 
     for (std::size_t active = 0; active < this->activeCount; ++active) {
         const std::size_t tile = this->activeTiles[active];
+
+        if (!this->blendedReady[tile]) {
+            this->blendedReady[tile] = renderer.texture_ready(this->blendedTextures[tile]);
+
+            if (!this->blendedReady[tile]) {
+                blendsPending = true;
+#ifdef NORTHREND_GPU_PROFILING
+                ++pendingBlends;
+#endif
+                continue;
+            }
+        }
+
         std::array<bool, TerrainGeometry::ClusterCount> visible;
         const Frustum::Relation relation = frustum.classify(this->minimums[tile], this->maximums[tile]);
         bool tileVisible = relation != Frustum::Relation::outside;
@@ -311,9 +367,16 @@ void PresentationTerrain::update(const Camera& camera, const int width, const in
         std::uint16_t visibility = 0;
         bool changed = false;
 
+#ifdef NORTHREND_GPU_PROFILING
+        visibleTiles += tileVisible;
+#endif
+
         for (std::size_t cluster = 0; cluster < visible.size(); ++cluster) {
             if (visible[cluster]) {
                 visibility |= static_cast<std::uint16_t>(std::uint16_t {1} << cluster);
+#ifdef NORTHREND_GPU_PROFILING
+                ++visibleClusters;
+#endif
             }
 
             changed = changed || visible[cluster] != this->visibility[tile][cluster] ||
@@ -327,8 +390,8 @@ void PresentationTerrain::update(const Camera& camera, const int width, const in
         }
 
         if (changed) {
-            const bool modified = scene.registry().modify<RenderSections>(this->entities[tile],
-                [visibility, level](RenderSections& sections) {
+            const bool modified = scene.registry().modify<RenderSections>(
+                this->entities[tile], [visibility, level](RenderSections& sections) {
                     sections.visibility = visibility;
 
                     for (std::size_t cluster = 0; cluster < sections.levels.size(); ++cluster) {
@@ -349,7 +412,7 @@ void PresentationTerrain::update(const Camera& camera, const int width, const in
     this->cameraRevision = camera.revision;
     this->viewportWidth = width;
     this->viewportHeight = height;
-    this->levelsDirty = false;
+    this->levelsDirty = blendsPending;
 
 #ifdef NORTHREND_GPU_PROFILING
     const auto cullingEnd = std::chrono::steady_clock::now();
@@ -357,6 +420,13 @@ void PresentationTerrain::update(const Camera& camera, const int width, const in
 
     if (const auto summary = cullingTiming.record(milliseconds)) {
         Timing::write(std::cout, "CPU terrain culling", *summary);
+    }
+
+    static Interval terrainInterval;
+
+    if (terrainInterval.elapsed()) {
+        std::cout << "Terrain: active_tiles=" << this->activeCount << " visible_tiles=" << visibleTiles
+                  << " visible_clusters=" << visibleClusters << " pending_blends=" << pendingBlends << '\n';
     }
 #endif
 }
@@ -367,12 +437,18 @@ void PresentationTerrain::release(const std::size_t tile, MeshHandleAllocator& m
     const MeshHandle mesh = this->meshes[tile];
     const MaterialHandle material = this->materials[tile];
     const TextureHandle alphaTexture = this->alphaTextures[tile];
+    const TextureHandle blendedTexture = this->blendedTextures[tile];
 
     if (this->entities[tile]) {
         scene.registry().destroy(this->entities[tile]);
     }
 
     this->entities[tile] = {};
+
+    if (blendedTexture) {
+        textures.remove(blendedTexture, renderer);
+        this->blendedTextures[tile] = {};
+    }
 
     if (mesh) {
         renderer.remove_mesh(mesh);
@@ -390,6 +466,8 @@ void PresentationTerrain::release(const std::size_t tile, MeshHandleAllocator& m
         textures.remove(alphaTexture, renderer);
         this->alphaTextures[tile] = {};
     }
+
+    this->blendedReady[tile] = false;
 
     this->levels[tile].fill(UnsetLevel);
     this->selectedLevels[tile] = UnsetLevel;

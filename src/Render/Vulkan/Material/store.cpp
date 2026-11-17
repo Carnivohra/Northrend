@@ -15,7 +15,7 @@ namespace Northrend {
 VulkanMaterialStore::VulkanMaterialStore(VulkanDevice& device, const VulkanTextureStore& textures) :
     device(device), textures(textures) {
     try {
-        const std::array<VkDescriptorSetLayoutBinding, 2> bindings {
+        const std::array<VkDescriptorSetLayoutBinding, 3> bindings {
             VkDescriptorSetLayoutBinding {
                 .binding = 0,
                 .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
@@ -25,6 +25,13 @@ VulkanMaterialStore::VulkanMaterialStore(VulkanDevice& device, const VulkanTextu
             },
             VkDescriptorSetLayoutBinding {
                 .binding = 1,
+                .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                .descriptorCount = 1,
+                .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
+                .pImmutableSamplers = nullptr
+            },
+            VkDescriptorSetLayoutBinding {
+                .binding = 2,
                 .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
                 .descriptorCount = 1,
                 .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
@@ -48,7 +55,7 @@ VulkanMaterialStore::VulkanMaterialStore(VulkanDevice& device, const VulkanTextu
 
         const VkDescriptorPoolSize poolSize {
             .type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-            .descriptorCount = MaximumMaterials * (MaximumTextures + 1)
+            .descriptorCount = MaximumMaterials * (MaximumTextures + 2)
         };
         const VkDescriptorPoolCreateInfo poolInfo {
             .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
@@ -111,7 +118,8 @@ VulkanMaterialStore::~VulkanMaterialStore() {
 }
 
 void VulkanMaterialStore::store(const MaterialHandle handle, const MaterialData& data) {
-    if (!handle || !data.alpha() || data.textures().empty() || data.textures().size() > MaximumTextures) {
+    if (!handle || !data.alpha() || !data.blended() || data.textures().empty() ||
+        data.textures().size() > MaximumTextures) {
         throw std::invalid_argument("Vulkan material data is invalid");
     }
 
@@ -170,8 +178,9 @@ void VulkanMaterialStore::store(const MaterialHandle handle, const MaterialData&
         }
 
         const VulkanTexture* alpha = this->textures.find(data.alpha());
+        const VulkanTexture* blended = this->textures.find(data.blended());
 
-        if (!alpha) {
+        if (!alpha || !blended) {
             throw std::runtime_error("Vulkan material references a missing alpha texture");
         }
 
@@ -180,7 +189,12 @@ void VulkanMaterialStore::store(const MaterialHandle handle, const MaterialData&
             .imageView = alpha->view(),
             .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
         };
-        const std::array<VkWriteDescriptorSet, 2> writes {
+        const VkDescriptorImageInfo blendedImage {
+            .sampler = this->alphaSampler,
+            .imageView = blended->view(),
+            .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+        };
+        const std::array<VkWriteDescriptorSet, 3> writes {
             VkWriteDescriptorSet {
                 .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
                 .pNext = nullptr,
@@ -202,6 +216,18 @@ void VulkanMaterialStore::store(const MaterialHandle handle, const MaterialData&
                 .descriptorCount = 1,
                 .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
                 .pImageInfo = &alphaImage,
+                .pBufferInfo = nullptr,
+                .pTexelBufferView = nullptr
+            },
+            VkWriteDescriptorSet {
+                .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+                .pNext = nullptr,
+                .dstSet = descriptorSet,
+                .dstBinding = 2,
+                .dstArrayElement = 0,
+                .descriptorCount = 1,
+                .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                .pImageInfo = &blendedImage,
                 .pBufferInfo = nullptr,
                 .pTexelBufferView = nullptr
             }

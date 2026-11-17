@@ -91,6 +91,14 @@ std::uint32_t Map::id() const noexcept {
     return this->activeIdentifier;
 }
 
+std::uint32_t Map::generation() const noexcept {
+    return this->activeGeneration;
+}
+
+std::optional<Vector3> Map::center() const noexcept {
+    return this->mapTiles ? this->mapTiles->center() : std::nullopt;
+}
+
 void Map::clear() noexcept {
     if (this->mapTiles) {
         this->nextTileGeneration = next_generation(this->mapTiles->generation());

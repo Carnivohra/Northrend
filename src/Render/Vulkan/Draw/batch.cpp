@@ -9,6 +9,7 @@
 #include "Render/frame.hpp"
 
 #ifdef NORTHREND_GPU_PROFILING
+#include "Debug/interval.hpp"
 #include "Debug/timing.hpp"
 
 #include <chrono>
@@ -128,6 +129,23 @@ void VulkanDrawBatch::update(const std::size_t imageIndex, const RenderFrame& fr
         build_groups(target.worldUnsigned32[page], target.worldUnsigned32Groups[page], indirectCommands);
     }
 
+#ifdef NORTHREND_GPU_PROFILING
+    target.worldCommands = indirectCommands.size();
+    target.worldTriangles = 0;
+    target.worldDrawCalls = 0;
+
+    for (const VkDrawIndexedIndirectCommand& command : indirectCommands) {
+        target.worldTriangles += static_cast<std::uint64_t>(command.indexCount) * command.instanceCount / 3;
+    }
+
+    for (std::size_t page = 0; page < meshes.page_count(); ++page) {
+        const std::size_t groupCount =
+            target.worldUnsigned16Groups[page].size() + target.worldUnsigned32Groups[page].size();
+        const std::size_t commandCount = target.worldUnsigned16[page].size() + target.worldUnsigned32[page].size();
+        target.worldDrawCalls += this->device.multi_draw_indirect() ? groupCount : commandCount;
+    }
+#endif
+
     const VkDeviceSize indirectSize = indirectCommands.size() * sizeof(VkDrawIndexedIndirectCommand);
 
     if (indirectSize != 0 && (!target.indirectBuffer || target.indirectBuffer->size() < indirectSize)) {
@@ -190,6 +208,15 @@ void VulkanDrawBatch::draw_world(const VkCommandBuffer commandBuffer, const std:
     const VulkanMeshStore& meshes, const VulkanMaterialStore& materials,
     const VkPipelineLayout pipelineLayout) const noexcept {
     const Store& source = this->stores[imageIndex];
+
+#ifdef NORTHREND_GPU_PROFILING
+    static Interval drawInterval;
+
+    if (drawInterval.elapsed()) {
+        std::cout << "Draw: calls=" << source.worldDrawCalls << " commands=" << source.worldCommands
+                  << " triangles=" << source.worldTriangles << '\n';
+    }
+#endif
 
     if (!source.worldDraws || !source.indirectBuffer) {
         return;

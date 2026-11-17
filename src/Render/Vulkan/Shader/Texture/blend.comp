@@ -1,0 +1,60 @@
+#version 450
+#extension GL_EXT_nonuniform_qualifier : require
+
+layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
+
+layout(set = 0, binding = 0) uniform sampler2D textures[64];
+layout(set = 0, binding = 1) uniform sampler2DArray alphaMaps;
+layout(rgba8, set = 0, binding = 2) uniform writeonly image2DArray outputImage;
+
+struct Cell {
+    uvec4 textures;
+    uint alphaLayer;
+    uint layerCount;
+    uvec2 padding;
+};
+
+layout(std430, set = 0, binding = 3) readonly buffer CellData {
+    Cell cells[];
+};
+
+layout(push_constant) uniform Settings {
+    uvec3 grid;
+    float textureScale;
+} settings;
+
+vec3 sampleTexture(const uint index, const vec2 coordinates) {
+    const ivec2 extent = textureSize(textures[nonuniformEXT(index)], 0);
+    const float samplesPerRepeat = float(settings.grid.z) / settings.textureScale;
+    const float mip = max(log2(float(max(extent.x, extent.y)) / samplesPerRepeat), 0.0);
+    return textureLod(textures[nonuniformEXT(index)], coordinates * settings.textureScale, mip).rgb;
+}
+
+void main() {
+    const uvec2 pixel = gl_GlobalInvocationID.xy;
+    const uint cellIndex = gl_GlobalInvocationID.z;
+
+    if (any(greaterThanEqual(pixel, uvec2(settings.grid.z))) || cellIndex >= settings.grid.x * settings.grid.y) {
+        return;
+    }
+
+    const vec2 coordinates = (vec2(pixel) + 0.5) / float(settings.grid.z);
+    const Cell cell = cells[cellIndex];
+    vec3 albedo = sampleTexture(cell.textures.x, coordinates);
+
+    if (cell.layerCount > 1) {
+        const vec2 alphaCoordinates = clamp(coordinates, vec2(0.5 / 64.0), vec2(1.0 - 0.5 / 64.0));
+        const vec3 alpha = textureLod(alphaMaps, vec3(alphaCoordinates, float(cell.alphaLayer)), 0.0).rgb;
+        albedo = mix(albedo, sampleTexture(cell.textures.y, coordinates), alpha.r);
+
+        if (cell.layerCount > 2) {
+            albedo = mix(albedo, sampleTexture(cell.textures.z, coordinates), alpha.g);
+        }
+
+        if (cell.layerCount > 3) {
+            albedo = mix(albedo, sampleTexture(cell.textures.w, coordinates), alpha.b);
+        }
+    }
+
+    imageStore(outputImage, ivec3(pixel, int(cellIndex)), vec4(albedo, 1.0));
+}

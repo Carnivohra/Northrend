@@ -15,6 +15,7 @@ struct Camera final {
     [[nodiscard]] Vector3 right() const noexcept;
     [[nodiscard]] Vector3 up() const noexcept;
     void look_at(Vector3 target, Vector3 up = Vector3 {.z = 1.0F});
+    void look_to(Vector3 direction, Vector3 up = Vector3 {.z = 1.0F});
 
     Vector3 position {0.0F, 0.0F, 5.0F};
     Quaternion orientation;

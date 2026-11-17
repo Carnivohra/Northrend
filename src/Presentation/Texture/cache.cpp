@@ -146,6 +146,19 @@ TextureHandle PresentationTextureCache::store(const TextureData& data, Renderer&
     return texture;
 }
 
+TextureHandle PresentationTextureCache::store(const TextureBlendData& data, Renderer& renderer) {
+    const TextureHandle texture = this->handles.allocate();
+
+    try {
+        renderer.store_texture(texture, data);
+    } catch (...) {
+        this->handles.release(texture);
+        throw;
+    }
+
+    return texture;
+}
+
 void PresentationTextureCache::remove(const TextureHandle texture, Renderer& renderer) {
     renderer.remove_texture(texture);
     this->handles.release(texture);

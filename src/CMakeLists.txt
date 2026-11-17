@@ -1,6 +1,12 @@
 add_library(Northrend STATIC)
 add_library(Northrend::Northrend ALIAS Northrend)
 
+if(NORTHREND_BENCHMARK)
+  target_compile_definitions(Northrend
+    PUBLIC
+      NORTHREND_BENCHMARK)
+endif()
+
 target_sources(Northrend
   PRIVATE
     App/app.cpp
@@ -30,6 +36,7 @@ target_sources(Northrend
     Math/matrix.cpp
     Presentation/Map/map.cpp
     Presentation/Map/terrain.cpp
+    Presentation/Camera/route.cpp
     Presentation/Texture/cache.cpp
     Presentation/Texture/entry.cpp
     Render/camera.cpp
@@ -39,6 +46,7 @@ target_sources(Northrend
     Render/Mesh/data.cpp
     Render/Mesh/allocator.cpp
     Render/Texture/allocator.cpp
+    Render/Texture/blend.cpp
     Render/Texture/data.cpp
     Render/scene.cpp
     Simulation/runtime.cpp
@@ -99,10 +107,12 @@ target_sources(Northrend
       Backend/Window/window.hpp
       Config/config.hpp
       Config/plan.hpp
+      Debug/fps.hpp
+      Debug/interval.hpp
+      Debug/timing.hpp
       ECS/entity.hpp
       ECS/registry.hpp
       Engine/engine.hpp
-      Debug/timing.hpp
       Engine/plan.hpp
       Input/Gamepad/axis.hpp
       Input/Gamepad/button.hpp
@@ -120,6 +130,7 @@ target_sources(Northrend
       Math/vector.hpp
       Presentation/Map/map.hpp
       Presentation/Map/terrain.hpp
+      Presentation/Camera/route.hpp
       Presentation/Texture/cache.hpp
       Presentation/Texture/entry.hpp
       Presentation/exchange.hpp
@@ -139,6 +150,7 @@ target_sources(Northrend
       Render/Mesh/mesh.hpp
       Render/Mesh/vertex.hpp
       Render/Texture/allocator.hpp
+      Render/Texture/blend.hpp
       Render/Texture/data.hpp
       Render/Texture/format.hpp
       Render/Texture/texture.hpp

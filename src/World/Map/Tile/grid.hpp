@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Math/vector.hpp"
 #include "World/Map/Tile/request.hpp"
 
 #include <array>
@@ -41,6 +42,7 @@ public:
 
     [[nodiscard]] TileState state(std::size_t x, std::size_t y) const noexcept;
     [[nodiscard]] const MapTile* tile(std::size_t x, std::size_t y) const noexcept;
+    [[nodiscard]] const std::optional<Vector3>& center() const noexcept;
     [[nodiscard]] std::size_t pending() const noexcept;
     [[nodiscard]] std::uint32_t generation() const noexcept;
 

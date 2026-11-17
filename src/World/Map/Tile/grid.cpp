@@ -216,6 +216,10 @@ const MapTile* TileGrid::tile(const std::size_t x, const std::size_t y) const no
     return x < Size && y < Size ? this->tiles[index(x, y)].get() : nullptr;
 }
 
+const std::optional<Vector3>& TileGrid::center() const noexcept {
+    return this->mapLayout->center();
+}
+
 std::size_t TileGrid::pending() const noexcept {
     std::size_t count = 0;
 

@@ -16,6 +16,7 @@ namespace Northrend {
 
 class AssetSystem;
 class Renderer;
+class TextureBlendData;
 class TextureData;
 
 class PresentationTextureCache final {
@@ -30,6 +31,7 @@ public:
     void tick(Renderer& renderer);
     void clear(Renderer& renderer);
     [[nodiscard]] TextureHandle store(const TextureData& data, Renderer& renderer);
+    [[nodiscard]] TextureHandle store(const TextureBlendData& data, Renderer& renderer);
     void remove(TextureHandle texture, Renderer& renderer);
     [[nodiscard]] TextureHandle find(const AssetId& asset) const;
     [[nodiscard]] bool ready(const AssetId& asset) const;

@@ -33,7 +33,7 @@ public:
         RenderScene& scene);
     void clear(MeshHandleAllocator& meshAllocator, MaterialHandleAllocator& materialAllocator,
         PresentationTextureCache& textures, Renderer& renderer, RenderScene& scene);
-    void update(const Camera& camera, int width, int height, RenderScene& scene);
+    void update(const Camera& camera, int width, int height, Renderer& renderer, RenderScene& scene);
 
 private:
     [[nodiscard]] static constexpr std::size_t index(const std::size_t x, const std::size_t y) noexcept {
@@ -53,6 +53,8 @@ private:
     std::array<MeshHandle, TileGrid::TileCount> meshes;
     std::array<MaterialHandle, TileGrid::TileCount> materials;
     std::array<TextureHandle, TileGrid::TileCount> alphaTextures;
+    std::array<TextureHandle, TileGrid::TileCount> blendedTextures;
+    std::array<bool, TileGrid::TileCount> blendedReady {};
     std::array<Entity, TileGrid::TileCount> entities;
     std::array<Vector3, TileGrid::TileCount> minimums;
     std::array<Vector3, TileGrid::TileCount> maximums;

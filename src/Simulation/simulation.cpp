@@ -34,7 +34,11 @@ void Simulation::tick(ThreadDuration delta) {
         }
     }
 
-    this->presentationExchange.write() = WorldSnapshot {.sequence = ++this->sequence};
+    this->presentationExchange.write() = WorldSnapshot {
+        .sequence = ++this->sequence,
+        .mapGeneration = this->state.map().generation(),
+        .mapCenter = this->state.map().center()
+    };
     this->presentationExchange.publish();
 }
 

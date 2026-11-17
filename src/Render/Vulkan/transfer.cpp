@@ -41,8 +41,7 @@ VulkanTransferContext::VulkanTransferContext(VulkanDevice& device, const std::si
         result = vkAllocateCommandBuffers(this->device.handle(), &allocationInfo, this->commandBuffers.data());
 
         if (result != VK_SUCCESS) {
-            throw std::runtime_error(
-                "Failed to allocate Vulkan transfer command buffers: " + std::to_string(result));
+            throw std::runtime_error("Failed to allocate Vulkan transfer command buffers: " + std::to_string(result));
         }
     } catch (...) {
         this->destroy();
@@ -65,10 +64,7 @@ void VulkanTransferContext::queue_buffer(const VkBuffer destination, const VkDev
     try {
         this->write(allocation, segments);
         this->buffers.push_back(BufferUpload {
-            .source = allocation,
-            .destination = destination,
-            .destinationOffset = destinationOffset,
-            .size = size
+            .source = allocation, .destination = destination, .destinationOffset = destinationOffset, .size = size
         });
     } catch (...) {
         this->release(allocation);
@@ -76,9 +72,9 @@ void VulkanTransferContext::queue_buffer(const VkBuffer destination, const VkDev
     }
 }
 
-void VulkanTransferContext::queue_texture(const VkImage destination,
-    const std::span<const VkBufferImageCopy> regions, const std::uint32_t mipLevels, const std::uint32_t layers,
-    const VkDeviceSize size, const std::span<const VulkanTransferSegment> segments) {
+void VulkanTransferContext::queue_texture(const VkImage destination, const std::span<const VkBufferImageCopy> regions,
+    const std::uint32_t mipLevels, const std::uint32_t layers, const VkDeviceSize size,
+    const std::span<const VulkanTransferSegment> segments) {
     if (destination == VK_NULL_HANDLE || regions.empty() || mipLevels == 0 || layers == 0 || size == 0 ||
         segments.empty()) {
         throw std::invalid_argument("Vulkan texture transfer is invalid");
@@ -148,12 +144,9 @@ VkCommandBuffer VulkanTransferContext::flush(const std::size_t batch, const std:
 
     for (const BufferUpload& upload : this->buffers) {
         const VkBufferCopy region {
-            .srcOffset = upload.source.offset,
-            .dstOffset = upload.destinationOffset,
-            .size = upload.size
+            .srcOffset = upload.source.offset, .dstOffset = upload.destinationOffset, .size = upload.size
         };
-        vkCmdCopyBuffer(
-            commandBuffer, this->pages[upload.source.page]->handle(), upload.destination, 1, &region);
+        vkCmdCopyBuffer(commandBuffer, this->pages[upload.source.page]->handle(), upload.destination, 1, &region);
         if (!separateQueue) {
             bufferBarriers.push_back(VkBufferMemoryBarrier {
                 .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
@@ -206,8 +199,7 @@ VkCommandBuffer VulkanTransferContext::flush(const std::size_t batch, const std:
             .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
             .pNext = nullptr,
             .srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
-            .dstAccessMask =
-                separateQueue ? VkAccessFlags {} : static_cast<VkAccessFlags>(VK_ACCESS_SHADER_READ_BIT),
+            .dstAccessMask = separateQueue ? VkAccessFlags {} : static_cast<VkAccessFlags>(VK_ACCESS_SHADER_READ_BIT),
             .oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
             .newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
             .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
@@ -215,10 +207,11 @@ VkCommandBuffer VulkanTransferContext::flush(const std::size_t batch, const std:
             .image = upload.destination,
             .subresourceRange = range
         };
-        const VkPipelineStageFlags destinationStage =
-            separateQueue ? VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT : VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-        vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT, destinationStage, 0, 0, nullptr, 0,
-            nullptr, 1, &sampleBarrier);
+        const VkPipelineStageFlags destinationStage = separateQueue
+            ? VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT
+            : VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+        vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT, destinationStage, 0, 0, nullptr, 0, nullptr,
+            1, &sampleBarrier);
     }
 
     result = vkEndCommandBuffer(commandBuffer);
@@ -294,8 +287,7 @@ void VulkanTransferContext::release(const Allocation& allocation) noexcept {
     }
 }
 
-void VulkanTransferContext::write(
-    const Allocation& allocation, const std::span<const VulkanTransferSegment> segments) {
+void VulkanTransferContext::write(const Allocation& allocation, const std::span<const VulkanTransferSegment> segments) {
     for (const VulkanTransferSegment& segment : segments) {
         if (segment.offset > allocation.size || segment.data.size_bytes() > allocation.size - segment.offset) {
             throw std::out_of_range("Vulkan transfer segment exceeds its allocation");

@@ -6,6 +6,7 @@
 #include "Render/Mesh/data.hpp"
 #include "Render/Mesh/mesh.hpp"
 #include "Render/Texture/data.hpp"
+#include "Render/Texture/blend.hpp"
 #include "Render/Texture/texture.hpp"
 
 #include <span>
@@ -21,6 +22,8 @@ public:
     virtual void store_material(MaterialHandle handle, const MaterialData& data) = 0;
     virtual void remove_material(MaterialHandle handle) = 0;
     virtual void store_texture(TextureHandle handle, const TextureData& data) = 0;
+    virtual void store_texture(TextureHandle handle, const TextureBlendData& data) = 0;
+    [[nodiscard]] virtual bool texture_ready(TextureHandle handle) const noexcept = 0;
     virtual void remove_texture(TextureHandle handle) = 0;
     virtual void remove_textures(std::span<const TextureHandle> handles) = 0;
     virtual void frame(const RenderFrame& frame) = 0;

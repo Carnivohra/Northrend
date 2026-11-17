@@ -28,6 +28,8 @@ public:
     void store_material(MaterialHandle handle, const MaterialData& data) override;
     void remove_material(MaterialHandle handle) override;
     void store_texture(TextureHandle handle, const TextureData& data) override;
+    void store_texture(TextureHandle handle, const TextureBlendData& data) override;
+    [[nodiscard]] bool texture_ready(TextureHandle handle) const noexcept override;
     void remove_texture(TextureHandle handle) override;
     void remove_textures(std::span<const TextureHandle> handles) override;
     void frame(const RenderFrame& frame) override;

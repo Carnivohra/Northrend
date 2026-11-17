@@ -8,6 +8,7 @@ layout(set = 1, binding = 0) uniform DirectionalLight {
 
 layout(set = 2, binding = 0) uniform sampler2D textures[64];
 layout(set = 2, binding = 1) uniform sampler2DArray alphaMaps;
+layout(set = 2, binding = 2) uniform sampler2DArray blendedTextures;
 
 layout(push_constant) uniform TerrainDetail {
     float textureMipBias;
@@ -22,28 +23,31 @@ layout(location = 0) out vec4 fragmentColor;
 
 void main() {
     const uint alphaLayer = terrainMaterial & 0xFF;
-    const uint layerCount = (terrainMaterial >> 8) + 1;
+    const uint layerCount = ((terrainMaterial >> 8) & 0x3) + 1;
+    const uvec2 chunk = uvec2((terrainMaterial >> 10) & 0xF, (terrainMaterial >> 14) & 0xF);
     const vec2 tiledCoordinates = terrainCoordinates * 8.0;
-    vec3 albedo = texture(textures[nonuniformEXT(terrainTextures.x)], tiledCoordinates, detail.textureMipBias).rgb;
+    vec3 albedo;
 
-    if (layerCount > 1) {
-        const vec2 alphaCoordinates = clamp(terrainCoordinates, vec2(0.5 / 64.0), vec2(1.0 - 0.5 / 64.0));
-        const vec3 alpha = texture(alphaMaps, vec3(alphaCoordinates, float(alphaLayer)), detail.alphaMipBias).rgb;
-        const float baseWeight = max(1.0 - alpha.r - alpha.g - alpha.b, 0.0);
-        albedo *= baseWeight;
-        albedo +=
-            texture(textures[nonuniformEXT(terrainTextures.y)], tiledCoordinates, detail.textureMipBias).rgb * alpha.r;
+    if (detail.textureMipBias > 0.0) {
+        const uint chunkLayer = chunk.y * 16 + chunk.x;
+        albedo = texture(blendedTextures, vec3(terrainCoordinates, float(chunkLayer)), detail.textureMipBias).rgb;
+    } else {
+        albedo = texture(textures[nonuniformEXT(terrainTextures.x)], tiledCoordinates).rgb;
 
-        if (layerCount > 2) {
-            albedo +=
-                texture(textures[nonuniformEXT(terrainTextures.z)], tiledCoordinates, detail.textureMipBias).rgb *
-                alpha.g;
-        }
+        if (layerCount > 1) {
+            const vec2 alphaCoordinates = clamp(terrainCoordinates, vec2(0.5 / 64.0), vec2(1.0 - 0.5 / 64.0));
+            const vec3 alpha = texture(alphaMaps, vec3(alphaCoordinates, float(alphaLayer))).rgb;
+            albedo = mix(albedo, texture(textures[nonuniformEXT(terrainTextures.y)], tiledCoordinates).rgb, alpha.r);
 
-        if (layerCount > 3) {
-            albedo +=
-                texture(textures[nonuniformEXT(terrainTextures.w)], tiledCoordinates, detail.textureMipBias).rgb *
-                alpha.b;
+            if (layerCount > 2) {
+                albedo =
+                    mix(albedo, texture(textures[nonuniformEXT(terrainTextures.z)], tiledCoordinates).rgb, alpha.g);
+            }
+
+            if (layerCount > 3) {
+                albedo =
+                    mix(albedo, texture(textures[nonuniformEXT(terrainTextures.w)], tiledCoordinates).rgb, alpha.b);
+            }
         }
     }
 

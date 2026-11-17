@@ -6,6 +6,7 @@
 #include "Render/Vulkan/Material/store.hpp"
 #include "Render/Vulkan/target.hpp"
 #include "Render/Vulkan/Texture/store.hpp"
+#include "Render/Vulkan/Texture/blend.hpp"
 #include "Render/Vulkan/device.hpp"
 #include "Render/Vulkan/frame.hpp"
 #include "Render/Vulkan/Mesh/pipeline.hpp"
@@ -29,10 +30,16 @@ namespace Northrend {
 
 VulkanSwapchain::VulkanSwapchain(VulkanDevice& device, VulkanMeshStore& meshes, VulkanMaterialStore& materials,
     VulkanTextureStore& textures, VkSurfaceKHR surface, const Window& window, const VkClearColorValue& clearColor) :
-    device(device), meshes(meshes), materials(materials), textures(textures), surface(surface), window(window),
+    device(device),
+    meshes(meshes),
+    materials(materials),
+    textures(textures),
+    surface(surface),
+    window(window),
     clearColor(clearColor) {
     try {
         this->device.prepare_transfers(FramesInFlight);
+        this->textureBlend = std::make_unique<VulkanTextureBlend>(this->device, this->textures, FramesInFlight);
         this->commands = std::make_unique<VulkanCommandContext>(this->device);
         this->create_frame_resources();
         this->create_swapchain_resources();
@@ -111,15 +118,19 @@ void VulkanSwapchain::render(const RenderFrame& renderFrame) {
     this->pipeline->update_light(imageIndex, renderFrame.light);
     this->commands->record(
         imageIndex, renderFrame, *this->target, *this->pipeline, this->meshes, this->materials, this->clearColor);
-    std::array<VkCommandBuffer, 2> submittedCommands;
+    std::array<VkCommandBuffer, 3> submittedCommands;
     std::uint32_t submittedCommandCount = 0;
-    const VkCommandBuffer transferCommand =
-        this->device.flush_transfers(this->currentFrame, this->submittedSerial + 1);
-    const bool separateTransfer =
-        transferCommand != VK_NULL_HANDLE && this->device.dedicated_transfer_queue();
+    const VkCommandBuffer transferCommand = this->device.flush_transfers(this->currentFrame, this->submittedSerial + 1);
+    const bool separateTransfer = transferCommand != VK_NULL_HANDLE && this->device.dedicated_transfer_queue();
 
     if (transferCommand != VK_NULL_HANDLE && !separateTransfer) {
         submittedCommands[submittedCommandCount++] = transferCommand;
+    }
+
+    const VkCommandBuffer blendCommand = this->textureBlend->flush(this->currentFrame, this->submittedSerial + 1);
+
+    if (blendCommand != VK_NULL_HANDLE) {
+        submittedCommands[submittedCommandCount++] = blendCommand;
     }
 
     submittedCommands[submittedCommandCount++] = this->commands->handle(imageIndex);
@@ -154,8 +165,8 @@ void VulkanSwapchain::render(const RenderFrame& renderFrame) {
     const std::array<VkSemaphore, 2> waitSemaphores {frame.image_available(), frame.transfer_finished()};
     const std::array<VkPipelineStageFlags, 2> waitStages {
         VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-        VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT | VK_PIPELINE_STAGE_VERTEX_INPUT_BIT |
-            VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT
+        VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_TRANSFER_BIT | VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT |
+            VK_PIPELINE_STAGE_VERTEX_INPUT_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT
     };
     const std::uint32_t waitCount = separateTransfer ? 2 : 1;
     const VkSemaphore signalSemaphores[] {frame.render_finished()};
@@ -208,6 +219,18 @@ void VulkanSwapchain::render(const RenderFrame& renderFrame) {
     }
 }
 
+void VulkanSwapchain::store_texture(const TextureHandle handle, const TextureBlendData& data) {
+    this->textureBlend->store(handle, data);
+}
+
+void VulkanSwapchain::cancel_texture(const TextureHandle handle) noexcept {
+    this->textureBlend->cancel(handle);
+}
+
+bool VulkanSwapchain::texture_ready(const TextureHandle handle) const noexcept {
+    return this->textureBlend->ready(handle);
+}
+
 void VulkanSwapchain::suspend() noexcept {
     this->device.wait_idle();
     this->completedSerial = this->submittedSerial;
@@ -215,7 +238,7 @@ void VulkanSwapchain::suspend() noexcept {
 }
 
 std::uint64_t VulkanSwapchain::retirement_serial() const noexcept {
-    return this->submittedSerial + (this->device.transfers_pending() ? 1 : 0);
+    return this->submittedSerial + (this->device.transfers_pending() || this->textureBlend->pending() ? 1 : 0);
 }
 
 void VulkanSwapchain::create_frame_resources() {
@@ -354,6 +377,7 @@ void VulkanSwapchain::recreate() {
 
 void VulkanSwapchain::collect_retired(const std::uint64_t completedSerial) noexcept {
     this->device.collect_transfers(completedSerial);
+    this->textureBlend->collect(completedSerial);
     this->materials.collect(completedSerial);
     this->textures.collect(completedSerial);
     this->meshes.collect(completedSerial);

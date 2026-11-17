@@ -12,11 +12,22 @@
 namespace Northrend {
 
 Matrix4 Camera::view() const noexcept {
+    glm::quat orientation(this->orientation.w, this->orientation.x, this->orientation.y, this->orientation.z);
+    const float magnitude = glm::dot(orientation, orientation);
+
+    if (magnitude > 0.0F) {
+        orientation *= glm::inversesqrt(magnitude);
+    } else {
+        orientation = glm::quat(1.0F, 0.0F, 0.0F, 0.0F);
+    }
+
     const glm::vec3 position(this->position.x, this->position.y, this->position.z);
-    const Vector3 forward = this->forward();
-    const Vector3 up = this->up();
-    const glm::vec3 target = position + glm::vec3(forward.x, forward.y, forward.z);
-    const glm::mat4 view = glm::lookAtRH(position, target, glm::vec3(up.x, up.y, up.z));
+    glm::mat4 axes(1.0F);
+    axes[0] = glm::vec4(0.0F, 0.0F, -1.0F, 0.0F);
+    axes[1] = glm::vec4(-1.0F, 0.0F, 0.0F, 0.0F);
+    axes[2] = glm::vec4(0.0F, 1.0F, 0.0F, 0.0F);
+    const glm::mat4 view =
+        axes * glm::mat4_cast(glm::conjugate(orientation)) * glm::translate(glm::mat4(1.0F), -position);
 
     return from_glm(view);
 }
@@ -50,16 +61,23 @@ Vector3 Camera::up() const noexcept {
 }
 
 void Camera::look_at(const Vector3 target, const Vector3 up) {
-    const glm::vec3 position(this->position.x, this->position.y, this->position.z);
-    const glm::vec3 direction = glm::vec3(target.x, target.y, target.z) - position;
+    this->look_to(Vector3 {
+        .x = target.x - this->position.x,
+        .y = target.y - this->position.y,
+        .z = target.z - this->position.z
+    }, up);
+}
+
+void Camera::look_to(const Vector3 direction, const Vector3 up) {
+    const glm::vec3 forwardDirection(direction.x, direction.y, direction.z);
     const glm::vec3 upward(up.x, up.y, up.z);
 
-    if (glm::dot(direction, direction) <= 0.0F || glm::dot(upward, upward) <= 0.0F ||
-        glm::dot(glm::cross(direction, upward), glm::cross(direction, upward)) <= 0.0F) {
-        throw std::invalid_argument("Camera look-at vectors must define a valid orientation");
+    if (glm::dot(forwardDirection, forwardDirection) <= 0.0F || glm::dot(upward, upward) <= 0.0F ||
+        glm::dot(glm::cross(forwardDirection, upward), glm::cross(forwardDirection, upward)) <= 0.0F) {
+        throw std::invalid_argument("Camera direction and up vector must define a valid orientation");
     }
 
-    const glm::vec3 forward = glm::normalize(direction);
+    const glm::vec3 forward = glm::normalize(forwardDirection);
     const glm::vec3 right = glm::normalize(glm::cross(forward, upward));
     const glm::vec3 correctedUp = glm::normalize(glm::cross(right, forward));
     glm::mat3 basis(1.0F);

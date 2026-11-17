@@ -53,11 +53,24 @@ void VulkanRenderer::store_texture(const TextureHandle handle, const TextureData
     this->textures->store(handle, data);
 }
 
+void VulkanRenderer::store_texture(const TextureHandle handle, const TextureBlendData& data) {
+    this->swapchain->store_texture(handle, data);
+}
+
+bool VulkanRenderer::texture_ready(const TextureHandle handle) const noexcept {
+    return this->swapchain->texture_ready(handle);
+}
+
 void VulkanRenderer::remove_texture(const TextureHandle handle) {
+    this->swapchain->cancel_texture(handle);
     this->textures->erase(handle, this->swapchain->retirement_serial());
 }
 
 void VulkanRenderer::remove_textures(const std::span<const TextureHandle> handles) {
+    for (const TextureHandle handle : handles) {
+        this->swapchain->cancel_texture(handle);
+    }
+
     this->textures->erase(handles, this->swapchain->retirement_serial());
 }
 

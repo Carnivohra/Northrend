@@ -57,6 +57,11 @@ private:
         bool worldDraws = false;
         bool transformedDraws = false;
         bool initialized = false;
+#ifdef NORTHREND_GPU_PROFILING
+        std::uint64_t worldDrawCalls = 0;
+        std::uint64_t worldCommands = 0;
+        std::uint64_t worldTriangles = 0;
+#endif
     };
 
     static constexpr VkDeviceSize InitialCapacity = 64ULL * 1024ULL;

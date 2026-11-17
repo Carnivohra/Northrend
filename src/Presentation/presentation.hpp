@@ -16,8 +16,13 @@
 #include <cmath>
 #include <concepts>
 #include <cstddef>
+#include <cstdint>
 #include <optional>
 #include <utility>
+
+#ifdef NORTHREND_BENCHMARK
+#include "Presentation/Camera/route.hpp"
+#endif
 
 namespace Northrend {
 
@@ -61,20 +66,23 @@ public:
 
         if (snapshot.sequence != this->latestSnapshot.sequence) {
             this->latestSnapshot = snapshot;
+
+#ifdef NORTHREND_BENCHMARK
+            this->update_benchmark_route();
+#endif
         }
 
         this->control_camera(input, mapChanged);
         const Camera& camera = this->scene.active_camera();
         this->map.focus(camera.position, this->renderDistance, this->presentationExchange);
         this->map.prepare(this->meshHandles, this->materialHandles, this->textures, *this->renderer, this->scene);
-        this->map.update(camera, this->window->width(), this->window->height(), this->scene);
+        this->map.update(camera, this->window->width(), this->window->height(), *this->renderer, this->scene);
         this->renderer->frame(this->scene.frame());
     }
 
     void stop() {
         if (this->renderer) {
-            this->map.clear(
-                this->meshHandles, this->materialHandles, this->textures, *this->renderer, this->scene);
+            this->map.clear(this->meshHandles, this->materialHandles, this->textures, *this->renderer, this->scene);
         }
 
         this->renderer.reset();
@@ -92,8 +100,39 @@ private:
         return Vector3 {.x = horizontal * std::cos(yaw), .y = horizontal * std::sin(yaw), .z = std::sin(pitch)};
     }
 
+#ifdef NORTHREND_BENCHMARK
+    void update_benchmark_route() {
+        if (!this->latestSnapshot.mapCenter) {
+            this->cameraRoute.reset();
+            this->benchmarkGeneration = 0;
+            return;
+        }
+
+        if (this->cameraRoute && this->benchmarkGeneration == this->latestSnapshot.mapGeneration) {
+            return;
+        }
+
+        this->cameraRoute.emplace(*this->latestSnapshot.mapCenter, 3'000.0F, 1'600.0F, 250.0F);
+        this->benchmarkGeneration = this->latestSnapshot.mapGeneration;
+        this->routeStart = Clock::now();
+    }
+#endif
+
     void control_camera(const Input& input, bool mapChanged) {
         const Clock::time_point now = Clock::now();
+
+#ifdef NORTHREND_BENCHMARK
+        if (this->cameraRoute) {
+            const double elapsed = std::chrono::duration<double>(now - this->routeStart).count();
+            this->scene.modify_active_camera([this, elapsed](Camera& camera) {
+                this->cameraRoute->apply(camera, elapsed);
+                camera.nearPlane = 0.5F;
+                camera.farPlane = 250'000.0F;
+            });
+            return;
+        }
+#endif
+
         const float delta = std::clamp(std::chrono::duration<float>(now - this->cameraTick).count(), 0.0F, 0.05F);
         this->cameraTick = now;
 
@@ -187,11 +226,7 @@ private:
             camera.position = this->cameraPosition;
             camera.nearPlane = 0.5F;
             camera.farPlane = 250'000.0F;
-            camera.look_at(Vector3 {
-                .x = this->cameraPosition.x + view.x,
-                .y = this->cameraPosition.y + view.y,
-                .z = this->cameraPosition.z + view.z
-            });
+            camera.look_to(view);
         });
     }
 
@@ -203,11 +238,18 @@ private:
     PresentationMap map;
     RenderScene scene;
     std::optional<RendererType> renderer;
+
+#ifdef NORTHREND_BENCHMARK
+    std::optional<CameraRoute> cameraRoute;
+    Clock::time_point routeStart = Clock::now();
+    std::uint32_t benchmarkGeneration = 0;
+#endif
+
     Clock::time_point cameraTick = Clock::now();
     Vector3 cameraPosition;
     float cameraYaw = 0.0F;
     float cameraPitch = 0.0F;
-    float cameraSpeed = 2'000.0F;
+    float cameraSpeed = 500.0F;
     std::size_t renderDistance;
     bool cameraControlled = false;
     const Window* window = nullptr;

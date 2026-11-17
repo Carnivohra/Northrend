@@ -32,7 +32,7 @@ public:
         PresentationTextureCache& textures, Renderer& renderer, RenderScene& scene);
     void clear(MeshHandleAllocator& meshAllocator, MaterialHandleAllocator& materialAllocator,
         PresentationTextureCache& textures, Renderer& renderer, RenderScene& scene);
-    void update(const Camera& camera, int width, int height, RenderScene& scene);
+    void update(const Camera& camera, int width, int height, Renderer& renderer, RenderScene& scene);
 
     [[nodiscard]] const MapTile* tile(std::size_t x, std::size_t y) const noexcept;
     [[nodiscard]] std::uint32_t generation() const noexcept;

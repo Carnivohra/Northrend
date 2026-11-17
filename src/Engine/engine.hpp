@@ -2,6 +2,7 @@
 
 #include "Asset/system.hpp"
 #include "Backend/application.hpp"
+#include "Debug/fps.hpp"
 #include "Engine/plan.hpp"
 #include "Input/input.hpp"
 #include "Presentation/runtime.hpp"
@@ -50,6 +51,7 @@ public:
 
     void resumed() override {
         this->simulation.resume();
+        this->fps.reset();
 
 #ifdef NORTHREND_GPU_PROFILING
         this->cpuTiming.reset();
@@ -83,6 +85,10 @@ public:
             Timing::write(std::cout, "CPU render", *summary);
         }
 #endif
+
+        if (const auto currentFps = this->fps.record_frame()) {
+            std::cout << "FPS: " << static_cast<std::uint32_t>(*currentFps + 0.5) << '\n';
+        }
     }
 
     void stopped() override {
@@ -124,6 +130,8 @@ private:
         const std::size_t concurrency = std::thread::hardware_concurrency();
         return std::clamp(concurrency / 4, std::size_t {1}, std::size_t {4});
     }
+
+    Fps fps;
 
 #ifdef NORTHREND_GPU_PROFILING
     Timing cpuTiming;

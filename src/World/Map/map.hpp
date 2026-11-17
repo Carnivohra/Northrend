@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Math/vector.hpp"
 #include "World/Map/catalog.hpp"
 #include "World/Map/result.hpp"
 #include "World/Map/selection.hpp"
@@ -29,6 +30,8 @@ public:
     [[nodiscard]] std::string_view directory() const noexcept;
     [[nodiscard]] MapState state() const noexcept;
     [[nodiscard]] std::uint32_t id() const noexcept;
+    [[nodiscard]] std::uint32_t generation() const noexcept;
+    [[nodiscard]] std::optional<Vector3> center() const noexcept;
     void clear() noexcept;
 
 private:

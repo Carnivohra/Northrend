@@ -129,8 +129,9 @@ void PresentationMap::clear(MeshHandleAllocator& meshAllocator, MaterialHandleAl
     this->currentGeneration = 0;
 }
 
-void PresentationMap::update(const Camera& camera, const int width, const int height, RenderScene& scene) {
-    this->terrain.update(camera, width, height, scene);
+void PresentationMap::update(
+    const Camera& camera, const int width, const int height, Renderer& renderer, RenderScene& scene) {
+    this->terrain.update(camera, width, height, renderer, scene);
 }
 
 const MapTile* PresentationMap::tile(const std::size_t x, const std::size_t y) const noexcept {

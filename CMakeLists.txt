@@ -2,6 +2,10 @@ cmake_minimum_required(VERSION 3.24)
 
 project(Northrend VERSION 0.0.1 LANGUAGES C CXX)
 
+option(NORTHREND_BENCHMARK
+  "Enable deterministic engine benchmarks"
+  OFF)
+
 # Select platform integrations
 
 # Platform profiles establish defaults before optional dependencies are loaded.

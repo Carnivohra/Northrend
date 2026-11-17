@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Render/Texture/texture.hpp"
+
 #include <volk.h>
 
 #include <array>
@@ -11,6 +13,7 @@
 namespace Northrend {
 
 struct RenderFrame;
+class TextureBlendData;
 class VulkanCommandContext;
 class VulkanDevice;
 class VulkanFrame;
@@ -19,6 +22,7 @@ class VulkanMeshStore;
 class VulkanMeshPipeline;
 class VulkanRenderTarget;
 class VulkanTextureStore;
+class VulkanTextureBlend;
 class Window;
 
 class VulkanSwapchain final {
@@ -31,6 +35,9 @@ public:
     VulkanSwapchain& operator=(const VulkanSwapchain&) = delete;
 
     void render(const RenderFrame& frame);
+    void store_texture(TextureHandle handle, const TextureBlendData& data);
+    void cancel_texture(TextureHandle handle) noexcept;
+    [[nodiscard]] bool texture_ready(TextureHandle handle) const noexcept;
     void suspend() noexcept;
     [[nodiscard]] std::uint64_t retirement_serial() const noexcept;
 
@@ -54,6 +61,7 @@ private:
     VulkanMeshStore& meshes;
     VulkanMaterialStore& materials;
     VulkanTextureStore& textures;
+    std::unique_ptr<VulkanTextureBlend> textureBlend;
     VkSurfaceKHR surface;
     const Window& window;
     VkClearColorValue clearColor;
