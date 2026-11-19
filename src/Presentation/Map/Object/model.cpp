@@ -22,13 +22,7 @@ PresentationMapObjectModel::PresentationMapObjectModel(const MapObjectAsset& obj
             .texture2 = texture(material.texture2),
             .flags = material.flags,
             .shader = material.shader,
-            .blendMode = material.blendMode,
-            .sidnColor = material.sidnColor,
-            .frameSidnColor = material.frameSidnColor,
-            .diffuseColor = material.diffuseColor,
-            .groundType = material.groundType,
-            .color2 = material.color2,
-            .flags2 = material.flags2
+            .blendMode = material.blendMode
         });
     }
 }

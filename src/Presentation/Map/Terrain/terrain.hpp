@@ -50,20 +50,20 @@ private:
 
     static constexpr std::uint8_t UnsetLevel = 0xFF;
 
-    std::array<MeshHandle, TileGrid::TileCount> meshes;
-    std::array<MaterialHandle, TileGrid::TileCount> materials;
-    std::array<TextureHandle, TileGrid::TileCount> alphaTextures;
-    std::array<TextureHandle, TileGrid::TileCount> blendedTextures;
+    std::array<MeshHandle, TileGrid::TileCount> meshes {};
+    std::array<MaterialHandle, TileGrid::TileCount> materials {};
+    std::array<TextureHandle, TileGrid::TileCount> alphaTextures {};
+    std::array<TextureHandle, TileGrid::TileCount> blendedTextures {};
     std::array<bool, TileGrid::TileCount> blendedReady {};
-    std::array<Entity, TileGrid::TileCount> entities;
-    std::array<Vector3, TileGrid::TileCount> minimums;
-    std::array<Vector3, TileGrid::TileCount> maximums;
-    std::array<std::array<Vector3, TerrainGeometry::ClusterCount>, TileGrid::TileCount> clusterMinimums;
-    std::array<std::array<Vector3, TerrainGeometry::ClusterCount>, TileGrid::TileCount> clusterMaximums;
-    std::array<std::array<std::uint8_t, TerrainGeometry::ClusterCount>, TileGrid::TileCount> levels;
-    std::array<std::uint8_t, TileGrid::TileCount> selectedLevels;
-    std::array<std::array<bool, TerrainGeometry::ClusterCount>, TileGrid::TileCount> visibility;
-    std::array<std::uint16_t, TileGrid::TileCount> activeTiles;
+    std::array<Entity, TileGrid::TileCount> entities {};
+    std::array<Vector3, TileGrid::TileCount> minimums {};
+    std::array<Vector3, TileGrid::TileCount> maximums {};
+    std::array<std::array<Vector3, TerrainGeometry::ClusterCount>, TileGrid::TileCount> clusterMinimums {};
+    std::array<std::array<Vector3, TerrainGeometry::ClusterCount>, TileGrid::TileCount> clusterMaximums {};
+    std::array<std::array<std::uint8_t, TerrainGeometry::ClusterCount>, TileGrid::TileCount> levels {};
+    std::array<std::uint8_t, TileGrid::TileCount> selectedLevels {};
+    std::array<std::array<bool, TerrainGeometry::ClusterCount>, TileGrid::TileCount> visibility {};
+    std::array<std::uint16_t, TileGrid::TileCount> activeTiles {};
     std::array<std::uint16_t, TileGrid::TileCount> activePositions {};
     std::size_t activeCount = 0;
     std::uint64_t cameraRevision = 0;

@@ -6,6 +6,7 @@
 #include "Render/instance.hpp"
 #include "Render/light.hpp"
 #include "Render/sections.hpp"
+#include "Render/visibility.hpp"
 
 #include <concepts>
 #include <cstdint>
@@ -59,12 +60,17 @@ private:
 
     Registry state;
     flecs::query<const RenderInstance> instanceQuery;
+    flecs::query<const RenderVisibility> visibilityQuery;
     flecs::query<const RenderSections> sectionQuery;
     Entity cameraEntity;
     Entity lightEntity;
     std::vector<RenderInstance> instances;
+    std::vector<std::uint8_t> instanceVisibility;
     std::vector<RenderSections> sections;
+    std::vector<std::size_t> instanceIndices;
     std::uint64_t instancesRevision = 0;
+    std::uint64_t visibilityRevision = 0;
+    std::uint64_t sectionsRevision = 0;
     Camera cachedCamera;
     Matrix4 cachedView;
     std::uint64_t cachedCameraRevision = 0;

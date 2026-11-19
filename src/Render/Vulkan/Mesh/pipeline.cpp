@@ -25,9 +25,13 @@ VulkanMeshPipeline::VulkanMeshPipeline(VulkanDevice& device, const VulkanMateria
         this->worldPipeline = this->create_graphics_pipeline(
             renderPass, extent, VulkanShader::MeshWorldVertex, VulkanShader::MeshTerrainFragment, false);
 
-        for (std::uint32_t blendMode = 0; blendMode < this->transformedPipelines.size(); ++blendMode) {
-            this->transformedPipelines[blendMode] = this->create_graphics_pipeline(
-                renderPass, extent, VulkanShader::MeshVertex, VulkanShader::MeshFragment, true, blendMode);
+        const std::size_t pipelineCount = this->dynamic_culling() ? BlendModeCount : TransformedPipelineCount;
+
+        for (std::size_t pipeline = 0; pipeline < pipelineCount; ++pipeline) {
+            const std::uint32_t blendMode = static_cast<std::uint32_t>(pipeline % BlendModeCount);
+            const bool doubleSided = pipeline >= BlendModeCount;
+            this->transformedPipelines[pipeline] = this->create_graphics_pipeline(
+                renderPass, extent, VulkanShader::MeshVertex, VulkanShader::MeshFragment, true, blendMode, doubleSided);
         }
     } catch (...) {
         this->destroy();
@@ -53,17 +57,32 @@ void VulkanMeshPipeline::bind_world(const VkCommandBuffer commandBuffer, const s
 }
 
 void VulkanMeshPipeline::bind_transformed(
-    const VkCommandBuffer commandBuffer, const std::size_t imageIndex, const std::uint32_t blendMode) const noexcept {
-    const std::size_t index = std::min<std::size_t>(blendMode, this->transformedPipelines.size() - 1);
+    const VkCommandBuffer commandBuffer, const std::size_t imageIndex, const std::uint32_t blendMode,
+    const bool doubleSided) const noexcept {
+    const std::size_t index = std::min<std::size_t>(blendMode, BlendModeCount - 1) +
+        (!this->dynamic_culling() && doubleSided ? BlendModeCount : 0);
     this->bind(commandBuffer, imageIndex, this->transformedPipelines[index]);
+
+    if (this->dynamic_culling()) {
+        this->set_double_sided(commandBuffer, doubleSided);
+    }
+}
+
+void VulkanMeshPipeline::set_double_sided(
+    const VkCommandBuffer commandBuffer, const bool doubleSided) const noexcept {
+    vkCmdSetCullMode(commandBuffer, doubleSided ? VK_CULL_MODE_NONE : VK_CULL_MODE_BACK_BIT);
+}
+
+bool VulkanMeshPipeline::dynamic_culling() const noexcept {
+    return this->device.extended_dynamic_state();
 }
 
 VkPipelineLayout VulkanMeshPipeline::pipeline_layout() const noexcept {
     return this->layout;
 }
 
-void VulkanMeshPipeline::bind(
-    const VkCommandBuffer commandBuffer, const std::size_t imageIndex, const VkPipeline pipeline) const noexcept {
+void VulkanMeshPipeline::bind(const VkCommandBuffer commandBuffer, const std::size_t imageIndex,
+    const VkPipeline pipeline) const noexcept {
     vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
     this->camera.bind(commandBuffer, this->layout, imageIndex);
     this->light.bind(commandBuffer, this->layout, imageIndex);
@@ -92,11 +111,12 @@ void VulkanMeshPipeline::create_layout() {
     if (result != VK_SUCCESS) {
         throw std::runtime_error("Failed to create the Vulkan pipeline layout: " + std::to_string(result));
     }
+
 }
 
 VkPipeline VulkanMeshPipeline::create_graphics_pipeline(const VkRenderPass renderPass, const VkExtent2D extent,
     const std::span<const unsigned char> vertexCode, const std::span<const unsigned char> fragmentCode,
-    const bool transformed, const std::uint32_t blendMode) const {
+    const bool transformed, const std::uint32_t blendMode, const bool doubleSided) const {
     const VkShaderModule vertexShader = this->create_shader_module(vertexCode);
     VkShaderModule fragmentShader = VK_NULL_HANDLE;
 
@@ -226,13 +246,21 @@ VkPipeline VulkanMeshPipeline::create_graphics_pipeline(const VkRenderPass rende
         .depthClampEnable = VK_FALSE,
         .rasterizerDiscardEnable = VK_FALSE,
         .polygonMode = VK_POLYGON_MODE_FILL,
-        .cullMode = transformed ? VK_CULL_MODE_NONE : VK_CULL_MODE_BACK_BIT,
+        .cullMode = transformed && doubleSided ? VK_CULL_MODE_NONE : VK_CULL_MODE_BACK_BIT,
         .frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE,
         .depthBiasEnable = VK_FALSE,
         .depthBiasConstantFactor = 0.0F,
         .depthBiasClamp = 0.0F,
         .depthBiasSlopeFactor = 0.0F,
         .lineWidth = 1.0F
+    };
+    const VkDynamicState dynamicStates[] {VK_DYNAMIC_STATE_CULL_MODE};
+    const VkPipelineDynamicStateCreateInfo dynamicState {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
+        .pNext = nullptr,
+        .flags = 0,
+        .dynamicStateCount = transformed && this->dynamic_culling() ? 1U : 0U,
+        .pDynamicStates = dynamicStates
     };
     const VkPipelineMultisampleStateCreateInfo multisampling {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
@@ -323,7 +351,7 @@ VkPipeline VulkanMeshPipeline::create_graphics_pipeline(const VkRenderPass rende
         .pMultisampleState = &multisampling,
         .pDepthStencilState = &depthStencil,
         .pColorBlendState = &colorBlending,
-        .pDynamicState = nullptr,
+        .pDynamicState = transformed && this->dynamic_culling() ? &dynamicState : nullptr,
         .layout = this->layout,
         .renderPass = renderPass,
         .subpass = 0,

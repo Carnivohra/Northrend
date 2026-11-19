@@ -12,8 +12,11 @@ namespace Northrend {
 
 struct RenderFrame final {
     std::span<const RenderInstance> instances;
+    std::span<const std::uint8_t> instanceVisibility;
     std::span<const RenderSections> sections;
     std::uint64_t instancesRevision;
+    std::uint64_t visibilityRevision;
+    std::uint64_t sectionsRevision;
     const Camera& camera;
     const Matrix4& view;
     std::uint64_t cameraRevision;

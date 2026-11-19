@@ -64,6 +64,8 @@ void VulkanCommandContext::allocate(std::size_t count) {
 
     this->buffers = std::move(allocated);
     this->recordedInstanceRevisions.assign(count, 0);
+    this->recordedVisibilityRevisions.assign(count, 0);
+    this->recordedSectionRevisions.assign(count, 0);
     this->recordedMeshRevisions.assign(count, 0);
     this->recorded.assign(count, false);
     this->batch.allocate(count);
@@ -83,6 +85,8 @@ void VulkanCommandContext::release() noexcept {
     this->recorded.clear();
     this->recordedMeshRevisions.clear();
     this->recordedInstanceRevisions.clear();
+    this->recordedVisibilityRevisions.clear();
+    this->recordedSectionRevisions.clear();
 
     if (this->buffers.empty()) {
         return;
@@ -99,11 +103,13 @@ void VulkanCommandContext::record(std::size_t imageIndex, const RenderFrame& ren
     const std::uint64_t meshRevision = meshes.revision();
 
     if (this->recorded[imageIndex] && this->recordedInstanceRevisions[imageIndex] == renderFrame.instancesRevision &&
+        this->recordedVisibilityRevisions[imageIndex] == renderFrame.visibilityRevision &&
+        this->recordedSectionRevisions[imageIndex] == renderFrame.sectionsRevision &&
         this->recordedMeshRevisions[imageIndex] == meshRevision) {
         return;
     }
 
-    this->batch.update(imageIndex, renderFrame, meshes);
+    this->batch.update(imageIndex, renderFrame, meshes, materials);
 
     const VkCommandBuffer commandBuffer = this->buffers[imageIndex];
     VkResult result = vkResetCommandBuffer(commandBuffer, 0);
@@ -163,6 +169,8 @@ void VulkanCommandContext::record(std::size_t imageIndex, const RenderFrame& ren
     }
 
     this->recordedInstanceRevisions[imageIndex] = renderFrame.instancesRevision;
+    this->recordedVisibilityRevisions[imageIndex] = renderFrame.visibilityRevision;
+    this->recordedSectionRevisions[imageIndex] = renderFrame.sectionsRevision;
     this->recordedMeshRevisions[imageIndex] = meshRevision;
     this->recorded[imageIndex] = true;
 }

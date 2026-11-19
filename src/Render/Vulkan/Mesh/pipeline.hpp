@@ -31,15 +31,17 @@ public:
         std::size_t imageIndex, const Camera& camera, const Matrix4& view, std::uint64_t revision, VkExtent2D extent);
     void update_light(std::size_t imageIndex, const DirectionalLight& light);
     void bind_world(VkCommandBuffer commandBuffer, std::size_t imageIndex) const noexcept;
-    void bind_transformed(
-        VkCommandBuffer commandBuffer, std::size_t imageIndex, std::uint32_t blendMode) const noexcept;
+    void bind_transformed(VkCommandBuffer commandBuffer, std::size_t imageIndex, std::uint32_t blendMode,
+        bool doubleSided) const noexcept;
+    void set_double_sided(VkCommandBuffer commandBuffer, bool doubleSided) const noexcept;
+    [[nodiscard]] bool dynamic_culling() const noexcept;
     [[nodiscard]] VkPipelineLayout pipeline_layout() const noexcept;
 
 private:
     [[nodiscard]] VkShaderModule create_shader_module(std::span<const unsigned char> code) const;
     [[nodiscard]] VkPipeline create_graphics_pipeline(VkRenderPass renderPass, VkExtent2D extent,
         std::span<const unsigned char> vertexCode, std::span<const unsigned char> fragmentCode, bool transformed,
-        std::uint32_t blendMode = 0) const;
+        std::uint32_t blendMode = 0, bool doubleSided = false) const;
 
     void create_layout();
     void bind(VkCommandBuffer commandBuffer, std::size_t imageIndex, VkPipeline pipeline) const noexcept;
@@ -51,7 +53,10 @@ private:
     VulkanLightUniform light;
     VkPipelineLayout layout = VK_NULL_HANDLE;
     VkPipeline worldPipeline = VK_NULL_HANDLE;
-    std::array<VkPipeline, 12> transformedPipelines {};
+    static constexpr std::size_t BlendModeCount = 12;
+    static constexpr std::size_t TransformedPipelineCount = BlendModeCount * 2;
+
+    std::array<VkPipeline, TransformedPipelineCount> transformedPipelines {};
 };
 
 }

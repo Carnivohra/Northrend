@@ -138,9 +138,19 @@ private:
 
         const Keyboard& keyboard = input.keyboard();
         const Mouse& mouse = input.mouse();
-        const bool movement = keyboard.down(Key::w) || keyboard.down(Key::s) || keyboard.down(Key::a) ||
-            keyboard.down(Key::d) || keyboard.down(Key::space) || keyboard.down(Key::leftControl);
-        const bool rotation = mouse.down(MouseButton::right) && (mouse.delta_x() != 0.0F || mouse.delta_y() != 0.0F);
+        const Gamepad& gamepad = input.gamepad();
+        const auto [movementX, movementY] =
+            gamepad.stick(GamepadAxis::leftX, GamepadAxis::leftY);
+        const auto [rotationX, rotationY] =
+            gamepad.stick(GamepadAxis::rightX, GamepadAxis::rightY);
+        const float vertical = gamepad.axis(GamepadAxis::rightTrigger) - gamepad.axis(GamepadAxis::leftTrigger);
+        const bool gamepadMovement = movementX != 0.0F || movementY != 0.0F || vertical != 0.0F;
+        const bool gamepadRotation = rotationX != 0.0F || rotationY != 0.0F;
+        const bool movement = gamepadMovement || keyboard.down(Key::w) || keyboard.down(Key::s) ||
+            keyboard.down(Key::a) || keyboard.down(Key::d) || keyboard.down(Key::space) ||
+            keyboard.down(Key::leftControl);
+        const bool rotation = gamepadRotation ||
+            (mouse.down(MouseButton::right) && (mouse.delta_x() != 0.0F || mouse.delta_y() != 0.0F));
         const bool speedChanged = mouse.wheel_y() != 0.0F;
 
         if (!this->cameraControlled && !movement && !rotation && !speedChanged) {
@@ -160,6 +170,9 @@ private:
             this->cameraYaw -= mouse.delta_x() * 0.0025F;
             this->cameraPitch =
                 std::clamp(this->cameraPitch - mouse.delta_y() * 0.0025F, -CameraPitchLimit, CameraPitchLimit);
+            this->cameraYaw -= rotationX * 2.5F * delta;
+            this->cameraPitch =
+                std::clamp(this->cameraPitch - rotationY * 2.5F * delta, -CameraPitchLimit, CameraPitchLimit);
         }
 
         if (speedChanged) {
@@ -206,12 +219,22 @@ private:
                 movementDirection.z -= 1.0F;
             }
 
+            movementDirection.x -= view.x * movementY;
+            movementDirection.y -= view.y * movementY;
+            movementDirection.z -= view.z * movementY;
+            movementDirection.x += right.x * movementX;
+            movementDirection.y += right.y * movementX;
+            movementDirection.z += vertical;
+
             const float movementLength = std::sqrt(movementDirection.x * movementDirection.x +
                 movementDirection.y * movementDirection.y + movementDirection.z * movementDirection.z);
 
             if (movementLength > 0.0F) {
-                const float boost = keyboard.down(Key::leftShift) ? 4.0F : 1.0F;
-                const float distance = this->cameraSpeed * boost * delta / movementLength;
+                const float boost = keyboard.down(Key::leftShift) || gamepad.down(GamepadButton::rightShoulder)
+                    ? 4.0F
+                    : 1.0F;
+                const float strength = std::min(movementLength, 1.0F);
+                const float distance = this->cameraSpeed * boost * delta * strength / movementLength;
                 this->cameraPosition.x += movementDirection.x * distance;
                 this->cameraPosition.y += movementDirection.y * distance;
                 this->cameraPosition.z += movementDirection.z * distance;

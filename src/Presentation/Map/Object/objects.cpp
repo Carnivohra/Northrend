@@ -1,15 +1,26 @@
-#include "Presentation/Map/objects.hpp"
+#include "Presentation/Map/Object/objects.hpp"
 
 #include "Presentation/Map/Object/model.hpp"
 #include "Presentation/Texture/cache.hpp"
+#include "Render/camera.hpp"
+#include "Render/frustum.hpp"
 #include "Render/instance.hpp"
 #include "Render/Material/allocator.hpp"
 #include "Render/Mesh/allocator.hpp"
 #include "Render/renderer.hpp"
 #include "Render/scene.hpp"
+#include "Render/visibility.hpp"
 #include "World/Map/Object/asset.hpp"
 #include "World/Map/Object/placement.hpp"
 #include "World/Map/Tile/tile.hpp"
+
+#ifdef NORTHREND_GPU_PROFILING
+#include "Debug/interval.hpp"
+#include "Debug/timing.hpp"
+
+#include <chrono>
+#include <iostream>
+#endif
 
 #include <algorithm>
 #include <stdexcept>
@@ -21,14 +32,9 @@ void PresentationMapObjects::load(const std::size_t x, const std::size_t y, cons
         throw std::out_of_range("Presentation map object coordinate is outside the map");
     }
 
-    Tile& destination = this->tiles[index(x, y)];
-    destination.instances.clear();
-    destination.entities.clear();
-    destination.rendered.clear();
-    destination.rendered.reserve(tile.objects().size());
-    destination.completed.assign(tile.objects().size(), false);
-    destination.remaining = tile.objects().size();
-    destination.instances.reserve(tile.objects().size());
+    PresentationMapObjectTile& destination = this->tiles[index(x, y)];
+    destination.reset(tile.objects().size());
+    this->visibilityDirty = true;
 }
 
 void PresentationMapObjects::unload(const std::size_t x, const std::size_t y, MeshHandleAllocator& meshAllocator,
@@ -38,7 +44,7 @@ void PresentationMapObjects::unload(const std::size_t x, const std::size_t y, Me
         return;
     }
 
-    Tile& tile = this->tiles[index(x, y)];
+    PresentationMapObjectTile& tile = this->tiles[index(x, y)];
 
     for (const Entity entity : tile.entities) {
         scene.registry().destroy(entity);
@@ -48,11 +54,8 @@ void PresentationMapObjects::unload(const std::size_t x, const std::size_t y, Me
         this->release(instance.model(), meshAllocator, materialAllocator, textures, renderer);
     }
 
-    tile.instances.clear();
-    tile.entities.clear();
-    tile.rendered.clear();
-    tile.completed.clear();
-    tile.remaining = 0;
+    tile.reset(0);
+    this->visibilityDirty = true;
     this->collect();
 }
 
@@ -66,6 +69,12 @@ void PresentationMapObjects::clear(MeshHandleAllocator& meshAllocator, MaterialH
 
     this->resources.clear();
     this->models.clear();
+    this->cameraRevision = 0;
+    this->visibleInstances = 0;
+    this->visibleSections = 0;
+    this->viewportWidth = 0;
+    this->viewportHeight = 0;
+    this->visibilityDirty = true;
 }
 
 bool PresentationMapObjects::prepare(const std::size_t x, const std::size_t y, const MapTile& tile, std::size_t& budget,
@@ -75,7 +84,7 @@ bool PresentationMapObjects::prepare(const std::size_t x, const std::size_t y, c
         return true;
     }
 
-    Tile& destination = this->tiles[index(x, y)];
+    PresentationMapObjectTile& destination = this->tiles[index(x, y)];
     const std::span<const MapObjectPlacement> placements = tile.objects();
 
     if (destination.completed.size() != placements.size()) {
@@ -105,6 +114,8 @@ bool PresentationMapObjects::prepare(const std::size_t x, const std::size_t y, c
             const MapObjectPlacement& placement = placements[index];
             static_cast<void>(this->retain(model, textures, renderer));
             destination.instances.emplace_back(model, placement);
+            destination.firstEntities.push_back(0);
+            destination.entityCounts.push_back(0);
             destination.rendered.push_back(false);
         } catch (...) {
         }
@@ -119,17 +130,89 @@ bool PresentationMapObjects::prepare(const std::size_t x, const std::size_t y, c
         }
     }
 
-    return destination.remaining == 0 &&
+    const bool ready = destination.remaining == 0 &&
         std::ranges::all_of(destination.rendered, [](const bool rendered) { return rendered; });
+
+    return ready;
 }
 
-std::span<const PresentationMapObjectInstance> PresentationMapObjects::instances(
-    const std::size_t x, const std::size_t y) const noexcept {
-    if (x >= TileGrid::Size || y >= TileGrid::Size) {
-        return {};
+void PresentationMapObjects::update(const Camera& camera, const int width, const int height, RenderScene& scene) {
+    if (width <= 0 || height <= 0 ||
+        (!this->visibilityDirty && camera.revision == this->cameraRevision && width == this->viewportWidth &&
+            height == this->viewportHeight)) {
+        return;
     }
 
-    return this->tiles[index(x, y)].instances;
+#ifdef NORTHREND_GPU_PROFILING
+    static Timing cullingTiming;
+    const auto cullingStart = std::chrono::steady_clock::now();
+#endif
+
+    const float aspectRatio = static_cast<float>(width) / static_cast<float>(height);
+    const Frustum frustum(camera.projection(aspectRatio) * camera.view());
+    std::size_t visibleInstances = 0;
+    std::size_t visibleSections = 0;
+    std::vector<bool> groupVisibility;
+
+    for (PresentationMapObjectTile& tile : this->tiles) {
+        for (std::size_t index = 0; index < tile.instances.size(); ++index) {
+            const std::size_t entityCount = tile.entityCounts[index];
+
+            if (entityCount == 0) {
+                continue;
+            }
+
+            const PresentationMapObjectInstance& instance = tile.instances[index];
+            const bool instanceVisible = frustum.intersects(instance.minimum(), instance.maximum());
+
+            visibleInstances += instanceVisible;
+            groupVisibility.assign(instance.group_count(), false);
+
+            if (instanceVisible) {
+                for (std::size_t group = 0; group < groupVisibility.size(); ++group) {
+                    groupVisibility[group] =
+                        frustum.intersects(instance.group_minimum(group), instance.group_maximum(group));
+                }
+            }
+
+            const std::size_t firstEntity = tile.firstEntities[index];
+
+            for (std::size_t entity = firstEntity; entity < firstEntity + entityCount; ++entity) {
+                const std::uint32_t group = tile.entityGroups[entity];
+                const bool visible = group < groupVisibility.size() && groupVisibility[group];
+                visibleSections += visible;
+
+                if (visible == tile.entityVisibility[entity]) {
+                    continue;
+                }
+
+                const bool modified = scene.registry().modify<RenderVisibility>(
+                    tile.entities[entity], [visible](RenderVisibility& visibility) { visibility.visible = visible; });
+
+                if (!modified) {
+                    throw std::runtime_error("WMO render instance is missing");
+                }
+
+                tile.entityVisibility[entity] = visible;
+            }
+        }
+    }
+
+    this->cameraRevision = camera.revision;
+    this->visibleInstances = visibleInstances;
+    this->visibleSections = visibleSections;
+    this->viewportWidth = width;
+    this->viewportHeight = height;
+    this->visibilityDirty = false;
+
+#ifdef NORTHREND_GPU_PROFILING
+    const auto cullingEnd = std::chrono::steady_clock::now();
+    const double milliseconds = std::chrono::duration<double, std::milli>(cullingEnd - cullingStart).count();
+
+    if (const auto summary = cullingTiming.record(milliseconds)) {
+        Timing::write(std::cout, "CPU WMO culling", *summary);
+    }
+#endif
 }
 
 std::shared_ptr<const PresentationMapObjectModel> PresentationMapObjects::model(
@@ -196,7 +279,8 @@ void PresentationMapObjects::release(const std::shared_ptr<const PresentationMap
     this->resources.erase(position);
 }
 
-void PresentationMapObjects::render(Tile& tile, const std::size_t instanceIndex, std::size_t& budget,
+void PresentationMapObjects::render(PresentationMapObjectTile& tile, const std::size_t instanceIndex,
+    std::size_t& budget,
     MeshHandleAllocator& meshAllocator, MaterialHandleAllocator& materialAllocator, PresentationTextureCache& textures,
     Renderer& renderer, RenderScene& scene) {
     const PresentationMapObjectInstance& instance = tile.instances[instanceIndex];
@@ -224,6 +308,9 @@ void PresentationMapObjects::render(Tile& tile, const std::size_t instanceIndex,
 
     const std::span<const PresentationMapObjectSection> sections = instance.model()->geometry().sections();
     const std::size_t firstEntity = tile.entities.size();
+    tile.entities.reserve(firstEntity + sections.size());
+    tile.entityGroups.reserve(firstEntity + sections.size());
+    tile.entityVisibility.reserve(firstEntity + sections.size());
 
     try {
         for (std::size_t section = 0; section < sections.size(); ++section) {
@@ -234,25 +321,40 @@ void PresentationMapObjects::render(Tile& tile, const std::size_t instanceIndex,
             }
 
             const Entity entity = scene.registry().create();
-            scene.registry().emplace<RenderInstance>(entity,
-                RenderInstance {
-                    .mesh = resource.mesh(),
-                    .material = material,
-                    .transform = instance.transform(),
-                    .section = static_cast<std::uint16_t>(section)
-                });
+
+            try {
+                scene.registry().emplace<RenderInstance>(entity,
+                    RenderInstance {
+                        .mesh = resource.mesh(),
+                        .material = material,
+                        .transform = instance.transform(),
+                        .section = static_cast<std::uint16_t>(section)
+                    });
+                scene.registry().emplace<RenderVisibility>(entity, RenderVisibility {.visible = false});
+            } catch (...) {
+                scene.registry().destroy(entity);
+                throw;
+            }
+
             tile.entities.push_back(entity);
+            tile.entityGroups.push_back(sections[section].group);
+            tile.entityVisibility.push_back(false);
         }
     } catch (...) {
         while (tile.entities.size() > firstEntity) {
             scene.registry().destroy(tile.entities.back());
             tile.entities.pop_back();
+            tile.entityGroups.pop_back();
+            tile.entityVisibility.pop_back();
         }
 
         throw;
     }
 
+    tile.firstEntities[instanceIndex] = firstEntity;
+    tile.entityCounts[instanceIndex] = tile.entities.size() - firstEntity;
     tile.rendered[instanceIndex] = true;
+    this->visibilityDirty = true;
 }
 
 void PresentationMapObjects::collect() noexcept {
@@ -265,5 +367,29 @@ void PresentationMapObjects::collect() noexcept {
         ++position;
     }
 }
+
+#ifdef NORTHREND_GPU_PROFILING
+void PresentationMapObjects::profile() const {
+    static Interval interval;
+
+    if (!interval.elapsed()) {
+        return;
+    }
+
+    std::size_t instances = 0;
+    std::size_t sections = 0;
+    std::size_t pending = 0;
+
+    for (const PresentationMapObjectTile& tile : this->tiles) {
+        instances += tile.instances.size();
+        sections += tile.entities.size();
+        pending += tile.remaining;
+    }
+
+    std::cout << "WMO: instances=" << instances << " visible_instances=" << this->visibleInstances
+              << " sections=" << sections << " visible_sections=" << this->visibleSections
+              << " resources=" << this->resources.size() << " pending=" << pending << '\n';
+}
+#endif
 
 }

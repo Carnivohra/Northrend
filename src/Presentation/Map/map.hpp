@@ -1,7 +1,7 @@
 #pragma once
 
-#include "Presentation/Map/objects.hpp"
-#include "Presentation/Map/terrain.hpp"
+#include "Presentation/Map/Object/objects.hpp"
+#include "Presentation/Map/Terrain/terrain.hpp"
 #include "World/Map/Terrain/payload.hpp"
 #include "World/Map/Tile/focus.hpp"
 #include "World/Map/Tile/grid.hpp"
@@ -35,21 +35,21 @@ public:
         PresentationTextureCache& textures, Renderer& renderer, RenderScene& scene);
     void update(const Camera& camera, int width, int height, Renderer& renderer, RenderScene& scene);
 
-    [[nodiscard]] const MapTile* tile(std::size_t x, std::size_t y) const noexcept;
-    [[nodiscard]] std::uint32_t generation() const noexcept;
-
 private:
     [[nodiscard]] static constexpr std::size_t index(const std::size_t x, const std::size_t y) noexcept {
         return y * TileGrid::Size + x;
     }
 
+    void reset(std::uint32_t generation, MeshHandleAllocator& meshAllocator,
+        MaterialHandleAllocator& materialAllocator, PresentationTextureCache& textures, Renderer& renderer,
+        RenderScene& scene);
     static void retain_textures(const MapTile& tile, PresentationTextureCache& textures, Renderer& renderer);
     static void release_textures(const MapTile& tile, PresentationTextureCache& textures, Renderer& renderer);
 
-    std::array<std::shared_ptr<const MapTile>, TileGrid::TileCount> tiles;
-    std::array<std::unique_ptr<TerrainPayload>, TileGrid::TileCount> payloads;
-    std::array<bool, TileGrid::TileCount> pending;
-    std::array<bool, TileGrid::TileCount> objectPending;
+    std::array<std::shared_ptr<const MapTile>, TileGrid::TileCount> tiles {};
+    std::array<std::unique_ptr<TerrainPayload>, TileGrid::TileCount> payloads {};
+    std::array<bool, TileGrid::TileCount> pending {};
+    std::array<bool, TileGrid::TileCount> objectPending {};
     PresentationTerrain terrain;
     PresentationMapObjects objects;
     std::optional<TileFocus> tileFocus;

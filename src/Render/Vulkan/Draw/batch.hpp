@@ -1,12 +1,14 @@
 #pragma once
 
 #include "Render/Vulkan/Draw/draw.hpp"
+#include "Render/Vulkan/Draw/instance.hpp"
 
 #include <volk.h>
 
 #include <cstddef>
 #include <cstdint>
 #include <memory>
+#include <span>
 #include <vector>
 
 namespace Northrend {
@@ -28,7 +30,8 @@ public:
 
     void allocate(std::size_t count);
     void release() noexcept;
-    void update(std::size_t imageIndex, const RenderFrame& frame, const VulkanMeshStore& meshes);
+    void update(std::size_t imageIndex, const RenderFrame& frame, const VulkanMeshStore& meshes,
+        const VulkanMaterialStore& materials);
     [[nodiscard]] bool has_world(std::size_t imageIndex) const noexcept;
     [[nodiscard]] bool has_transformed(std::size_t imageIndex) const noexcept;
     void draw_world(VkCommandBuffer commandBuffer, std::size_t imageIndex, const VulkanMeshStore& meshes,
@@ -51,13 +54,17 @@ private:
         std::vector<std::vector<VulkanDraw>> worldUnsigned32;
         std::vector<std::vector<WorldGroup>> worldUnsigned16Groups;
         std::vector<std::vector<WorldGroup>> worldUnsigned32Groups;
-        std::vector<std::vector<VulkanDraw>> transformedUnsigned16;
-        std::vector<std::vector<VulkanDraw>> transformedUnsigned32;
         std::uint64_t instanceRevision = 0;
-        std::uint64_t meshRevision = 0;
+        std::uint64_t visibilityRevision = 0;
+        std::uint64_t transformedMeshRevision = 0;
+        std::uint64_t sectionsRevision = 0;
+        std::uint64_t worldInstanceRevision = 0;
+        std::uint64_t worldVisibilityRevision = 0;
+        std::uint64_t worldMeshRevision = 0;
         bool worldDraws = false;
         bool transformedDraws = false;
-        bool initialized = false;
+        bool worldInitialized = false;
+        bool transformedInitialized = false;
 #ifdef NORTHREND_GPU_PROFILING
         std::uint64_t worldDrawCalls = 0;
         std::uint64_t worldCommands = 0;
@@ -65,19 +72,37 @@ private:
 #endif
     };
 
+    struct PreparedInstances final {
+        std::vector<std::vector<VulkanInstanceDraw>> unsigned16;
+        std::vector<std::vector<VulkanInstanceDraw>> unsigned32;
+        std::vector<std::vector<VulkanDraw>> visibleUnsigned16;
+        std::vector<std::vector<VulkanDraw>> visibleUnsigned32;
+        std::vector<Matrix4> transforms;
+        std::uint64_t instanceRevision = 0;
+        std::uint64_t visibilityRevision = 0;
+        std::uint64_t meshRevision = 0;
+        bool hasWorldInstances = false;
+        bool initialized = false;
+    };
+
     static constexpr VkDeviceSize InitialCapacity = 64ULL * 1024ULL;
 
     [[nodiscard]] static VkDeviceSize capacity(VkDeviceSize current, VkDeviceSize required);
     static void build_groups(std::vector<VulkanDraw>& draws, std::vector<WorldGroup>& groups,
         std::vector<VkDrawIndexedIndirectCommand>& commands);
+    static void sort_instances(std::vector<VulkanInstanceDraw>& instances);
+    static void build_instances(const std::vector<VulkanInstanceDraw>& instances,
+        std::span<const std::uint8_t> visibility, std::vector<VulkanDraw>& draws,
+        std::vector<Matrix4>& transforms);
     void draw_world_groups(VkCommandBuffer commandBuffer, const std::vector<WorldGroup>& groups,
         VkBuffer indirectBuffer, const VulkanMaterialStore& materials, VkPipelineLayout pipelineLayout) const noexcept;
     static void draw_transformed_group(VkCommandBuffer commandBuffer, std::size_t imageIndex,
         const std::vector<VulkanDraw>& draws, const VulkanMaterialStore& materials, VulkanMeshPipeline& pipeline,
-        std::uint32_t& activeBlendMode) noexcept;
+        std::uint32_t& activeBlendMode, bool& activeDoubleSided) noexcept;
 
     VulkanDevice& device;
     std::vector<Store> stores;
+    PreparedInstances prepared;
 };
 
 }

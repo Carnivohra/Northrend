@@ -15,8 +15,7 @@ std::int8_t PresentationMapObjectGeometry::encode_normal(const float value) noex
     return static_cast<std::int8_t>(std::lround(normalized * 127.0F));
 }
 
-PresentationMapObjectGeometry::PresentationMapObjectGeometry(const MapObjectAsset& object) :
-    minimumBounds(object.root().header().minimum), maximumBounds(object.root().header().maximum) {
+PresentationMapObjectGeometry::PresentationMapObjectGeometry(const MapObjectAsset& object) {
     const std::span<const WmoGroup> groups = object.groups();
     std::size_t vertexCount = 0;
     std::size_t indexCount = 0;
@@ -45,7 +44,6 @@ PresentationMapObjectGeometry::PresentationMapObjectGeometry(const MapObjectAsse
         const std::span<const WmoGroup::TextureCoordinate> coordinates = group.texture_coordinates(0);
         const std::uint32_t vertexOffset = static_cast<std::uint32_t>(this->meshVertices.size());
         const std::uint32_t indexOffset = static_cast<std::uint32_t>(this->meshIndices.size());
-        const std::uint32_t sectionOffset = static_cast<std::uint32_t>(this->meshSections.size());
 
         for (std::size_t vertex = 0; vertex < positions.size(); ++vertex) {
             const Vector3& normal = normals[vertex];
@@ -71,10 +69,7 @@ PresentationMapObjectGeometry::PresentationMapObjectGeometry(const MapObjectAsse
 
         this->meshGroups.push_back(PresentationMapObjectGroup {
             .minimum = group.header().minimum,
-            .maximum = group.header().maximum,
-            .firstSection = sectionOffset,
-            .sectionCount = static_cast<std::uint32_t>(group.batches().size()),
-            .flags = group.header().flags
+            .maximum = group.header().maximum
         });
     }
 }
@@ -93,14 +88,6 @@ std::span<const PresentationMapObjectSection> PresentationMapObjectGeometry::sec
 
 std::span<const PresentationMapObjectGroup> PresentationMapObjectGeometry::groups() const noexcept {
     return this->meshGroups;
-}
-
-const Vector3& PresentationMapObjectGeometry::minimum() const noexcept {
-    return this->minimumBounds;
-}
-
-const Vector3& PresentationMapObjectGeometry::maximum() const noexcept {
-    return this->maximumBounds;
 }
 
 }

@@ -42,9 +42,10 @@ target_sources(Northrend
     Presentation/Map/Object/geometry.cpp
     Presentation/Map/Object/instance.cpp
     Presentation/Map/Object/model.cpp
+    Presentation/Map/Object/objects.cpp
     Presentation/Map/Object/resource.cpp
-    Presentation/Map/objects.cpp
-    Presentation/Map/terrain.cpp
+    Presentation/Map/Object/tile.cpp
+    Presentation/Map/Terrain/terrain.cpp
     Presentation/Camera/route.cpp
     Presentation/Texture/cache.cpp
     Presentation/Texture/entry.cpp
@@ -148,9 +149,10 @@ target_sources(Northrend
       Presentation/Map/Object/instance.hpp
       Presentation/Map/Object/material.hpp
       Presentation/Map/Object/model.hpp
+      Presentation/Map/Object/objects.hpp
       Presentation/Map/Object/resource.hpp
-      Presentation/Map/objects.hpp
-      Presentation/Map/terrain.hpp
+      Presentation/Map/Object/tile.hpp
+      Presentation/Map/Terrain/terrain.hpp
       Presentation/Camera/route.hpp
       Presentation/Texture/cache.hpp
       Presentation/Texture/entry.hpp
@@ -178,6 +180,7 @@ target_sources(Northrend
       Render/renderer.hpp
       Render/scene.hpp
       Render/sections.hpp
+      Render/visibility.hpp
       Simulation/runtime.hpp
       Simulation/simulation.hpp
       Thread/pool.hpp

@@ -15,19 +15,7 @@ void PresentationMap::apply(TileChange change, MeshHandleAllocator& meshAllocato
     MaterialHandleAllocator& materialAllocator, PresentationTextureCache& textures, Renderer& renderer,
     RenderScene& scene) {
     if (change.kind() == TileChange::Kind::reset) {
-        this->terrain.clear(meshAllocator, materialAllocator, textures, renderer, scene);
-        this->objects.clear(meshAllocator, materialAllocator, textures, renderer, scene);
-        this->tiles.fill(nullptr);
-
-        for (std::unique_ptr<TerrainPayload>& payload : this->payloads) {
-            payload.reset();
-        }
-
-        this->pending.fill(false);
-        this->objectPending.fill(false);
-        this->tileFocus.reset();
-        textures.clear(renderer);
-        this->currentGeneration = change.generation();
+        this->reset(change.generation(), meshAllocator, materialAllocator, textures, renderer, scene);
         return;
     }
 
@@ -132,10 +120,20 @@ void PresentationMap::prepare(MeshHandleAllocator& meshAllocator, MaterialHandle
         this->pending[tile] = false;
         ++prepared;
     }
+
+#ifdef NORTHREND_GPU_PROFILING
+    this->objects.profile();
+#endif
 }
 
 void PresentationMap::clear(MeshHandleAllocator& meshAllocator, MaterialHandleAllocator& materialAllocator,
     PresentationTextureCache& textures, Renderer& renderer, RenderScene& scene) {
+    this->reset(0, meshAllocator, materialAllocator, textures, renderer, scene);
+}
+
+void PresentationMap::reset(const std::uint32_t generation, MeshHandleAllocator& meshAllocator,
+    MaterialHandleAllocator& materialAllocator, PresentationTextureCache& textures, Renderer& renderer,
+    RenderScene& scene) {
     this->terrain.clear(meshAllocator, materialAllocator, textures, renderer, scene);
     this->objects.clear(meshAllocator, materialAllocator, textures, renderer, scene);
     this->tiles.fill(nullptr);
@@ -148,20 +146,13 @@ void PresentationMap::clear(MeshHandleAllocator& meshAllocator, MaterialHandleAl
     this->objectPending.fill(false);
     this->tileFocus.reset();
     textures.clear(renderer);
-    this->currentGeneration = 0;
+    this->currentGeneration = generation;
 }
 
 void PresentationMap::update(
     const Camera& camera, const int width, const int height, Renderer& renderer, RenderScene& scene) {
     this->terrain.update(camera, width, height, renderer, scene);
-}
-
-const MapTile* PresentationMap::tile(const std::size_t x, const std::size_t y) const noexcept {
-    return x < TileGrid::Size && y < TileGrid::Size ? this->tiles[index(x, y)].get() : nullptr;
-}
-
-std::uint32_t PresentationMap::generation() const noexcept {
-    return this->currentGeneration;
+    this->objects.update(camera, width, height, scene);
 }
 
 void PresentationMap::retain_textures(const MapTile& tile, PresentationTextureCache& textures, Renderer& renderer) {

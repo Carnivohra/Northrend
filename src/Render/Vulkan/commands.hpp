@@ -61,6 +61,8 @@ private:
     VkCommandPool pool = VK_NULL_HANDLE;
     std::vector<VkCommandBuffer> buffers;
     std::vector<std::uint64_t> recordedInstanceRevisions;
+    std::vector<std::uint64_t> recordedVisibilityRevisions;
+    std::vector<std::uint64_t> recordedSectionRevisions;
     std::vector<std::uint64_t> recordedMeshRevisions;
     std::vector<std::uint8_t> recorded;
 };

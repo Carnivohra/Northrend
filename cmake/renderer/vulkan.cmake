@@ -49,6 +49,7 @@ target_sources(Northrend
     Render/Vulkan/Draw/batch.cpp
     Render/Vulkan/Draw/batch.hpp
     Render/Vulkan/Draw/draw.hpp
+    Render/Vulkan/Draw/instance.hpp
     Render/Vulkan/frame.cpp
     Render/Vulkan/frame.hpp
     Render/Vulkan/instance.cpp

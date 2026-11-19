@@ -34,9 +34,12 @@ VulkanDevice::VulkanDevice(VkInstance instance, VkSurfaceKHR surface) : physical
 
     VkPhysicalDeviceDescriptorIndexingFeatures supportedIndexing {};
     supportedIndexing.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES;
+    VkPhysicalDeviceExtendedDynamicStateFeaturesEXT supportedDynamicState {};
+    supportedDynamicState.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_FEATURES_EXT;
+    supportedDynamicState.pNext = &supportedIndexing;
     VkPhysicalDeviceFeatures2 supportedFeatures {};
     supportedFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
-    supportedFeatures.pNext = &supportedIndexing;
+    supportedFeatures.pNext = &supportedDynamicState;
     vkGetPhysicalDeviceFeatures2(this->physicalDevice.handle(), &supportedFeatures);
 
     if (supportedIndexing.shaderSampledImageArrayNonUniformIndexing != VK_TRUE) {
@@ -46,12 +49,21 @@ VulkanDevice::VulkanDevice(VkInstance instance, VkSurfaceKHR surface) : physical
     VkPhysicalDeviceDescriptorIndexingFeatures enabledIndexing {};
     enabledIndexing.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES;
     enabledIndexing.shaderSampledImageArrayNonUniformIndexing = VK_TRUE;
+    VkPhysicalDeviceProperties properties {};
+    vkGetPhysicalDeviceProperties(this->physicalDevice.handle(), &properties);
+    this->supportsExtendedDynamicState = properties.apiVersion >= VK_API_VERSION_1_3 &&
+        supportedDynamicState.extendedDynamicState == VK_TRUE;
+    VkPhysicalDeviceExtendedDynamicStateFeaturesEXT enabledDynamicState {};
+    enabledDynamicState.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_FEATURES_EXT;
+    enabledDynamicState.pNext = &enabledIndexing;
+    enabledDynamicState.extendedDynamicState = this->supportsExtendedDynamicState ? VK_TRUE : VK_FALSE;
     const char* extensions[] {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
     VkPhysicalDeviceFeatures features {};
     features.multiDrawIndirect = supportedFeatures.features.multiDrawIndirect;
     const VkDeviceCreateInfo createInfo {
         .sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
-        .pNext = &enabledIndexing,
+        .pNext = this->supportsExtendedDynamicState ? static_cast<const void*>(&enabledDynamicState)
+                                                    : static_cast<const void*>(&enabledIndexing),
         .flags = 0,
         .queueCreateInfoCount = static_cast<std::uint32_t>(queueInfos.size()),
         .pQueueCreateInfos = queueInfos.data(),
@@ -120,6 +132,10 @@ bool VulkanDevice::dedicated_transfer_queue() const noexcept {
 
 bool VulkanDevice::multi_draw_indirect() const noexcept {
     return this->supportsMultiDrawIndirect;
+}
+
+bool VulkanDevice::extended_dynamic_state() const noexcept {
+    return this->supportsExtendedDynamicState;
 }
 
 VkFormat VulkanDevice::depth_format() const {

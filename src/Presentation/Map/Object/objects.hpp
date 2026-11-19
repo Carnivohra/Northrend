@@ -1,19 +1,19 @@
 #pragma once
 
-#include "ECS/entity.hpp"
 #include "Presentation/Map/Object/instance.hpp"
 #include "Presentation/Map/Object/resource.hpp"
+#include "Presentation/Map/Object/tile.hpp"
 #include "World/Map/Tile/grid.hpp"
 
 #include <array>
 #include <cstddef>
+#include <cstdint>
 #include <memory>
-#include <span>
 #include <unordered_map>
-#include <vector>
 
 namespace Northrend {
 
+struct Camera;
 class MapObjectAsset;
 class MapTile;
 class MaterialHandleAllocator;
@@ -34,17 +34,12 @@ public:
     [[nodiscard]] bool prepare(std::size_t x, std::size_t y, const MapTile& tile, std::size_t& budget,
         MeshHandleAllocator& meshAllocator, MaterialHandleAllocator& materialAllocator,
         PresentationTextureCache& textures, Renderer& renderer, RenderScene& scene);
-    [[nodiscard]] std::span<const PresentationMapObjectInstance> instances(std::size_t x, std::size_t y) const noexcept;
+    void update(const Camera& camera, int width, int height, RenderScene& scene);
+#ifdef NORTHREND_GPU_PROFILING
+    void profile() const;
+#endif
 
 private:
-    struct Tile final {
-        std::vector<PresentationMapObjectInstance> instances;
-        std::vector<Entity> entities;
-        std::vector<bool> rendered;
-        std::vector<bool> completed;
-        std::size_t remaining = 0;
-    };
-
     [[nodiscard]] static constexpr std::size_t index(const std::size_t x, const std::size_t y) noexcept {
         return y * TileGrid::Size + x;
     }
@@ -55,14 +50,20 @@ private:
         PresentationTextureCache& textures, Renderer& renderer);
     void release(const std::shared_ptr<const PresentationMapObjectModel>& model, MeshHandleAllocator& meshAllocator,
         MaterialHandleAllocator& materialAllocator, PresentationTextureCache& textures, Renderer& renderer);
-    void render(Tile& tile, std::size_t instance, std::size_t& budget, MeshHandleAllocator& meshAllocator,
-        MaterialHandleAllocator& materialAllocator, PresentationTextureCache& textures, Renderer& renderer,
-        RenderScene& scene);
+    void render(PresentationMapObjectTile& tile, std::size_t instance, std::size_t& budget,
+        MeshHandleAllocator& meshAllocator, MaterialHandleAllocator& materialAllocator,
+        PresentationTextureCache& textures, Renderer& renderer, RenderScene& scene);
     void collect() noexcept;
 
-    std::array<Tile, TileGrid::TileCount> tiles;
+    std::array<PresentationMapObjectTile, TileGrid::TileCount> tiles {};
     std::unordered_map<const MapObjectAsset*, std::weak_ptr<const PresentationMapObjectModel>> models;
     std::unordered_map<const PresentationMapObjectModel*, std::unique_ptr<PresentationMapObjectResource>> resources;
+    std::uint64_t cameraRevision = 0;
+    std::size_t visibleInstances = 0;
+    std::size_t visibleSections = 0;
+    int viewportWidth = 0;
+    int viewportHeight = 0;
+    bool visibilityDirty = true;
 };
 
 }

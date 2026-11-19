@@ -13,6 +13,7 @@ namespace Northrend {
 
 RenderScene::RenderScene() :
     instanceQuery(this->state.tracked_query<const RenderInstance>()),
+    visibilityQuery(this->state.tracked_query<const RenderVisibility>()),
     sectionQuery(this->state.tracked_query<const RenderSections>()) {
     this->cameraEntity = this->state.create();
 
@@ -67,8 +68,11 @@ RenderFrame RenderScene::frame() {
 
     return {
         .instances = this->instances,
+        .instanceVisibility = this->instanceVisibility,
         .sections = this->sections,
         .instancesRevision = this->instancesRevision,
+        .visibilityRevision = this->visibilityRevision,
+        .sectionsRevision = this->sectionsRevision,
         .camera = this->cachedCamera,
         .view = this->cachedView,
         .cameraRevision = this->cachedCameraRevision,
@@ -78,9 +82,10 @@ RenderFrame RenderScene::frame() {
 
 void RenderScene::refresh_instances() {
     const bool instancesChanged = this->instanceQuery.changed();
+    bool visibilityChanged = this->visibilityQuery.changed();
     const bool sectionsChanged = this->sectionQuery.changed();
 
-    if (!instancesChanged && !sectionsChanged) {
+    if (!instancesChanged && !visibilityChanged && !sectionsChanged) {
         return;
     }
 
@@ -91,6 +96,7 @@ void RenderScene::refresh_instances() {
 
     if (instancesChanged) {
         this->instances.clear();
+        this->instanceIndices.clear();
 
         const std::size_t instanceCount = static_cast<std::size_t>(this->instanceQuery.count());
 
@@ -108,12 +114,44 @@ void RenderScene::refresh_instances() {
                 }
 
                 for (std::size_t index = 0; index < count; ++index) {
-                    if (field[index].visible) {
-                        this->instances.push_back(field[index]);
+                    const std::size_t entity = static_cast<std::size_t>(iterator.entity(index).id() & ECS_ENTITY_MASK);
+                    const std::size_t destination = this->instances.size();
+
+                    if (entity >= this->instanceIndices.size()) {
+                        this->instanceIndices.resize(entity + 1, 0);
+                    }
+
+                    this->instances.push_back(field[index]);
+                    this->instanceIndices[entity] = destination + 1;
+                }
+            }
+        });
+
+        this->instanceVisibility.assign(this->instances.size(), true);
+        visibilityChanged = true;
+        ++this->instancesRevision;
+    }
+
+    if (visibilityChanged) {
+        if (!instancesChanged) {
+            this->instanceVisibility.assign(this->instances.size(), true);
+        }
+
+        this->visibilityQuery.run([this](flecs::iter& iterator) {
+            while (iterator.next()) {
+                const auto field = iterator.field<const RenderVisibility>(0);
+
+                for (std::size_t index = 0; index < iterator.count(); ++index) {
+                    const std::size_t entity = static_cast<std::size_t>(iterator.entity(index).id() & ECS_ENTITY_MASK);
+
+                    if (entity < this->instanceIndices.size() && this->instanceIndices[entity] != 0) {
+                        this->instanceVisibility[this->instanceIndices[entity] - 1] = field[index].visible;
                     }
                 }
             }
         });
+
+        ++this->visibilityRevision;
     }
 
     if (sectionsChanged) {
@@ -137,9 +175,9 @@ void RenderScene::refresh_instances() {
                 }
             }
         });
-    }
 
-    ++this->instancesRevision;
+        ++this->sectionsRevision;
+    }
 
 #ifdef NORTHREND_GPU_PROFILING
     const auto snapshotEnd = std::chrono::steady_clock::now();

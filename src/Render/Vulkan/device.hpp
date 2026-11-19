@@ -32,6 +32,7 @@ public:
     [[nodiscard]] std::uint32_t transfer_family() const noexcept;
     [[nodiscard]] bool dedicated_transfer_queue() const noexcept;
     [[nodiscard]] bool multi_draw_indirect() const noexcept;
+    [[nodiscard]] bool extended_dynamic_state() const noexcept;
     [[nodiscard]] VkFormat depth_format() const;
     [[nodiscard]] std::uint32_t memory_type(std::uint32_t typeBits, VkMemoryPropertyFlags properties) const;
 
@@ -52,6 +53,7 @@ private:
     VkQueue presentQueue = VK_NULL_HANDLE;
     VkQueue transferQueue = VK_NULL_HANDLE;
     bool supportsMultiDrawIndirect = false;
+    bool supportsExtendedDynamicState = false;
     std::unique_ptr<VulkanTransferContext> transfer;
 };
 
