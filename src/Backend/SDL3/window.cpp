@@ -12,6 +12,12 @@ SDL3Window::SDL3Window(const std::string& title) : window(nullptr) {
         throw std::invalid_argument("SDL3 window title must not be empty");
     }
 
+#if defined(__ANDROID__)
+    if (!SDL_SetHint(SDL_HINT_ORIENTATIONS, "LandscapeLeft")) {
+        throw std::runtime_error(std::string("Failed to set the Android display orientation: ") + SDL_GetError());
+    }
+#endif
+
     const SDL_DisplayID display = SDL_GetPrimaryDisplay();
     SDL_Rect bounds;
 
@@ -19,8 +25,17 @@ SDL3Window::SDL3Window(const std::string& title) : window(nullptr) {
         throw std::runtime_error(std::string("Failed to get the primary display size: ") + SDL_GetError());
     }
 
-    this->window =
-        SDL_CreateWindow(title.c_str(), bounds.w, bounds.h, SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY);
+    SDL_WindowFlags flags = SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY;
+
+#if defined(__ANDROID__)
+    flags |= SDL_WINDOW_FULLSCREEN;
+#endif
+
+#if defined(NORTHREND_SDL_VULKAN)
+    flags |= SDL_WINDOW_VULKAN;
+#endif
+
+    this->window = SDL_CreateWindow(title.c_str(), bounds.w, bounds.h, flags);
 
     if (!this->window) {
         throw std::runtime_error(std::string("Failed to create SDL3 window: ") + SDL_GetError());
@@ -52,13 +67,20 @@ NativeWindowHandle SDL3Window::native_handle() const {
 #endif
 
 #if defined(__ANDROID__)
-    void* nativeWindow = SDL_GetPointerProperty(properties, SDL_PROP_WINDOW_ANDROID_WINDOW_POINTER, nullptr);
+    static constexpr std::uint32_t attempts = 500;
+    static constexpr std::uint32_t delayMilliseconds = 10;
 
-    if (nativeWindow) {
-        return AndroidWindowHandle {.window = nativeWindow};
+    for (std::uint32_t attempt = 0; attempt < attempts; ++attempt) {
+        void* nativeWindow = SDL_GetPointerProperty(properties, SDL_PROP_WINDOW_ANDROID_WINDOW_POINTER, nullptr);
+
+        if (nativeWindow) {
+            return AndroidWindowHandle {.window = nativeWindow};
+        }
+
+        SDL_Delay(delayMilliseconds);
     }
 
-    throw std::runtime_error("SDL3 did not provide an Android native window");
+    throw std::runtime_error("SDL3 did not provide an Android native window within the startup timeout");
 #elif defined(__linux__)
     void* waylandDisplay = SDL_GetPointerProperty(properties, SDL_PROP_WINDOW_WAYLAND_DISPLAY_POINTER, nullptr);
     void* waylandSurface = SDL_GetPointerProperty(properties, SDL_PROP_WINDOW_WAYLAND_SURFACE_POINTER, nullptr);

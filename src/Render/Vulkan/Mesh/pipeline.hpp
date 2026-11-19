@@ -28,7 +28,8 @@ public:
     VulkanMeshPipeline& operator=(const VulkanMeshPipeline&) = delete;
 
     void update_camera(
-        std::size_t imageIndex, const Camera& camera, const Matrix4& view, std::uint64_t revision, VkExtent2D extent);
+        std::size_t imageIndex, const Camera& camera, const Matrix4& view, std::uint64_t revision, VkExtent2D extent,
+        VkSurfaceTransformFlagBitsKHR surfaceTransform);
     void update_light(std::size_t imageIndex, const DirectionalLight& light);
     void bind_world(VkCommandBuffer commandBuffer, std::size_t imageIndex) const noexcept;
     void bind_transformed(VkCommandBuffer commandBuffer, std::size_t imageIndex, std::uint32_t blendMode,

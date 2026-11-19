@@ -29,17 +29,54 @@ VulkanCameraUniform::~VulkanCameraUniform() {
 }
 
 void VulkanCameraUniform::update(
-    std::size_t imageIndex, const Camera& camera, const Matrix4& view, std::uint64_t revision, VkExtent2D extent) {
+    std::size_t imageIndex, const Camera& camera, const Matrix4& view, std::uint64_t revision, VkExtent2D extent,
+    const VkSurfaceTransformFlagBitsKHR surfaceTransform) {
     const bool extentChanged = extent.width != this->sourceExtent.width || extent.height != this->sourceExtent.height;
+    const bool transformChanged = surfaceTransform != this->sourceTransform;
 
-    if (!this->initialized || revision != this->sourceRevision || extentChanged) {
-        Matrix4 projection = camera.projection(static_cast<float>(extent.width) / static_cast<float>(extent.height));
+    if (!this->initialized || revision != this->sourceRevision || extentChanged || transformChanged) {
+        Matrix4 projection =
+            camera.projection(static_cast<float>(extent.width) / static_cast<float>(extent.height));
 
         // Vulkan framebuffer coordinates use the opposite vertical direction.
         projection.values[5] *= -1.0F;
 
-        this->matrix = projection * view;
+        Matrix4 transform;
+
+        switch (surfaceTransform) {
+        case VK_SURFACE_TRANSFORM_ROTATE_90_BIT_KHR:
+            transform.values = {0.0F, 1.0F, 0.0F, 0.0F, -1.0F, 0.0F, 0.0F, 0.0F,
+                0.0F, 0.0F, 1.0F, 0.0F, 0.0F, 0.0F, 0.0F, 1.0F};
+            break;
+        case VK_SURFACE_TRANSFORM_ROTATE_180_BIT_KHR:
+            transform.values = {-1.0F, 0.0F, 0.0F, 0.0F, 0.0F, -1.0F, 0.0F, 0.0F,
+                0.0F, 0.0F, 1.0F, 0.0F, 0.0F, 0.0F, 0.0F, 1.0F};
+            break;
+        case VK_SURFACE_TRANSFORM_ROTATE_270_BIT_KHR:
+            transform.values = {0.0F, -1.0F, 0.0F, 0.0F, 1.0F, 0.0F, 0.0F, 0.0F,
+                0.0F, 0.0F, 1.0F, 0.0F, 0.0F, 0.0F, 0.0F, 1.0F};
+            break;
+        case VK_SURFACE_TRANSFORM_HORIZONTAL_MIRROR_BIT_KHR:
+            transform.values[0] = -1.0F;
+            break;
+        case VK_SURFACE_TRANSFORM_HORIZONTAL_MIRROR_ROTATE_90_BIT_KHR:
+            transform.values = {0.0F, -1.0F, 0.0F, 0.0F, -1.0F, 0.0F, 0.0F, 0.0F,
+                0.0F, 0.0F, 1.0F, 0.0F, 0.0F, 0.0F, 0.0F, 1.0F};
+            break;
+        case VK_SURFACE_TRANSFORM_HORIZONTAL_MIRROR_ROTATE_180_BIT_KHR:
+            transform.values[5] = -1.0F;
+            break;
+        case VK_SURFACE_TRANSFORM_HORIZONTAL_MIRROR_ROTATE_270_BIT_KHR:
+            transform.values = {0.0F, 1.0F, 0.0F, 0.0F, 1.0F, 0.0F, 0.0F, 0.0F,
+                0.0F, 0.0F, 1.0F, 0.0F, 0.0F, 0.0F, 0.0F, 1.0F};
+            break;
+        default:
+            break;
+        }
+
+        this->matrix = transform * projection * view;
         this->sourceExtent = extent;
+        this->sourceTransform = surfaceTransform;
         this->sourceRevision = revision;
         ++this->uploadRevision;
         this->initialized = true;

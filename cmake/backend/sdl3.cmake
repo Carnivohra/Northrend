@@ -16,3 +16,9 @@ target_sources(Northrend
 target_link_libraries(Northrend
   PRIVATE
     SDL3::SDL3)
+
+if(NORTHREND_RENDERER STREQUAL "Vulkan")
+  target_compile_definitions(Northrend
+    PRIVATE
+      NORTHREND_SDL_VULKAN)
+endif()

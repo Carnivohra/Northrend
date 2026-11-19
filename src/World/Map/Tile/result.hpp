@@ -17,7 +17,7 @@ public:
 
     [[nodiscard]] const TileRequest& request() const noexcept;
     [[nodiscard]] bool succeeded() const noexcept;
-    [[nodiscard]] const std::shared_ptr<const MapTile>& data() const noexcept;
+    [[nodiscard]] const std::shared_ptr<const MapTile>& data() const & noexcept;
     [[nodiscard]] std::shared_ptr<const MapTile> data() && noexcept;
     [[nodiscard]] std::unique_ptr<TerrainPayload> payload() && noexcept;
     void rethrow_if_failed() const;

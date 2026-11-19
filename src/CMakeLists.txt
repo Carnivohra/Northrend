@@ -33,6 +33,7 @@ target_sources(Northrend
     Asset/system.cpp
     Backend/backend.cpp
     Config/config.cpp
+    Debug/log.cpp
     Debug/timing.cpp
     ECS/registry.cpp
     Math/Glm/matrix.cpp
@@ -125,6 +126,7 @@ target_sources(Northrend
       Config/plan.hpp
       Debug/fps.hpp
       Debug/interval.hpp
+      Debug/log.hpp
       Debug/timing.hpp
       ECS/entity.hpp
       ECS/registry.hpp
@@ -233,6 +235,10 @@ target_compile_features(Northrend
   PUBLIC
     cxx_std_20)
 
+target_compile_definitions(Northrend
+  PUBLIC
+    ${NORTHREND_PLATFORM_DEFINITIONS})
+
 if(NORTHREND_IPO_SUPPORTED)
   set_target_properties(Northrend PROPERTIES
     INTERPROCEDURAL_OPTIMIZATION_RELEASE TRUE)
@@ -245,4 +251,5 @@ target_link_libraries(Northrend
     glm::glm
     StormLib::storm
     Threads::Threads
+    ${NORTHREND_PLATFORM_LIBRARIES}
     Northrend::CompileOptions)

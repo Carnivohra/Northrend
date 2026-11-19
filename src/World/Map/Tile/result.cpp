@@ -19,7 +19,7 @@ bool TileResult::succeeded() const noexcept {
     return static_cast<bool>(this->mapTile);
 }
 
-const std::shared_ptr<const MapTile>& TileResult::data() const noexcept {
+const std::shared_ptr<const MapTile>& TileResult::data() const & noexcept {
     return this->mapTile;
 }
 

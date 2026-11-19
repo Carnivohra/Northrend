@@ -23,7 +23,11 @@ SDL3Backend::~SDL3Backend() {
 }
 
 std::filesystem::path SDL3Backend::base_path() const {
+#if defined(__ANDROID__)
+    const char* path = SDL_GetAndroidExternalStoragePath();
+#else
     const char* path = SDL_GetBasePath();
+#endif
 
     if (!path) {
         throw std::runtime_error("SDL3 could not resolve the application base path: " + std::string(SDL_GetError()));

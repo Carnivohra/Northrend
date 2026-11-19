@@ -1,8 +1,10 @@
 #pragma once
 
+#include "Debug/log.hpp"
+
 #include <concepts>
 #include <exception>
-#include <iostream>
+#include <memory>
 
 namespace Northrend {
 
@@ -13,11 +15,11 @@ concept GameApplication = std::default_initializable<Type> && requires(Type appl
 
 template <GameApplication ApplicationType> int launch() {
     try {
-        ApplicationType application;
-        application.run();
+        auto application = std::make_unique<ApplicationType>();
+        application->run();
         return 0;
     } catch (const std::exception& exception) {
-        std::cerr << exception.what() << '\n';
+        Log::error(exception.what());
         return 1;
     }
 }

@@ -48,8 +48,9 @@ VulkanMeshPipeline::~VulkanMeshPipeline() {
 }
 
 void VulkanMeshPipeline::update_camera(
-    std::size_t imageIndex, const Camera& camera, const Matrix4& view, std::uint64_t revision, VkExtent2D extent) {
-    this->camera.update(imageIndex, camera, view, revision, extent);
+    std::size_t imageIndex, const Camera& camera, const Matrix4& view, std::uint64_t revision, VkExtent2D extent,
+    const VkSurfaceTransformFlagBitsKHR surfaceTransform) {
+    this->camera.update(imageIndex, camera, view, revision, extent, surfaceTransform);
 }
 
 void VulkanMeshPipeline::bind_world(const VkCommandBuffer commandBuffer, const std::size_t imageIndex) const noexcept {

@@ -114,7 +114,8 @@ void VulkanSwapchain::render(const RenderFrame& renderFrame) {
 #endif
 
     this->pipeline->update_camera(
-        imageIndex, renderFrame.camera, renderFrame.view, renderFrame.cameraRevision, this->extent);
+        imageIndex, renderFrame.camera, renderFrame.view, renderFrame.cameraRevision, this->extent,
+        this->surfaceTransform);
     this->pipeline->update_light(imageIndex, renderFrame.light);
     this->commands->record(
         imageIndex, renderFrame, *this->target, *this->pipeline, this->meshes, this->materials, this->clearColor);
@@ -300,6 +301,7 @@ void VulkanSwapchain::create_swapchain_resources() {
     const VkPresentModeKHR presentMode = choose_present_mode(presentModes);
     this->imageFormat = surfaceFormat.format;
     this->extent = choose_surface_extent(capabilities, width, height);
+    this->surfaceTransform = capabilities.currentTransform;
 
     std::uint32_t imageCount = std::max(capabilities.minImageCount, 3U);
 
@@ -323,7 +325,7 @@ void VulkanSwapchain::create_swapchain_resources() {
         .imageSharingMode = separateQueues ? VK_SHARING_MODE_CONCURRENT : VK_SHARING_MODE_EXCLUSIVE,
         .queueFamilyIndexCount = separateQueues ? 2U : 0U,
         .pQueueFamilyIndices = separateQueues ? familyIndices : nullptr,
-        .preTransform = capabilities.currentTransform,
+        .preTransform = this->surfaceTransform,
         .compositeAlpha = choose_composite_alpha(capabilities.supportedCompositeAlpha),
         .presentMode = presentMode,
         .clipped = VK_TRUE,

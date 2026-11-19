@@ -37,6 +37,7 @@ android {
         }
         release {
             minifyEnabled = false
+            signingConfig = signingConfigs.getByName("debug")
 
             externalNativeBuild {
                 cmake {

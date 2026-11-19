@@ -23,7 +23,8 @@ public:
     VulkanCameraUniform& operator=(const VulkanCameraUniform&) = delete;
 
     void update(
-        std::size_t imageIndex, const Camera& camera, const Matrix4& view, std::uint64_t revision, VkExtent2D extent);
+        std::size_t imageIndex, const Camera& camera, const Matrix4& view, std::uint64_t revision, VkExtent2D extent,
+        VkSurfaceTransformFlagBitsKHR surfaceTransform);
     void bind(VkCommandBuffer commandBuffer, VkPipelineLayout pipelineLayout, std::size_t imageIndex) const noexcept;
 
     [[nodiscard]] VkDescriptorSetLayout descriptor_layout() const noexcept;
@@ -41,6 +42,7 @@ private:
     std::vector<VkDescriptorSet> descriptorSets;
     Matrix4 matrix;
     VkExtent2D sourceExtent {};
+    VkSurfaceTransformFlagBitsKHR sourceTransform = VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR;
     std::uint64_t sourceRevision = 0;
     std::uint64_t uploadRevision = 0;
     bool initialized = false;

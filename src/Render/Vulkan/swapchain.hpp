@@ -68,6 +68,7 @@ private:
     VkSwapchainKHR swapchain = VK_NULL_HANDLE;
     VkFormat imageFormat = VK_FORMAT_UNDEFINED;
     VkExtent2D extent {};
+    VkSurfaceTransformFlagBitsKHR surfaceTransform = VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR;
     int pixelWidth = 0;
     int pixelHeight = 0;
     std::vector<VkImage> images;
