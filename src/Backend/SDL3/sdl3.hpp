@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Backend/SDL3/input.hpp"
 #include "Backend/backend.hpp"
 
 #include <filesystem>
@@ -8,6 +9,9 @@ namespace Northrend {
 
 class SDL3Backend final : public Backend {
 public:
+    SDL3Backend();
+    ~SDL3Backend() override;
+
     [[nodiscard]] std::filesystem::path base_path() const override;
 
     void run(BackendApplication& application, const BackendPlan& plan) override;
@@ -15,6 +19,8 @@ public:
 private:
     bool process_events(Window& window, Input& input) override;
     void delay(std::uint32_t milliseconds) const noexcept override;
+
+    SDL3Input eventInput;
 };
 
 }

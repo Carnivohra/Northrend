@@ -12,39 +12,29 @@ SDL3Window::SDL3Window(const std::string& title) : window(nullptr) {
         throw std::invalid_argument("SDL3 window title must not be empty");
     }
 
-    if (!SDL_Init(SDL_INIT_VIDEO)) {
-        throw std::runtime_error(std::string("Failed to initialize SDL3: ") + SDL_GetError());
-    }
-
     const SDL_DisplayID display = SDL_GetPrimaryDisplay();
     SDL_Rect bounds;
 
     if (display == 0 || !SDL_GetDisplayUsableBounds(display, &bounds)) {
-        const std::string error = std::string("Failed to get the primary display size: ") + SDL_GetError();
-        SDL_Quit();
-        throw std::runtime_error(error);
+        throw std::runtime_error(std::string("Failed to get the primary display size: ") + SDL_GetError());
     }
 
     this->window =
         SDL_CreateWindow(title.c_str(), bounds.w, bounds.h, SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY);
 
     if (!this->window) {
-        const std::string error = std::string("Failed to create SDL3 window: ") + SDL_GetError();
-        SDL_Quit();
-        throw std::runtime_error(error);
+        throw std::runtime_error(std::string("Failed to create SDL3 window: ") + SDL_GetError());
     }
 
     if (!SDL_GetWindowSizeInPixels(this->window, &this->pixelWidth, &this->pixelHeight)) {
         const std::string error = std::string("Failed to get SDL3 window size: ") + SDL_GetError();
         SDL_DestroyWindow(this->window);
-        SDL_Quit();
         throw std::runtime_error(error);
     }
 }
 
 SDL3Window::~SDL3Window() {
     SDL_DestroyWindow(this->window);
-    SDL_Quit();
 }
 
 void SDL3Window::resize(int width, int height) noexcept {

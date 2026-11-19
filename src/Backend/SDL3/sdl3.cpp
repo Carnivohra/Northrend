@@ -11,6 +11,17 @@
 
 namespace Northrend {
 
+SDL3Backend::SDL3Backend() {
+    if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMEPAD)) {
+        throw std::runtime_error(std::string("Failed to initialize SDL3: ") + SDL_GetError());
+    }
+}
+
+SDL3Backend::~SDL3Backend() {
+    this->eventInput.close();
+    SDL_Quit();
+}
+
 std::filesystem::path SDL3Backend::base_path() const {
     const char* path = SDL_GetBasePath();
 
@@ -23,7 +34,15 @@ std::filesystem::path SDL3Backend::base_path() const {
 
 void SDL3Backend::run(BackendApplication& application, const BackendPlan& plan) {
     SDL3Window window(plan.title);
-    this->execute(application, window);
+
+    try {
+        this->execute(application, window);
+    } catch (...) {
+        this->eventInput.close();
+        throw;
+    }
+
+    this->eventInput.close();
 }
 
 bool SDL3Backend::process_events(Window& window, Input& input) {
@@ -31,7 +50,7 @@ bool SDL3Backend::process_events(Window& window, Input& input) {
     SDL_Event event;
 
     while (SDL_PollEvent(&event)) {
-        SDL3Input::process(event, input);
+        this->eventInput.process(event, input);
 
         switch (event.type) {
         case SDL_EVENT_QUIT:

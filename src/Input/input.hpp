@@ -53,10 +53,15 @@ public:
         this->mouseState.begin_frame();
     }
 
-    void reset() noexcept {
+    void neutralize() noexcept {
         this->keyboardState.reset();
         this->mouseState.reset();
         this->touchState.reset();
+        this->gamepadState.neutralize();
+    }
+
+    void reset() noexcept {
+        this->neutralize();
         this->gamepadState.reset();
     }
 
